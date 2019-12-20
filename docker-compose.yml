@@ -1,0 +1,31 @@
+version: "3.2"
+services:
+  db:
+    image: postgres:11.5-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: symfony
+      POSTGRES_USER: symfony
+      POSTGRES_PASSWORD: symfony
+  php:
+    build:
+      context: .
+      dockerfile: docker/php-fpm/Dockerfile
+      args:
+        - SKIP_XDEBUG
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./:/var/www:cached
+  nginx:
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./public:/var/www/public:cached,ro
+      - ./docker/nginx/certs:/etc/letsencrypt:cached,ro
+

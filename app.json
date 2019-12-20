@@ -1,0 +1,61 @@
+{
+    "name": "Stripe-Mirakl Connector",
+    "description": "Connects a Mirakl marketplace with a Stripe Connect account",
+    "repository": "https://github.com/stripe/stripe-mirakl-connector",
+    "addons": [
+        "heroku-postgresql:hobby-dev"
+    ],
+    "env": {
+        "APP_ENV": {
+          "description": "Should always be prod",
+          "value": "prod"
+        },
+        "APP_SECRET": {
+          "description": "A secret key for verifying the integrity of signed cookies.",
+          "generator": "secret"
+        },
+        "CORS_ALLOW_ORIGIN": {
+          "description": "If you need to call operator APIs from a front on a different domain, you can enable CORS",
+          "value": "^https?://localhost(:[0-9]+)?$"
+        },
+        "MAILER_DSN": {
+          "description": "The entire Symfony Mailer configuration using a DSN-like URL format. See https://symfony.com/doc/current/components/mailer.html#mailer-dsn",
+          "value": "smtp://null"
+        },
+        "MESSENGER_TRANSPORT_DSN": {
+          "description": "The transport used for the queuing system.",
+          "value": "doctrine://default"
+        },
+        "MIRAKL_API_KEY": {
+          "description": "",
+          "value": ""
+        },
+        "MIRAKL_HOST_NAME": {
+          "description": "",
+          "value": ""
+        },
+        "OPERATOR_PASSWORD": {
+          "description": "",
+          "generator": "secret"
+        },
+        "REDIRECT_ONBOARDING": {
+          "description": "The URL we will redirect the seller to after a successful account creation. Will be requested by a seller, must be publicly available. Default will be $MIRAKL_HOST_NAME/mmp/shop/account/shop",
+          "value": ""
+        },
+        "STRIPE_CLIENT_ID": {
+          "description": "Your Stripe Connect Client ID. Available in your connect dashboard. https://dashboard.stripe.com/account/applications/settings",
+          "value": ""
+        },
+        "STRIPE_CLIENT_SECRET": {
+          "description": "",
+          "value": ""
+        },
+        "ENABLES_AUTOMATIC_TRANSFER_CREATION": {
+          "description": "Flag to enable/disable the automatic transfer process for you. Default is false.",
+          "value": "false"
+        }
+      },
+      "scripts": {
+        "postdeploy": "bin/console doctrine:migration:migrate  --no-interaction"
+      }
+  }

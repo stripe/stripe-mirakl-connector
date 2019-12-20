@@ -1,0 +1,15 @@
+parameters:
+    autoload_directories:
+        - %rootDir%/../../../src/Migrations
+    reportUnmatchedIgnoredErrors: false
+    inferPrivatePropertyTypeFromConstructor: true
+    ignoreErrors:
+        - '#Call to static method createFromThrowable\(\)#'
+services:
+	-
+		class: Spaze\PHPStan\Reflection\Stripe\RequestProperty
+		tags:
+			- phpstan.broker.propertiesClassReflectionExtension
+		arguments:
+			properties:
+				'Stripe\StripeObject::$stripe_user_id': string

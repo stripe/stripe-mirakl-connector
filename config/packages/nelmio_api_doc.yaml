@@ -1,0 +1,19 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Stripe Mirakl Connector
+            description: >
+                This application is the connector between Stripe and Mirakl.
+
+                It is in charge of onboarding the sellers in Stripe and sending them money through payouts.
+            version: 1.0.0
+        securityDefinitions:
+            Bearer:
+                type: apiKey
+                description: 'Token configured by the operator during the installation'
+                name: X-AUTH-TOKEN
+                in: header
+
+    areas: # to filter documented areas
+        path_patterns:
+            - ^/api(?!/doc)(?!/contexts)(?!/{index}) # Accepts routes under /api except /api/doc, /api/context, /api/{index}

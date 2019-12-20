@@ -1,0 +1,17 @@
+{% extends "emails/base.html.twig" %}
+
+{% block content %}
+	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;">An error occured while notifying your endpoint.</p>
+	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;">Endpoint URL: {{ operatorNotificationUrl }}.</p>
+	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;">We could not reach it after 3 tries.</p>
+	{% if throwable.message %}
+		<p style="font-size: 14px; line-height: 1.5; text-align: left; mso-line-height-alt: 21px; margin: 25px 0px 0px;">Error detail:</p>
+		<p style="text-align: left; background-color: #f1f0f0; font-family: monospace; margin: 0;">{{ throwable.message }}</p>
+		{% if throwable.response %}
+			<p style="text-align: left; background-color: #f1f0f0; font-family: monospace; margin: 0;">{{ throwable.response.getContent(false) }}</p>
+		{% endif %}
+	{% endif %}
+	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;"></p>
+	<p style="font-size: 14px; line-height: 1.5; text-align: left; mso-line-height-alt: 21px; margin: 25px 0px 0px;">Notification content:</p>
+	<p style="white-space: pre-wrap; text-align: left; background-color: #f1f0f0; font-family: monospace; margin: 0;">{{ originalMessage.content | json_encode(constant('JSON_PRETTY_PRINT')) }}</p>
+{% endblock %}

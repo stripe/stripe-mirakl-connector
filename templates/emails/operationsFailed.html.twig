@@ -1,0 +1,57 @@
+{% extends "emails/base.html.twig" %}
+
+{% block content %}
+	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;">An error occured while creating transfers and/or payouts from Mirakl-Stripe connector.</p>
+	{% if not transfers is empty %}	
+	<p style="font-size: 14px; line-height: 1.5; text-align: left; mso-line-height-alt: 21px;  margin-top: 1em;">Transfers: </p>
+	<table style="width: 100%; text-align: center;">
+		<thead style="background-color: #6772e5; color: #fff;">
+			<tr>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Internal ID</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Mirakl ID</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Amount</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Status</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Type</th>
+				<th style="border: 1px solid rgb(190, 190, 190);max-width:160px;" scope="col">Reason</th>
+			</tr>
+		</thead>
+		<tbody style="background-color: #e4f0f5;">
+			{% for transfer in transfers %}
+            <tr>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.id }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.miraklId }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.amount / 100 | number_format(2) }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.status }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.type }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ transfer.failedReason }}</td>
+			</tr>
+            {% endfor %}
+		</tbody>
+	</table>
+	{% endif %}
+	{% if not payouts is empty %}
+	<p style="font-size: 14px; line-height: 1.5; text-align: left; mso-line-height-alt: 21px;  margin-top: 1em;">Payouts: </p>
+	<table style="width: 100%; text-align: center;">
+		<thead style="background-color: #6772e5; color: #fff;">
+			<tr>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Internal ID</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Mirakl Invoice ID</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Amount</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Status</th>
+				<th style="border: 1px solid rgb(190, 190, 190);max-width:160px;" scope="col">Reason</th>
+			</tr>
+		</thead>
+		<tbody style="background-color: #e4f0f5;">
+			{% for payout in payouts %}
+            <tr>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ payout.id }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ payout.miraklInvoiceId }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ payout.amount / 100 | number_format(2) }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ payout.status }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ payout.failedReason }}</td>
+			</tr>
+            {% endfor %}
+		</tbody>
+	</table>
+	{% endif %}
+{% endblock %}

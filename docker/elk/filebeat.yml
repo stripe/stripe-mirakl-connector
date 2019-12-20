@@ -1,0 +1,12 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/*.log
+      - /var/log/symfony/*.log
+
+output.elasticsearch:
+  hosts: ["elk:9200"]
+
+setup.kibana:
+  host: "elk:5601" 

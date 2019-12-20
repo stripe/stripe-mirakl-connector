@@ -1,0 +1,33 @@
+imports:
+    - { resource: services.yaml }
+
+services:
+  _defaults:
+      autowire: true # Automatically injects dependencies in your services.
+      autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+      bind:
+        $stripeClientSecret: "%app.stripe.client_secret%"
+        $webhookSecret: "%app.stripe.webhook_secret%"
+        $customFieldCode: "%app.mirakl.stripe_custom_field_code%"
+
+  App\Tests\StripeMockedHttpClient:
+    class: App\Tests\StripeMockedHttpClient
+    public: true
+
+  App\Tests\MiraklMockedHttpClient:
+    class: App\Tests\MiraklMockedHttpClient
+    public: true
+
+  App\Utils\MiraklClient:
+    class: App\Utils\MiraklClient
+    public: true
+    arguments:
+      $miraklClient: '@App\Tests\MiraklMockedHttpClient'
+
+  App\Utils\StripeProxy:
+    class: App\Utils\StripeProxy
+    public: true
+    calls:
+      - method: setHttpClient
+        arguments:
+            - '@App\Tests\StripeMockedHttpClient'

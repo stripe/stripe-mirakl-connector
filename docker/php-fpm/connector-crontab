@@ -1,0 +1,6 @@
+# do daily/weekly/monthly maintenance
+# min	hour	day	month	weekday	command
+*/5     *       *   *       *       /usr/local/bin/php /var/www/bin/console connector:dispatch:process-transfer -q 2>&1
+0       1       *   *       *       /usr/local/bin/php /var/www/bin/console connector:dispatch:process-payout -q 2>&1
+0       8       *   *       *       /usr/local/bin/php /var/www/bin/console connector:notify:failed-operation -q 2>&1
+*       *       *   *       *       /usr/local/bin/php /var/www/bin/console connector:sync:onboarding 5 -q 2>&1

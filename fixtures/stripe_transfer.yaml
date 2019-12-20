@@ -1,0 +1,27 @@
+App\Entity\StripeTransfer:
+    stripe_transfer_1:
+        miraklId: 'order_1'
+        miraklStripeMapping: '@mapping_1'
+        type: 'TRANSFER_ORDER'
+        transactionId: 'ch_transaction_1'
+        amount: '24'
+        status: 'TRANSFER_PENDING'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_transfer_2:
+        miraklId: 'order_2'
+        miraklStripeMapping: '@mapping_2'
+        type: 'TRANSFER_ORDER'
+        transactionId: 'py_transaction_2'
+        amount: '24'
+        status: 'TRANSFER_PENDING'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_transfer_3:
+        miraklId: 'order_3'
+        type: 'TRANSFER_ORDER'
+        transactionId: 'ch_transaction_3'
+        amount: '24'
+        status: 'TRANSFER_PENDING'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'

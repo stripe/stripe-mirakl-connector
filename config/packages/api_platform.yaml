@@ -1,0 +1,18 @@
+api_platform:
+    enable_swagger_ui: false
+    enable_re_doc: false
+    formats:
+        json:     ['application/json']
+        jsonld:   ['application/ld+json']
+        xml:      ['application/xml', 'text/xml']
+        csv:      ['text/csv']
+    mapping:
+        paths: ['%kernel.project_dir%/src/Entity']
+    patch_formats:
+        json: ['application/merge-patch+json']
+    swagger:
+        versions: [3]
+        api_keys:
+            Bearer:
+                name: X-AUTH-TOKEN
+                type: header

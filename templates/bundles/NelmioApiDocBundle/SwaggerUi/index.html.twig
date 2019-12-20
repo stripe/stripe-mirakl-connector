@@ -1,0 +1,10 @@
+{% extends '@!NelmioApiDoc/SwaggerUi/index.html.twig' %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/custom-swagger-styles.css') }}">
+{% endblock stylesheets %}
+
+{% block header %}
+    <a id="logo" href="https://www.stripe.com"><img src="{{ asset('images/logo-stripe.png') }}" alt="Stripe"></a>
+{% endblock header %}

@@ -1,0 +1,53 @@
+framework:
+    messenger:
+        failure_transport: failed
+        transports:
+            # https://symfony.com/doc/current/messenger.html#transport-configuration
+            operator_http_notification:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: operator_http_notification
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 5
+
+            operator_http_notification_failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: operator_http_notification_failed
+                retry_strategy:
+                    max_retries: 0
+            
+            update_login_link:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: update_login_link
+                retry_strategy:
+                    max_retries: 0
+
+            process_transfers:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: process_transfers
+                retry_strategy:
+                    max_retries: 0
+
+            process_payouts:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: process_payouts
+                retry_strategy:
+                    max_retries: 0
+
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: failed
+        routing:
+            'App\Message\AccountUpdateMessage': [operator_http_notification, update_login_link]
+            'App\Message\ProcessTransferMessage': process_transfers
+            'App\Message\ProcessPayoutMessage': process_payouts
+            'App\Message\TransferFailedMessage': operator_http_notification
+            'App\Message\PayoutFailedMessage': operator_http_notification
+

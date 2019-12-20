@@ -1,0 +1,23 @@
+App\Entity\StripePayout:
+    stripe_payout_1:
+        miraklStripeMapping: '@mapping_1'
+        amount: '1000'
+        currency: 'eur'
+        status: 'PAYOUT_CREATED'
+        miraklInvoiceId: 1
+        stripePayoutId: 'payout_1'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_payout_2:
+        miraklStripeMapping: '@mapping_1'
+        amount: '2000'
+        currency: 'eur'
+        status: 'PAYOUT_PENDING'
+        miraklInvoiceId: 2
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_payout_3:
+        miraklStripeMapping: '@mapping_2'
+        amount: '2000'
+        currency: 'eur'
+        status: 'PAYOUT_PENDING'
+        miraklInvoiceId: 3
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'

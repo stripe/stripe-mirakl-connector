@@ -1,0 +1,110 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
+parameters:
+  env(CORS_ALLOW_ORIGIN): "^https?://localhost(:[0-9]+)?$"
+  env(DATABASE_URL): ""
+  env(TECHNICAL_ALERT_EMAIL): ""
+  env(TECHNICAL_ALERT_EMAIL_FROM): ""
+  env(MAILER_DSN): "smtp://null"
+  env(BASE_HOST): ""
+  env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
+  env(ENABLES_AUTOMATIC_TRANSFER_CREATION): false
+  env(REDIRECT_ONBOARDING): "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
+  env(STRIPE_PREFILL_ONBOARDING): false
+  env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
+  env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
+  env(OPERATOR_NOTIFICATION_URL): ""
+
+  app.base_host: "%env(BASE_HOST)%"
+  app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
+  app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"
+  app.stripe.webhook_secret: "%env(STRIPE_WEBHOOK_SECRET)%"
+  app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
+  app.stripe.enables_auto_transfer_creation: "%env(bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
+  app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
+  app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
+  app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
+  app.redirect.onboarding: "%env(REDIRECT_ONBOARDING)%"
+  app.operator.notification_url: "%env(OPERATOR_NOTIFICATION_URL)%"
+  app.mailer.technical: "%env(TECHNICAL_ALERT_EMAIL)%"
+  app.mailer.technical_from: "%env(TECHNICAL_ALERT_EMAIL_FROM)%"
+  router.request_context.host: "%env(BASE_HOST)%"
+  router.request_context.scheme: 'https'
+  app.endpoint_down.mail_notification: "%env(bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
+  app.endpoint_down.mail_notification_throttle: "%env(int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
+
+services:
+  # default configuration for services in *this* file
+  _defaults:
+    autowire: true # Automatically injects dependencies in your services.
+    autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+    bind:
+      $stripeClientId: "%app.stripe.client_id%"
+      $stripeClientSecret: "%app.stripe.client_secret%"
+      $webhookSecret: "%app.stripe.webhook_secret%"
+      $skipAutoTransferCreation: "%app.stripe.enables_auto_transfer_creation%"
+      $stripePrefillOnboarding: "%app.stripe.prefill_onboarding%"
+
+      $miraklApiKey: "%app.mirakl.api_key%"
+      $miraklHostName: "%app.mirakl.host_name%"
+      $customFieldCode: "%app.mirakl.stripe_custom_field_code%"
+      $enablesAutoTransferCreation: "%app.stripe.enables_auto_transfer_creation%"
+      $redirectOnboarding: "%app.redirect.onboarding%"
+      $operatorNotificationUrl: "%app.operator.notification_url%"
+
+      $endpointDownMailNotification: "%app.endpoint_down.mail_notification%"
+      $endpointDownMailNotificationThrottleDelay: "%app.endpoint_down.mail_notification_throttle%"
+      $technicalEmail: "%app.mailer.technical%"
+      $technicalEmailFrom: "%app.mailer.technical_from%"
+      $baseHostOverride: "%app.base_host%"
+
+  # makes classes in src/ available to be used as services
+  # this creates a service per class whose id is the fully-qualified class name
+  App\:
+    resource: "../src/*"
+    exclude: "../src/{DependencyInjection,Entity,Migrations,Monolog,Tests,Kernel.php}"
+
+  # controllers are imported separately to make sure services can be injected
+  # as action arguments even if you don't extend any base controller class
+  App\Controller\:
+    resource: "../src/Controller"
+    tags: ["controller.service_arguments"]
+
+  App\EventListener\SendFailedOperationToAlertingQueue:
+    tags:
+      - {name: 'doctrine.event_listener', event: 'postPersist'}
+      - {name: 'doctrine.event_listener', event: 'postUpdate'}
+
+  get_set_method_normalizer:
+    class: Symfony\Component\Serializer\Normalizer\GetSetMethodNormalizer
+    public: false
+    tags:
+      - { name: "serializer.normalizer", priority: -950 } # ObjectNormalizer is priority -1000
+
+  symfony_mailer_monolog.mail_message_factory:
+    class: App\Factory\EmailFactory
+    public: false
+    lazy: true
+    autowire: false
+    arguments:
+      $fromEmail: '%env(TECHNICAL_ALERT_EMAIL_FROM)%'
+      $toEmail:   '%env(TECHNICAL_ALERT_EMAIL)%'
+      $subject:    '[Stripe-Mirakl] An Error Occurred! %%message%%'
+
+  symfony_mailer_monolog:
+    class: App\Monolog\Handler\SymfonyMailerHandler
+    public: false
+    lazy: true
+    autowire: false
+    calls:
+      - method: setFormatter
+        arguments:
+            - '@monolog.formatter.html'
+    arguments:
+      $mailer: '@mailer'
+      $messageFactory: '@symfony_mailer_monolog.mail_message_factory'
+      $level: 'warning'
+      $bubble: true

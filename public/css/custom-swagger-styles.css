@@ -1,0 +1,12 @@
+header:before {
+    background-color:rgb(103, 114, 229);
+}
+
+#swagger-ui.api-platform .info .title {
+    color:rgb(103, 114, 229);
+}
+
+header #logo img {
+    height:60px;
+    background-color:rgba(40, 134, 144, 0.4)
+}
