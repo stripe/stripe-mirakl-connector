@@ -1,4 +1,4 @@
-Stripe Mirakl-Connector
+Stripe Mirakl Connector
 =======================
 
 ![CircleCI](https://img.shields.io/circleci/build/github/stripe/stripe-mirakl-connector?token=6186fcfe9a36887fd1bcc01424b7cd1ac2088668)
