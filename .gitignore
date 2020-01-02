@@ -1,3 +1,5 @@
 .php_cs.cache
 var
 vendor
+.phpunit.result.cache
+bin/.phpunit/

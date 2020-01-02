@@ -45,5 +45,11 @@ php-cs-fixer:
 php-cs-fixer-check:
 	./vendor/bin/php-cs-fixer --ansi fix src -vvv --dry-run
 
+ci-phpunit:
+	./bin/phpunit
+
 transfer-mail:
 	$(DOCKER_COMPOSE_RUN_PHP) bin/console connector:notify:failed-operation
+
+vendor: composer.json
+	composer install -n --prefer-dist
