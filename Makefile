@@ -40,10 +40,16 @@ phpstan:
 	./vendor/bin/phpstan analyse src --level=max
 
 php-cs-fixer:
-	./vendor/bin/php-cs-fixer --ansi fix src -vvv --path-mode=intersection
+	./vendor/bin/php-cs-fixer --ansi fix src -vvv
 
 php-cs-fixer-check:
-	./vendor/bin/php-cs-fixer --ansi fix src -vvv --path-mode=intersection --dry-run
+	./vendor/bin/php-cs-fixer --ansi fix src -vvv --dry-run
+
+ci-phpunit:
+	./bin/phpunit
 
 transfer-mail:
 	$(DOCKER_COMPOSE_RUN_PHP) bin/console connector:notify:failed-operation
+
+vendor: composer.json
+	composer install -n --prefer-dist

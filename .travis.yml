@@ -1,0 +1,25 @@
+sudo: false
+
+dist: bionic
+
+language: php
+
+matrix:
+  include:
+    - php: 7.3
+
+cache:
+  directories:
+    - $HOME/.composer/cache/files
+
+before_install:
+  # Install various build dependencies. We use `travis_retry` because Composer
+  # will occasionally fail intermittently.
+  - travis_retry make vendor
+
+script:
+  - make phpstan;
+  - make php-cs-fixer-check;
+  - make ci-phpunit;
+
+after_script: ./vendor/bin/php-coveralls -v

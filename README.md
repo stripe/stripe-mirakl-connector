@@ -1,6 +1,8 @@
 Stripe Mirakl Connector
 =======================
 
+[![Build Status](https://travis-ci.org/stripe/stripe-mirakl-connector.svg?branch=master)](https://travis-ci.org/stripe/stripe-mirakl-connector)
+[![Coverage Status](https://coveralls.io/repos/github/stripe/stripe-mirakl-connector/badge.svg?branch=master)](https://coveralls.io/github/stripe/stripe-mirakl-connector?branch=master)
 [![Maintainability](https://api.codeclimate.com/v1/badges/14482554769acb66fb4d/maintainability)](https://codeclimate.com/repos/5d823394302a1b018b00ff58/maintainability)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
