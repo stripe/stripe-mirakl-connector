@@ -17,6 +17,7 @@
         "antishov/doctrine-extensions-bundle": "^1.4",
         "api-platform/api-pack": "^1.2",
         "nelmio/api-doc-bundle": "^3.4",
+        "satooshi/php-coveralls": "^2.2",
         "sensio/framework-extra-bundle": "^5.4",
         "shivas/versioning-bundle": "^3.2",
         "stripe/stripe-php": "^7.0.2",
