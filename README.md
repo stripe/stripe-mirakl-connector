@@ -21,7 +21,7 @@ Please make sure to update tests as appropriate.
 
 `docker-compose` starts 3 containers:
 
-* `db`: This is the PostreSQL database container (can be changed to postgresql or whatever you prefer in the `docker-compose.yml` file),
+* `db`: This is the PostgreSQL database container (can be changed to postgresql or whatever you prefer in the `docker-compose.yml` file),
 * `php`: This is the PHP container including the application volume mounted on. It uses supervisord to start PHP, the required workers and cron.
 * `nginx`: This is the Nginx webserver container exposing the application.
 
