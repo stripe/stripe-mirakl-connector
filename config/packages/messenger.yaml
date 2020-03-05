@@ -26,6 +26,13 @@ framework:
                 retry_strategy:
                     max_retries: 0
 
+            update_kyc_status:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: update_kyc_status
+                retry_strategy:
+                    max_retries: 0
+
             process_transfers:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
@@ -45,7 +52,7 @@ framework:
                 options:
                     queue_name: failed
         routing:
-            'App\Message\AccountUpdateMessage': [operator_http_notification, update_login_link]
+            'App\Message\AccountUpdateMessage': [operator_http_notification, update_login_link, update_kyc_status]
             'App\Message\ProcessTransferMessage': process_transfers
             'App\Message\ProcessPayoutMessage': process_payouts
             'App\Message\TransferFailedMessage': operator_http_notification
