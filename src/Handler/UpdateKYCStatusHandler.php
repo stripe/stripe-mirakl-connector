@@ -48,10 +48,12 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
         $stripeAccount = $this->stripeProxy->accountRetrieve($messagePayload['stripeUserId']);
 
         $this->miraklClient->patchShops([
-            'shopId' => $messagePayload['miraklShopId'],
-            'kyc' => [
-                'status' => $this->getKYCStatus($stripeAccount),
-            ]
+            [
+                'shop_id' => $messagePayload['miraklShopId'],
+                'kyc' => [
+                    'status' => $this->getKYCStatus($stripeAccount),
+                ]
+            ],
         ]);
     }
 

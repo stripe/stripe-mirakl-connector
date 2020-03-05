@@ -67,9 +67,11 @@ class UpdateKYCStatusHandlerTest extends TestCase
             ->expects($this->once())
             ->method('patchShops')
             ->with([
-                'shopId' => 2000,
-                'kyc' => [
-                    'status' => $KYCStatus,
+                    [
+                    'shop_id' => 2000,
+                    'kyc' => [
+                        'status' => $KYCStatus,
+                    ]
                 ]
             ]);
 
