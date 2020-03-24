@@ -83,7 +83,7 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
             return self::KYC_STATUS_REFUSED;
         }
 
-        if ($requirements[self::DISABLED_REASON] !== '') {
+        if ($requirements[self::DISABLED_REASON] !== '' && $requirements[self::DISABLED_REASON] !== null) {
             return self::KYC_STATUS_PENDING_APPROVAL;
         }
 
