@@ -127,6 +127,16 @@ class UpdateKYCStatusHandlerTest extends TestCase
             'requirements' => [
                 UpdateKYCStatusHandler::CURRENTLY_DUE => [],
                 UpdateKYCStatusHandler::PENDING_VERIFICATION => [],
+                UpdateKYCStatusHandler::DISABLED_REASON => null,
+            ],
+            'payoutEnabled' => true,
+            'chargesEnabled' => true,
+            'KYCStatus' => UpdateKYCStatusHandler::KYC_STATUS_APPROVED
+        ];
+        yield [
+            'requirements' => [
+                UpdateKYCStatusHandler::CURRENTLY_DUE => [],
+                UpdateKYCStatusHandler::PENDING_VERIFICATION => [],
                 UpdateKYCStatusHandler::DISABLED_REASON => '',
             ],
             'payoutEnabled' => true,
