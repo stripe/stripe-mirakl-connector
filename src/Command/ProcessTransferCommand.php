@@ -129,12 +129,14 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
             }
 
             $taxes = 0;
-            foreach ((array) $miraklOrder['shipping_taxes'] as $tax) {
-              $taxes += (float) $tax['amount'];
-            }
+            foreach ($miraklOrder['order_lines'] as $orderLine) {
+              foreach ((array) $orderLine['shipping_taxes'] as $tax) {
+                $taxes += (float) $tax['amount'];
+              }
 
-            foreach ((array) $miraklOrder['taxes'] as $tax) {
-              $taxes += (float) $tax['amount'];
+              foreach ((array) $orderLine['taxes'] as $tax) {
+                $taxes += (float) $tax['amount'];
+              }
             }
 
             $amountToTransfer = (int) (100 * ($miraklOrder['total_price'] + $taxes - $miraklOrder['total_commission']));
