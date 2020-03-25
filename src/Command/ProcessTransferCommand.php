@@ -128,7 +128,16 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 $newlyCreatedStripeTransfer->setTransactionId($transactionId);
             }
 
-            $amountToTransfer = (int) (100 * ($miraklOrder['total_price'] - $miraklOrder['total_commission']));
+            $taxes = 0;
+            foreach ((array) $miraklOrder['shipping_taxes'] as $tax) {
+              $taxes += (float) $tax['amount'];
+            }
+
+            foreach ((array) $miraklOrder['taxes'] as $tax) {
+              $taxes += (float) $tax['amount'];
+            }
+
+            $amountToTransfer = (int) (100 * ($miraklOrder['total_price'] + $taxes - $miraklOrder['total_commission']));
             if ($amountToTransfer < 0) {
                 $failedReason = sprintf('Amount to tranfer must be positive');
                 $this->logger->error($failedReason, [
