@@ -47,6 +47,27 @@ class MiraklClient implements LoggerAwareInterface
         return json_decode($response->getContent(), true)['orders'];
     }
 
+    // GET PA12
+    public function listPendingRefunds()
+    {
+        $this->logger->info('[Mirakl API] Call to PA12 - List pending order refunds');
+        $response = $this->client->request('GET', '/api/payment/refund');
+
+        return json_decode($response->getContent(), true)['orders']['order'];
+    }
+
+    // PUT PA02
+    public function validateRefunds(array $refunds)
+    {
+        $response = $this->client->request('PUT', '/api/payment/refund', [
+            'json' => ['refunds' => $refunds],
+        ]);
+
+        $this->logger->info('[Mirakl API] Call to PA02 - validate refunds');
+
+        return json_decode($response->getContent(), true);
+    }
+
     // GET IV01
     public function listMiraklInvoices(?\DateTimeInterface $lastMiraklUpdateTime, ?string $miraklShopId)
     {

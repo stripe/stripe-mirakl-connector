@@ -103,6 +103,33 @@ class StripeProxy implements LoggerAwareInterface
         \Stripe\ApiRequestor::setHttpClient($client);
     }
 
+    // Refund
+    public function createRefund(int $amount, ?string $transactionId, array $metadata = [])
+    {
+        $mergedMetadata = array_merge($metadata, $this->getDefaultMetadata());
+        $params = [
+            'charge' => $transactionId,
+            'amount' => $amount,
+            'metadata' => $mergedMetadata,
+            'reverse_transfer' => false
+        ];
+
+        $this->logger->info('[Stripe API] Call to \Stripe\Refund::create', $params);
+
+        return \Stripe\Refund::create($params);
+    }
+
+
+    public function reverseTransfer(int $amount, ?string $transfer_id, array $metadata = [])
+    {
+        $mergedMetadata = array_merge($metadata, $this->getDefaultMetadata());
+        $params = [
+            'amount' => $amount,
+            'metadata' => $mergedMetadata
+        ];
+        return \Stripe\Transfer::createReversal($transfer_id, $params);
+    }
+
     // Transfer
     public function createTransfer(string $currency, int $amount, ?string $stripeConnectedAccountId, ?string $transactionId, array $metadata = [], bool $fromConnectedAccount = false)
     {

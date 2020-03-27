@@ -61,6 +61,7 @@ class StripeTransferRepository extends ServiceEntityRepository
         $existingIds = $this->findBy([
             'miraklId' => $idsToCheck,
             'status' => StripeTransfer::TRANSFER_CREATED,
+            'type' => StripeTransfer::TRANSFER_ORDER
         ]);
 
         return array_map(
@@ -69,5 +70,14 @@ class StripeTransferRepository extends ServiceEntityRepository
             },
             $existingIds
         );
+    }
+
+    public function findOneByMiraklOrder($miraklOrderId)
+    {
+        return $this->findBy([
+            'miraklId' => $miraklOrderId,
+            'status' => StripeTransfer::TRANSFER_CREATED,
+            'type' => StripeTransfer::TRANSFER_ORDER
+        ])[0];
     }
 }

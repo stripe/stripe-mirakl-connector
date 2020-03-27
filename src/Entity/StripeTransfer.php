@@ -34,6 +34,7 @@ class StripeTransfer
 
     //Transfer types
     public const TRANSFER_ORDER = 'TRANSFER_ORDER';
+    public const TRANSFER_REFUND = 'TRANSFER_REFUND';
     public const TRANSFER_SUBSCRIPTION = 'TRANSFER_SUBSCRIPTION';
     public const TRANSFER_EXTRA_CREDITS = 'TRANSFER_EXTRA_CREDITS';
     public const TRANSFER_EXTRA_INVOICES = 'TRANSFER_EXTRA_INVOICES';
