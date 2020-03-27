@@ -107,6 +107,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
         $toCreateIds = array_column($miraklOrders, 'order_id');
         $alreadyCreatedMiraklIds = $this->stripeTransferRepository->findAlreadyCreatedMiraklIds($toCreateIds);
+        $ignoreOrderLineStates = array('REFUSED', 'CANCELED');
         foreach ($miraklOrders as $miraklOrder) {
             if (in_array($miraklOrder['order_id'], $alreadyCreatedMiraklIds)) {
                 continue;
@@ -130,13 +131,17 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
             $taxes = 0;
             foreach ($miraklOrder['order_lines'] as $orderLine) {
-              foreach ((array) $orderLine['shipping_taxes'] as $tax) {
-                $taxes += (float) $tax['amount'];
-              }
+                if (in_array($orderLine['order_line_state'], $ignoreOrderLineStates)) {
+                    continue;
+                }
 
-              foreach ((array) $orderLine['taxes'] as $tax) {
-                $taxes += (float) $tax['amount'];
-              }
+                foreach ((array) $orderLine['shipping_taxes'] as $tax) {
+                    $taxes += (float) $tax['amount'];
+                }
+
+                foreach ((array) $orderLine['taxes'] as $tax) {
+                    $taxes += (float) $tax['amount'];
+                }
             }
 
             $amountToTransfer = (int) (100 * ($miraklOrder['total_price'] + $taxes - $miraklOrder['total_commission']));
