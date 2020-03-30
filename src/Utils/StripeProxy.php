@@ -119,6 +119,10 @@ class StripeProxy implements LoggerAwareInterface
         return \Stripe\Refund::create($params);
     }
 
+    public function listRefunds(?string $transactionId) 
+    {
+        return \Stripe\Charge::retrieve($transactionId)->refunds;
+    }
 
     public function reverseTransfer(int $amount, ?string $transfer_id, array $metadata = [])
     {
@@ -128,6 +132,11 @@ class StripeProxy implements LoggerAwareInterface
             'metadata' => $mergedMetadata
         ];
         return \Stripe\Transfer::createReversal($transfer_id, $params);
+    }
+
+    public function listReversals(?string $transfer_id)
+    {
+        return \Stripe\Transfer::retrieve($transfer_id)->reversals;
     }
 
     // Transfer

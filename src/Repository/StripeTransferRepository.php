@@ -72,12 +72,4 @@ class StripeTransferRepository extends ServiceEntityRepository
         );
     }
 
-    public function findOneByMiraklOrder($miraklOrderId)
-    {
-        return $this->findBy([
-            'miraklId' => $miraklOrderId,
-            'status' => StripeTransfer::TRANSFER_CREATED,
-            'type' => StripeTransfer::TRANSFER_ORDER
-        ])[0];
-    }
 }
