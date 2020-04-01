@@ -4,11 +4,8 @@ namespace App\Command;
 
 use App\Entity\MiraklRefund;
 use App\Message\ProcessRefundMessage;
-use App\Repository\MiraklStripeMappingRepository;
-use App\Repository\StripeTransferRepository;
 use App\Repository\MiraklRefundRepository;
 use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -49,26 +46,23 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
         $this->bus = $bus;
         $this->miraklClient = $miraklClient;
         $this->miraklRefundRepository = $miraklRefundRepository;
-        $this->enablesAutoRefundCreation = $enablesAutoRefundCreation
+        $this->enablesAutoRefundCreation = $enablesAutoRefundCreation;
         parent::__construct();
-    }
-
-    protected function configure()
-    {
-        $this->addArgument('mirakl_order_ids', InputArgument::IS_ARRAY);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
         if (!$this->enablesAutoRefundCreation) {
             $output->writeln('Refund creation is disabled.');
-            $output->writeln('You can enable it by setting the environement variable ENABLES_AUTOMATIC_REFUND_CREATION to true.');
+            $output->writeln('You can enable it by setting the environment variable ENABLES_AUTOMATIC_REFUND_CREATION to true.');
+
             return 0;
         }
 
         // Fetch new refunds
         $miraklOrders = $this->miraklClient->listPendingRefunds();
         $this->processRefunds($miraklOrders);
+
         return 0;
     }
 
@@ -83,7 +77,7 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
             foreach ($miraklOrder['order_lines']['order_line'] as $orderLine) {
                 foreach ($orderLine['refunds']['refund'] as $refund) {
                     $miraklRefund = $this->miraklRefundRepository->findOneBy([
-                        'miraklRefundId' => $refund['id']
+                        'miraklRefundId' => $refund['id'],
                     ]);
 
                     if (is_null($miraklRefund)) {
@@ -106,14 +100,15 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
                 ->setMiraklRefundId($refund['id'])
                 ->setMiraklOrderId($miraklOrder['order_id'])
                 ->setStatus(MiraklRefund::REFUND_PENDING);
-                $this->miraklRefundRepository->persistAndFlush($newlyCreatedMiraklRefund);
+            $this->miraklRefundRepository->persistAndFlush($newlyCreatedMiraklRefund);
         } catch (UniqueConstraintViolationException $e) {
             $this->logger->info('Mirakl refund already exists', [
                 'miraklOrder' => $miraklOrder['order_id'],
-                'miraklRefund' => $refund['id']
+                'miraklRefund' => $refund['id'],
             ]);
         }
         assert(null !== $newlyCreatedMiraklRefund->getId());
+
         return $newlyCreatedMiraklRefund;
     }
 }

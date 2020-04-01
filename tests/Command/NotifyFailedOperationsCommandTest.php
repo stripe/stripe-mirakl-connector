@@ -5,6 +5,7 @@ namespace App\Tests\Command;
 use App\Command\NotifyFailedOperationsCommand;
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
+use App\Entity\MiraklRefund;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
 use App\Repository\MiraklRefundRepository;

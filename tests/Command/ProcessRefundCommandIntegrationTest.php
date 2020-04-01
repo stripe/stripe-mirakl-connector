@@ -45,8 +45,9 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
             'status' => MiraklRefund::REFUND_PENDING
         ]);
 
+        // PA12 returns 2 new refunds
         $this->assertEquals(0, $commandTester->getStatusCode());
-        $this->assertEquals(1, $this->doctrineReceiver->getMessageCount());
-        $this->assertEquals(4, count($miraklRefundsPending));
+        $this->assertEquals(2, $this->doctrineReceiver->getMessageCount());
+        $this->assertEquals(5, count($miraklRefundsPending));
     }
 }

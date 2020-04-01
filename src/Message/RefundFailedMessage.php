@@ -4,7 +4,7 @@ namespace App\Message;
 
 use App\Entity\MiraklRefund;
 
-class PayoutFailedMessage implements NotifiableMessageInterface
+class RefundFailedMessage implements NotifiableMessageInterface
 {
     /**
      * @var array

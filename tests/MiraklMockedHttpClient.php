@@ -39,7 +39,12 @@ class MiraklMockedHttpClient extends MockHttpClient
                 case 'https://mirakl.net/api/invoices?shop=1':
                     return new MockResponse($this->getSpecifiedJsonMiraklInvoices());
                 case 'https://mirakl.net/api/payment/refund':
-                    return new MockResponse($this->getPendingRefunds());
+                    switch ($method) {
+                        case 'GET':
+                            return new MockResponse($this->getPendingRefunds());
+                        case 'POST':
+                            return new MockResponse($this->getEmptyJson());
+                    }
                 default:
                     return new MockResponse($this->getEmptyJson());
             }
@@ -222,7 +227,7 @@ class MiraklMockedHttpClient extends MockHttpClient
         ]);
     }
 
-    private function getPendingRefunds() 
+    private function getPendingRefunds()
     {
         return json_encode([
             "orders"=> [

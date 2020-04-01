@@ -88,7 +88,7 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
             'status' => StripeTransfer::TRANSFER_PENDING,
         ]);
         $this->assertEquals(2, count($stripeTransfersPending));
-        $this->assertEquals(1, count($stripeTransfersCreated));
+        $this->assertEquals(3, count($stripeTransfersCreated));
         $this->assertEquals('order_1', $stripeTransfersCreated[0]->getMiraklId());
     }
 
