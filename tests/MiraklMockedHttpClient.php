@@ -38,6 +38,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonMiraklInvoices());
                 case 'https://mirakl.net/api/invoices?shop=1':
                     return new MockResponse($this->getSpecifiedJsonMiraklInvoices());
+                case 'https://mirakl.net/api/payment/refund':
+                    return new MockResponse($this->getPendingRefunds());
                 default:
                     return new MockResponse($this->getEmptyJson());
             }
@@ -218,5 +220,88 @@ class MiraklMockedHttpClient extends MockHttpClient
                 $this->getMiraklInvoice(5)
             ]
         ]);
+    }
+
+    private function getPendingRefunds() 
+    {
+        return json_encode([
+            "orders"=> [
+              "order"=> [
+                [
+                  "amount"=> 100,
+                  "currency_iso_code"=> "USD",
+                  "customer_id"=> "Customer_id_001",
+                  "order_commercial_id"=> "Order_Amount_Breakdown_0002",
+                  "order_id"=> "Order_Amount_Breakdown_0002-A",
+                  "order_lines"=> [
+                    "order_line"=> [
+                      [
+                        "offer_id"=> "2130",
+                        "order_line_amount"=> 20,
+                        "order_line_id"=> "Order_Amount_Breakdown_0002-A-1",
+                        "order_line_quantity"=> 10,
+                        "refunds"=> [
+                          "refund"=> [
+                            [
+                              "amount"=> 10,
+                              "id"=> "1100"
+                            ],
+                            [
+                              "amount"=> 5,
+                              "id"=> "1103"
+                            ]
+                          ]
+                        ]
+                      ],
+                      [
+                        "offer_id"=> "2130",
+                        "order_line_amount"=> 80,
+                        "order_line_id"=> "Order_Amount_Breakdown_0002-A-2",
+                        "order_line_quantity"=> 10,
+                        "refunds"=> [
+                          "refund"=> [
+                            [
+                              "amount"=> 8,
+                              "id"=> "1101"
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
+                  ],
+                  "payment_workflow"=> "PAY_ON_ACCEPTANCE",
+                  "shop_id"=> "2000"
+                ],
+                [
+                  "amount"=> 100,
+                  "currency_iso_code"=> "EUR",
+                  "customer_id"=> "Customer_id_001",
+                  "order_commercial_id"=> "Order_Amount_Breakdown_0003",
+                  "order_id"=> "Order_Amount_Breakdown_0002-A",
+                  "order_lines"=> [
+                    "order_line"=> [
+                      [
+                        "offer_id"=> "1599",
+                        "order_line_amount"=> 100,
+                        "order_line_id"=> "Order_Amount_Breakdown_0003-A-1",
+                        "order_line_quantity"=> 1,
+                        "refunds"=> [
+                          "refund"=> [
+                            [
+                              "amount"=> 10,
+                              "id"=> "1199"
+                            ]
+                          ]
+                        ]
+                      ]
+                    ]
+                  ],
+                  "payment_workflow"=> "PAY_ON_ACCEPTANCE",
+                  "shop_id"=> "2002"
+                ]
+              ]
+            ],
+            "total_count"=> 2
+          ]);
     }
 }

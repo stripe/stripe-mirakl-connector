@@ -1,0 +1,26 @@
+App\Entity\MiraklRefund:
+    mirakl_refund_1:
+        miraklOrderId: 'order_1'
+        miraklRefundId: '1101'
+        amount: '24'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+        type: 'TRANSFER_ORDER'
+    mirakl_refund_2:
+        miraklOrderId: 'order_2'
+        miraklRefundId: '1102'
+        amount: '6'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+    mirakl_refund_3:
+        miraklOrderId: 'order_3'
+        miraklRefundId: '1103'
+        amount: '24'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+    mirakl_refund_4:
+        miraklOrderId: 'order_4'
+        miraklRefundId: '1104'
+        amount: '24'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'

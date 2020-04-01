@@ -64,5 +64,6 @@ framework:
             'App\Message\ProcessPayoutMessage': process_payouts
             'App\Message\ProcessRefundMessage': process_refunds
             'App\Message\TransferFailedMessage': operator_http_notification
+            'App\Message\RefundFailedMessage': operator_http_notification
             'App\Message\PayoutFailedMessage': operator_http_notification
 

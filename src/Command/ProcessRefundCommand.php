@@ -2,9 +2,7 @@
 
 namespace App\Command;
 
-use App\Entity\StripeTransfer;
 use App\Entity\MiraklRefund;
-use App\Message\ProcessTransferMessage;
 use App\Message\ProcessRefundMessage;
 use App\Repository\MiraklStripeMappingRepository;
 use App\Repository\StripeTransferRepository;
@@ -34,12 +32,7 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
     /**
      * @var bool
      */
-    private $enablesAutoTransferCreation;
-
-    /**
-     * @var string
-     */
-    private $orderPaymentType;
+    private $enablesAutoRefundCreation;
 
     /**
      * @var MiraklClient
@@ -47,35 +40,16 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
     private $miraklClient;
 
     /**
-     * @var StripeProxy
-     */
-    private $stripeProxy;
-
-    /**
-     * @var StripeTransferRepository
-     */
-    private $stripeTransferRepository;
-
-    /**
-     * @var MiraklStripeMappingRepository
-     */
-    private $miraklStripeMappingRepository;
-
-    /**
      * @var MiraklRefundRepository
      */
     private $miraklRefundRepository;
 
-    public function __construct(MessageBusInterface $bus, bool $enablesAutoTransferCreation, string $orderPaymentType, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripeTransferRepository $stripeTransferRepository, MiraklStripeMappingRepository $miraklStripeMappingRepository, MiraklRefundRepository $miraklRefundRepository)
+    public function __construct(MessageBusInterface $bus, MiraklClient $miraklClient, MiraklRefundRepository $miraklRefundRepository, bool $enablesAutoRefundCreation)
     {
         $this->bus = $bus;
-        $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
-        $this->orderPaymentType = $orderPaymentType;
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
-        $this->stripeTransferRepository = $stripeTransferRepository;
-        $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
         $this->miraklRefundRepository = $miraklRefundRepository;
+        $this->enablesAutoRefundCreation = $enablesAutoRefundCreation
         parent::__construct();
     }
 
@@ -86,10 +60,9 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
-        if (!$this->enablesAutoTransferCreation) {
-            $output->writeln('Transfer creation is disabled.');
-            $output->writeln('You can enable it by setting the environement variable ENABLES_AUTOMATIC_TRANSFER_CREATION to true.');
-
+        if (!$this->enablesAutoRefundCreation) {
+            $output->writeln('Refund creation is disabled.');
+            $output->writeln('You can enable it by setting the environement variable ENABLES_AUTOMATIC_REFUND_CREATION to true.');
             return 0;
         }
 
@@ -106,9 +79,7 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
         }
 
         foreach ($miraklOrders as $miraklOrder) {
-            // Retrieve transfer to get the charge id
             $currency = $miraklOrder['currency_iso_code'];
-
             foreach ($miraklOrder['order_lines']['order_line'] as $orderLine) {
                 foreach ($orderLine['refunds']['refund'] as $refund) {
                     $miraklRefund = $this->miraklRefundRepository->findOneBy([

@@ -87,7 +87,6 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                 ->setStatus(StripeTransfer::TRANSFER_CREATED)
                 ->setFailedReason(null)
                 ->setTransferId($transferId);
-
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not create Stripe Transfer: %s.', $e->getMessage()), [
                 'miraklShopId' => $miraklShopId,

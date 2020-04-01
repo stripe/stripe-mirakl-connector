@@ -9,10 +9,10 @@ use Gedmo\Mapping\Annotation as Gedmo;
 /**
  * @ApiResource(
  *      collectionOperations={
- *          "get"={"path"="/payouts"}
+ *          "get"={"path"="/refunds"}
  *      },
  *      itemOperations={
- *          "get"={"path"="/payouts/{id}", "requirements"={"id"="\d+"}},
+ *          "get"={"path"="/refunds/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
  * @ORM\Entity(repositoryClass="App\Repository\MiraklRefundRepository")
@@ -183,7 +183,7 @@ class MiraklRefund
     public function setStatus(string $status): self
     {
         if (!in_array($status, self::getAvailableStatus())) {
-            throw new \InvalidArgumentException('Invalid payout status');
+            throw new \InvalidArgumentException('Invalid refund status');
         }
         $this->status = $status;
 

@@ -52,49 +52,59 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
 
     public function __invoke(ProcessRefundMessage $message)
     {
-        $miraklRefund = $this->miraklRefundRepository->findOneBy([
+        $refund = $this->miraklRefundRepository->findOneBy([
             'miraklRefundId' => $message->geMiraklRefundId(),
         ]);
 
-        if ($miraklRefund->getStatus() == MiraklRefund::REFUND_CREATED) {
+        if ($refund->getStatus() == MiraklRefund::REFUND_CREATED) {
+            // Already processed nothing todo
             return;
         }
 
         $transfer = $this->stripeTransferRepository->findOneBy([
-            'miraklId' => $miraklRefund->getMiraklOrderId(),
+            'miraklId' => $refund->getMiraklOrderId(),
             'status' => StripeTransfer::TRANSFER_CREATED,
             'type' => StripeTransfer::TRANSFER_ORDER
         ]);
 
         if(is_null($transfer)) {
+            $failedReason = sprintf('Mirakl refund id: %s and orderId: %s has no stripe transfer in connector', $refund->getMiraklRefundId(), $refund->getMiraklOrderId());
+            $refund
+                ->setStatus(MiraklRefund::REFUND_FAILED)
+                ->setFailedReason($failedReason);
+            $this->miraklRefundRepository->persistAndFlush($refund);
             return;
         }
 
         try {
             // Refund and transfer back in Stripe
-            $this->processRefundInStripe($miraklRefund, $transfer);
-            $this->processReversalInStripe($miraklRefund, $transfer);
+            $this->processRefundInStripe($refund, $transfer);
+            $this->processReversalInStripe($refund, $transfer);
             // Valid refund on mirakl PA02
-            $this->validateRefundOnMirakl($miraklRefund, $transfer);
+            $this->validateRefundInMirakl($refund, $transfer);
         } catch (ApiErrorException $e) {
-            $this->logger->error(sprintf('Could not create Stripe Payout: %s.', $e->getMessage()), [
+            $this->logger->error(sprintf('Could not process refund: %s.', $e->getMessage()), [
                 'miraklRefundId' => $refund->getMiraklRefundId(),
                 'miraklOrderId' => $refund->getMiraklOrderId()
             ]);
-            $miraklRefund
+            $refund
                 ->setStatus(MiraklRefund::REFUND_FAILED)
                 ->setFailedReason(substr($e->getMessage(), 0, 1024));
         }
-        $this->miraklRefundRepository->persistAndFlush($miraklRefund);
+        $this->miraklRefundRepository->persistAndFlush($refund);
     }
 
-    private function processRefundInStripe(MiraklRefund $refund, StripeTransfer $transfer) {
+    private function processRefundInStripe(MiraklRefund $refund, StripeTransfer $transfer)
+    {
         if (!is_null($refund->getStripeRefundId())) {
+            // We got stripe refund id
+            // Charge has already been refunded
             return;
         }
 
-        // Make sure refund is not already present in Stripe
         if ($this->isRefundAlreadyPresentInStripe($transfer, $refund->getMiraklRefundId())) {
+            // Charge has a refund with the mirakl refund id
+            // Our systems are not in-sync but charge has already been refunded 
             return;
         }
 
@@ -104,13 +114,17 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         $refund->setStripeRefundId($response->id);
     }
 
-    private function processReversalInStripe(MiraklRefund $refund, StripeTransfer $transfer) {
+    private function processReversalInStripe(MiraklRefund $refund, StripeTransfer $transfer)
+    {
         if (!is_null($refund->getStripeReversalId())) {
+            // We got stripe reversal id
+            // Transfer has already been reversed
             return;
         }
 
-        // Make sure reversal is not already present in Stripe
         if ($this->isReversalAlreadyPresentInStripe($transfer, $refund->getMiraklRefundId())) {
+            // Transfer has a reversal with the mirakl refund id
+            // Our systems are not in-sync but transfer has already been reversed 
             return;
         }
 
@@ -121,7 +135,8 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         
     }
 
-    private function isRefundAlreadyPresentInStripe(StripeTransfer $transfer, string $miraklRefundId) {
+    private function isRefundAlreadyPresentInStripe(StripeTransfer $transfer, string $miraklRefundId)
+    {
         $refunds = $this->stripeProxy->listRefunds($transfer->getTransactionId());
         $miraklRefundIds = array_map(function($item) {
             return $item->metadata['miraklRefundId'];
@@ -130,7 +145,8 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         return in_array($miraklRefundId, $miraklRefundIds);
     }
 
-    private function isReversalAlreadyPresentInStripe(StripeTransfer $transfer, string $miraklRefundId) {
+    private function isReversalAlreadyPresentInStripe(StripeTransfer $transfer, string $miraklRefundId)
+    {
         $reversals = $this->stripeProxy->listReversals($transfer->getTransferId());
         $miraklRefundIds = array_map(function($item) {
             return $item->metadata['miraklRefundId'];
@@ -139,16 +155,19 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         return in_array($miraklRefundId, $miraklRefundIds);
     }
 
-    private function validateRefundOnMirakl(MiraklRefund $refund, StripeTransfer $transfer) {
+    private function validateRefundInMirakl(MiraklRefund $refund, StripeTransfer $transfer)
+    {
         if($this->isRefundAlreadyPresentInStripe($transfer, $refund->getMiraklRefundId()) && 
-        $this->isReversalAlreadyPresentInStripe($transfer, $refund->getMiraklRefundId())) {
+           $this->isReversalAlreadyPresentInStripe($transfer, $refund->getMiraklRefundId())) {
+            // Both charge and transfer have a mirakl refund id attached
+            // Confirm the refund in Mirakl
             $refundPayload = array(
                 'amount' => $refund->getAmount() / 100,
                 'currency_iso_code' => $refund->getCurrency(),
                 'payment_status'=> 'OK',
-                'refund_id'=> $refund->getMiraklRefundId()
+                'refund_id'=> $refund->getMiraklRefundId(),
+                'transaction_number' => $refund->getStripeRefundId()
             );
-            $refundPayload['transaction_number'] = $refund->getStripeRefundId();
             $this->miraklClient->validateRefunds(array($refundPayload));
             $refund->setStatus(MiraklRefund::REFUND_CREATED);
         }
