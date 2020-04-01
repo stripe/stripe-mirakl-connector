@@ -2,10 +2,12 @@
 
 namespace App\Command;
 
+use App\Entity\MiraklRefund;
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
+use App\Repository\MiraklRefundRepository;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -37,6 +39,11 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
     private $stripePayoutRepository;
 
     /**
+     * @var MiraklRefundRepository
+     */
+    private $miraklRefundRepository;
+
+    /**
      * @var string
      */
     private $technicalEmailFrom;
@@ -46,11 +53,12 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
      */
     private $technicalEmail;
 
-    public function __construct(MailerInterface $mailer, StripeTransferRepository $stripeTransferRepository, StripePayoutRepository $stripePayoutRepository, string $technicalEmailFrom, string $technicalEmail)
+    public function __construct(MailerInterface $mailer, StripeTransferRepository $stripeTransferRepository, StripePayoutRepository $stripePayoutRepository, MiraklRefundRepository $miraklRefundRepository, string $technicalEmailFrom, string $technicalEmail)
     {
         $this->mailer = $mailer;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->stripePayoutRepository = $stripePayoutRepository;
+        $this->miraklRefundRepository = $miraklRefundRepository;
         $this->technicalEmailFrom = $technicalEmailFrom;
         $this->technicalEmail = $technicalEmail;
         parent::__construct();
@@ -58,7 +66,7 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
 
     public function execute(InputInterface $input, OutputInterface $output): ?int
     {
-        $output->writeln('<info>Sending alert email about failed transfers and payouts</info>');
+        $output->writeln('<info>Sending alert email about failed transfers, payouts and refunds</info>');
 
         $failedTransfers = $this->stripeTransferRepository->findBy(['status' => StripeTransfer::getInvalidStatus()]);
         $output->writeln(sprintf('Found %d transfer(s) which failed transfering', count($failedTransfers)));
@@ -66,7 +74,10 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
         $failedPayouts = $this->stripePayoutRepository->findBy(['status' => StripePayout::getInvalidStatus()]);
         $output->writeln(sprintf('Found %d payout(s) which failed transfering', count($failedPayouts)));
 
-        if (0 === count($failedTransfers) && 0 === count($failedPayouts)) {
+        $failedRefunds = $this->miraklRefundRepository->findBy(['status' => MiraklRefund::getInvalidStatus()]);
+        $output->writeln(sprintf('Found %d refund(s) which failed transfering', count($failedRefunds)));
+
+        if (0 === count($failedTransfers) && 0 === count($failedPayouts) && 0 === count($failedRefunds)) {
             $output->writeln('Exiting');
 
             return 0;
@@ -92,6 +103,16 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
             ->setRows(array_map($displayPayout, $failedPayouts));
         $payoutTable->render();
 
+        $displayRefund = function ($refund) {
+            return [$refund->getMiraklRefundId(), $refund->getMiraklOrderId(), $refund->getAmount(), $refund->getStatus(), $refund->getFailedReason()];
+        };
+        $refundTable = new Table($output);
+        $refundTable
+            ->setHeaderTitle('Failed refunds')
+            ->setHeaders(['Mirakl refund ID', 'Mirakl Order ID', 'Amount', 'Status', 'Reason'])
+            ->setRows(array_map($displayRefund, $failedRefunds));
+        $refundTable->render();
+
         $email = (new TemplatedEmail())
             ->from($this->technicalEmailFrom)
             ->to($this->technicalEmail)
@@ -100,9 +121,10 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
             ->context([
                 'transfers' => $failedTransfers,
                 'payouts' => $failedPayouts,
+                'refunds' => $failedRefunds,
             ]);
 
-        $this->logger->info(sprintf('Sending alert email about %d failed transfer(s) and %d failed payout(s)', count($failedTransfers), count($failedPayouts)), [
+        $this->logger->info(sprintf('Sending alert email about %d failed transfer(s), %d failed payout(s) and %d failed refund(s)', count($failedTransfers), count($failedPayouts), count($failedRefunds)), [
             'technicalEmailFrom' => $this->technicalEmailFrom,
             'technicalEmail' => $this->technicalEmail,
         ]);

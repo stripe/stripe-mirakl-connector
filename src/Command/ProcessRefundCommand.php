@@ -96,7 +96,8 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
         }
     }
 
-    private function createMiraklRefund(array $refund, string $currency, array $miraklOrder) {
+    private function createMiraklRefund(array $refund, string $currency, array $miraklOrder)
+    {
         $newlyCreatedMiraklRefund = new MiraklRefund();
         try {
             $newlyCreatedMiraklRefund
