@@ -186,5 +186,4 @@ class StripeProxy implements LoggerAwareInterface
     {
         return \Stripe\Transfer::retrieve(['id' => $transfer_id])->reversals;
     }
-
 }

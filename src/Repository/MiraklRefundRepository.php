@@ -28,11 +28,4 @@ class MiraklRefundRepository extends ServiceEntityRepository
 
         return $miraklRefund;
     }
-
-    public function persist(MiraklRefund $refund): MiraklRefund
-    {
-        $this->getEntityManager()->persist($refund);
-
-        return $refund;
-    }
 }

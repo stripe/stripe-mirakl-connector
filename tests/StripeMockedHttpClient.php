@@ -40,13 +40,17 @@ class StripeMockedHttpClient implements ClientInterface
                         return [$this->errorMessage, 404, []];
                 }
             case 'https://api.stripe.com/v1/charges/ch_transaction_4':
-                return [$this->getJsonRefunds('ch_transaction_4') , 200, []];
+                return [$this->getJsonEmptyRefunds('ch_transaction_4') , 200, []];
             case 'https://api.stripe.com/v1/transfers/transfer_4':
-                return [$this->getJsonReversals('transfer_4') , 200, []];
+                return [$this->getJsonEmptyReversals('transfer_4') , 200, []];
+            case 'https://api.stripe.com/v1/charges/ch_transaction_5':
+                return [$this->getJsonRefunds('ch_transaction_5', '1105') , 200, []];
+            case 'https://api.stripe.com/v1/transfers/transfer_5':
+                return [$this->getJsonReversals('transfer_5', '1106') , 200, []];    
             case 'https://api.stripe.com/v1/refunds':
                 switch ($params['charge']) {
                     case 'ch_transaction_4':
-                        return [$this->getJsonStripeRefund('refund_1'), 200, []];
+                        return [$this->getJsonStripeRefund('refund_4'), 200, []];
                     default:
                         return [$this->errorMessage, 404, []];
                 }
@@ -92,7 +96,7 @@ class StripeMockedHttpClient implements ClientInterface
         ]);
     }
 
-    private function getJsonRefunds($chargeId)
+    private function getJsonRefunds($chargeId, $miraklRefundId)
     {
         return json_encode([
             "id"=> $chargeId,
@@ -100,8 +104,9 @@ class StripeMockedHttpClient implements ClientInterface
             "refunds"=> [
               "object"=> "list",
               "data"=> [
-                "metadata" => [
-                  "miraklRefundId" => '1101'
+                [
+                    "id" => "refund_x",
+                    "metadata" => ["miraklRefundId" => $miraklRefundId],
                 ]
               ],
               "has_more"=> false
@@ -109,7 +114,20 @@ class StripeMockedHttpClient implements ClientInterface
           ]);
     }
 
-    private function getJsonReversals($transferId)
+    private function getJsonEmptyRefunds($chargeId)
+    {
+        return json_encode([
+            "id"=> $chargeId,
+            "object"=> "charge",
+            "refunds"=> [
+              "object"=> "list",
+              "data"=> [],
+              "has_more"=> false
+            ]
+          ]);
+    }
+
+    private function getJsonReversals($transferId, $miraklRefundId)
     {
         return json_encode([
             "id"=> $transferId,
@@ -117,10 +135,24 @@ class StripeMockedHttpClient implements ClientInterface
             "reversals"=> [
               "object"=> "list",
               "data"=> [
-                "metadata" => [
-                  "miraklRefundId" => '1101'
+                [
+                    "id" => "trr_x",
+                    "metadata" => ["miraklRefundId" => $miraklRefundId],
                 ]
               ],
+              "has_more"=> false
+            ]
+          ]);
+    }
+
+    private function getJsonEmptyReversals($transferId)
+    {
+        return json_encode([
+            "id"=> $transferId,
+            "object"=> "transfer",
+            "reversals"=> [
+              "object"=> "list",
+              "data"=> [],
               "has_more"=> false
             ]
           ]);

@@ -26,7 +26,7 @@ App\Entity\StripeTransfer:
         currency: 'EUR'
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
     stripe_transfer_4:
-        miraklId: 'order_4'
+        miraklId: 'order_refunded_4'
         type: 'TRANSFER_ORDER'
         transactionId: 'ch_transaction_4'
         transferId: 'transfer_4'
@@ -35,7 +35,7 @@ App\Entity\StripeTransfer:
         currency: 'EUR'
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
     stripe_transfer_5:
-        miraklId: 'order_5'
+        miraklId: 'order_refunded_5'
         type: 'TRANSFER_ORDER'
         transactionId: 'ch_transaction_5'
         transferId: 'transfer_5'

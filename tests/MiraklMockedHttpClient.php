@@ -249,11 +249,11 @@ class MiraklMockedHttpClient extends MockHttpClient
                           "refund"=> [
                             [
                               "amount"=> 10,
-                              "id"=> "1100"
+                              "id"=> "6666"
                             ],
                             [
                               "amount"=> 5,
-                              "id"=> "1103"
+                              "id"=> "1105"
                             ]
                           ]
                         ]
@@ -267,7 +267,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                           "refund"=> [
                             [
                               "amount"=> 8,
-                              "id"=> "1101"
+                              "id"=> "1106"
                             ]
                           ]
                         ]

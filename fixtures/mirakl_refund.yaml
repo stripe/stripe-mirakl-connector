@@ -1,19 +1,42 @@
 App\Entity\MiraklRefund:
-    mirakl_refund_1: # Good refund
-        miraklRefundId: '1101'
-        miraklOrderId: 'order_4'
-        amount: '24'
+    mirakl_refund_4: # Good refund
+        miraklRefundId: '1104'
+        miraklOrderId: 'order_refunded_4'
+        amount: '6'
         currency: 'EUR'
         status: 'REFUND_PENDING'
+    mirakl_refund_3: # Nothing to do already created in stripe
+        miraklRefundId: '1103'
+        miraklOrderId: 'order_refunded_3'
+        amount: '6'
+        currency: 'EUR'
+        stripeRefundId: 'refund_3'
+        stripeReversalId: 'trr_3'
+        status: 'REFUND_CREATED'
     mirakl_refund_2: # Failed no transfer in status CREATED
         miraklRefundId: '1102'
         miraklOrderId: 'order_2'
         amount: '6'
         currency: 'EUR'
         status: 'REFUND_PENDING'
-    mirakl_refund_3: # Failed api error
-        miraklRefundId: '1103'
-        miraklOrderId: 'order_5'
-        amount: '24'
+    mirakl_refund_5: # Failed no stripe refund id
+        miraklRefundId: '1105'
+        miraklOrderId: 'order_refunded_5'
+        amount: '6'
         currency: 'EUR'
         status: 'REFUND_PENDING'
+        stripeReversalId: 'trr_5'
+    mirakl_refund_6: # Failed no stripe reversal id
+        miraklRefundId: '1106'
+        miraklOrderId: 'order_refunded_5'
+        amount: '6'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+        stripeRefundId: 'refund_6'
+    mirakl_refund_7: # Failed api error
+        miraklRefundId: '1107'
+        miraklOrderId: 'order_refunded_5'
+        amount: '6'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+    
