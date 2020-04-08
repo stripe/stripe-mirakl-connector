@@ -9,10 +9,10 @@ class StripeMockedHttpClient implements ClientInterface
     public function __construct()
     {
         $this->errorMessage = json_encode([
-            "error" => [
-                "code" => "stripe_error",
-                "type" => "invalid_request_error"
-            ]
+            'error' => [
+                'code' => 'stripe_error',
+                'type' => 'invalid_request_error',
+            ],
         ]);
     }
 
@@ -32,6 +32,7 @@ class StripeMockedHttpClient implements ClientInterface
                     default:
                         return [$this->errorMessage, 404, []];
                 }
+                // no break
             case 'https://api.stripe.com/v1/payouts':
                 switch ($this->parseHeaders($headers)['stripe-account']) {
                     case 'acct_1':
@@ -39,14 +40,15 @@ class StripeMockedHttpClient implements ClientInterface
                     default:
                         return [$this->errorMessage, 404, []];
                 }
+                // no break
             case 'https://api.stripe.com/v1/charges/ch_transaction_4':
-                return [$this->getJsonEmptyRefunds('ch_transaction_4') , 200, []];
+                return [$this->getJsonEmptyRefunds('ch_transaction_4'), 200, []];
             case 'https://api.stripe.com/v1/transfers/transfer_4':
-                return [$this->getJsonEmptyReversals('transfer_4') , 200, []];
+                return [$this->getJsonEmptyReversals('transfer_4'), 200, []];
             case 'https://api.stripe.com/v1/charges/ch_transaction_5':
-                return [$this->getJsonRefunds('ch_transaction_5', '1105') , 200, []];
+                return [$this->getJsonRefunds('ch_transaction_5', '1105'), 200, []];
             case 'https://api.stripe.com/v1/transfers/transfer_5':
-                return [$this->getJsonReversals('transfer_5', '1106') , 200, []];    
+                return [$this->getJsonReversals('transfer_5', '1106'), 200, []];
             case 'https://api.stripe.com/v1/refunds':
                 switch ($params['charge']) {
                     case 'ch_transaction_4':
@@ -54,11 +56,12 @@ class StripeMockedHttpClient implements ClientInterface
                     default:
                         return [$this->errorMessage, 404, []];
                 }
+                // no break
             case 'https://api.stripe.com/v1/transfers/transfer_4/reversals':
                 return [$this->getJsonStripeReversal('trr_4'), 200, []];
             default:
                 return [$this->errorMessage, 403, []];
-        };
+        }
     }
 
     private function getJsonStripeAccount($id)
@@ -78,108 +81,108 @@ class StripeMockedHttpClient implements ClientInterface
     {
         return json_encode([
             'access_token' => 'token',
-            'stripe_user_id' => $id
+            'stripe_user_id' => $id,
         ]);
     }
 
     private function getJsonStripeTransfer($transferId)
     {
         return json_encode([
-            'id' => $transferId
+            'id' => $transferId,
         ]);
     }
 
     private function getJsonStripePayout($payoutId)
     {
         return json_encode([
-            'id' => $payoutId
+            'id' => $payoutId,
         ]);
     }
 
     private function getJsonRefunds($chargeId, $miraklRefundId)
     {
         return json_encode([
-            "id"=> $chargeId,
-            "object"=> "charge",
-            "refunds"=> [
-              "object"=> "list",
-              "data"=> [
+            'id' => $chargeId,
+            'object' => 'charge',
+            'refunds' => [
+              'object' => 'list',
+              'data' => [
                 [
-                    "id" => "refund_x",
-                    "metadata" => ["miraklRefundId" => $miraklRefundId],
-                ]
+                    'id' => 'refund_x',
+                    'metadata' => ['miraklRefundId' => $miraklRefundId],
+                ],
               ],
-              "has_more"=> false
-            ]
+              'has_more' => false,
+            ],
           ]);
     }
 
     private function getJsonEmptyRefunds($chargeId)
     {
         return json_encode([
-            "id"=> $chargeId,
-            "object"=> "charge",
-            "refunds"=> [
-              "object"=> "list",
-              "data"=> [],
-              "has_more"=> false
-            ]
+            'id' => $chargeId,
+            'object' => 'charge',
+            'refunds' => [
+              'object' => 'list',
+              'data' => [],
+              'has_more' => false,
+            ],
           ]);
     }
 
     private function getJsonReversals($transferId, $miraklRefundId)
     {
         return json_encode([
-            "id"=> $transferId,
-            "object"=> "transfer",
-            "reversals"=> [
-              "object"=> "list",
-              "data"=> [
+            'id' => $transferId,
+            'object' => 'transfer',
+            'reversals' => [
+              'object' => 'list',
+              'data' => [
                 [
-                    "id" => "trr_x",
-                    "metadata" => ["miraklRefundId" => $miraklRefundId],
-                ]
+                    'id' => 'trr_x',
+                    'metadata' => ['miraklRefundId' => $miraklRefundId],
+                ],
               ],
-              "has_more"=> false
-            ]
+              'has_more' => false,
+            ],
           ]);
     }
 
     private function getJsonEmptyReversals($transferId)
     {
         return json_encode([
-            "id"=> $transferId,
-            "object"=> "transfer",
-            "reversals"=> [
-              "object"=> "list",
-              "data"=> [],
-              "has_more"=> false
-            ]
+            'id' => $transferId,
+            'object' => 'transfer',
+            'reversals' => [
+              'object' => 'list',
+              'data' => [],
+              'has_more' => false,
+            ],
           ]);
     }
 
     private function getJsonStripeRefund($refundId)
     {
         return json_encode([
-            'id' => $refundId
+            'id' => $refundId,
         ]);
     }
 
     private function getJsonStripeReversal($reversalId)
     {
         return json_encode([
-            'id' => $reversalId
+            'id' => $reversalId,
         ]);
     }
 
-
     private function parseHeaders($rawHeaders)
     {
-        $output = array();
+        $output = [];
         foreach ($rawHeaders as $v) {
             $h = preg_split('/:\s*/', $v);
             $output[strtolower($h[0])] = $h[1];
         }
+
         return $output;
     }
 

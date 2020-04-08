@@ -42,7 +42,7 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
         ]);
 
         $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING
+            'status' => MiraklRefund::REFUND_PENDING,
         ]);
 
         // PA12 returns 2 new refunds

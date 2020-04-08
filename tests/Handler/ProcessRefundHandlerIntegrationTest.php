@@ -85,7 +85,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'command' => $this->command->getName(),
         ]);
 
-        $message = new ProcessRefundMessage("1104");
+        $message = new ProcessRefundMessage('1104');
 
         $handler = $this->handler;
         $handler($message);
@@ -110,7 +110,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'command' => $this->command->getName(),
         ]);
 
-        $message = new ProcessRefundMessage("1103");
+        $message = new ProcessRefundMessage('1103');
 
         $handler = $this->handler;
         $handler($message);
@@ -195,7 +195,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
 
         $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
-       $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
+        $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
             'type' => 'refund.failed',
             'payload' => [
@@ -213,7 +213,6 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
 
         $this->assertStringContainsString('has no stripe transfer in connector', $miraklRefundsFailed[0]->getFailedReason());
     }
-
 
     public function testProcessRefundHandlerWithUnexistingStripeRefundId()
     {
@@ -240,7 +239,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
 
         $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
-       $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
+        $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
             'type' => 'refund.failed',
             'payload' => [
@@ -284,7 +283,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
 
         $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
-       $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
+        $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
             'type' => 'refund.failed',
             'payload' => [
