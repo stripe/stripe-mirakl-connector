@@ -42,8 +42,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     switch ($method) {
                         case 'GET':
                             return new MockResponse($this->getPendingRefunds());
-                        case 'POST':
-                            return new MockResponse($this->getEmptyJson());
+                        case 'PUT':
+                            return $this->mockRefundValidation($options);
                     }
                     // no break
                 default:
@@ -52,6 +52,19 @@ class MiraklMockedHttpClient extends MockHttpClient
         };
 
         parent::__construct($responseFactory, 'https://mirakl.net');
+    }
+
+    private function mockRefundValidation($options)
+    {
+        $body = json_decode($options['body'], true);
+        $refundToValidate = $body['refunds'][0]['refund_id'];
+        if ($refundToValidate == '1110') {
+            return new MockResponse(['message' => 'Generated Error'], ['http_code' => 400]);
+        } elseif ($refundToValidate == '1107') {
+            return new MockResponse(['message' => 'cannot be processed because it is in state REFUNDED'], ['http_code' => 400]);
+        } else {
+            return new MockResponse(json_encode([]), ['http_code' => 204]);
+        }
     }
 
     private function getMiraklOrder($orderId)

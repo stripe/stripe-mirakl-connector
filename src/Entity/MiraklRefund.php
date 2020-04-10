@@ -71,6 +71,11 @@ class MiraklRefund
     private $failedReason;
 
     /**
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    private $miraklValidationTime;
+
+    /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
      * @Gedmo\Timestampable(on="create")
      */
@@ -198,6 +203,18 @@ class MiraklRefund
     public function setFailedReason(?string $failedReason): self
     {
         $this->failedReason = $failedReason;
+
+        return $this;
+    }
+
+    public function getMiraklValidationTime(): ?\DateTimeInterface
+    {
+        return $this->miraklValidationTime;
+    }
+
+    public function setMiraklValidationTime(\DateTime $miraklValidationTime): self
+    {
+        $this->miraklValidationTime = $miraklValidationTime;
 
         return $this;
     }

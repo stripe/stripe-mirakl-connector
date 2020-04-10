@@ -59,13 +59,10 @@ class MiraklClient implements LoggerAwareInterface
     // PUT PA02
     public function validateRefunds(array $refunds)
     {
-        $response = $this->client->request('PUT', '/api/payment/refund', [
+        $this->logger->info('[Mirakl API] Call to PA02 - validate refunds');
+        $this->client->request('PUT', '/api/payment/refund', [
             'json' => ['refunds' => $refunds],
         ]);
-
-        $this->logger->info('[Mirakl API] Call to PA02 - validate refunds');
-
-        return json_decode($response->getContent(), true);
     }
 
     // GET IV01

@@ -96,11 +96,12 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $miraklRefundsPending = $this->miraklRefundRepository->findBy([
             'status' => MiraklRefund::REFUND_PENDING,
         ]);
-        $this->assertEquals(4, count($miraklRefundsPending));
+        $this->assertEquals(7, count($miraklRefundsPending));
         $this->assertEquals(2, count($miraklRefundsCreated));
         $this->assertEquals('order_refunded_4', $miraklRefundsCreated[0]->getMiraklOrderId());
         $this->assertEquals('refund_4', $miraklRefundsCreated[0]->getStripeRefundId());
         $this->assertEquals('trr_4', $miraklRefundsCreated[0]->getStripeReversalId());
+        $this->assertNotNull($miraklRefundsCreated[0]->getMiraklValidationTime());
     }
 
     public function testProcessRefundHandlerWithRefundCreated()
@@ -121,21 +122,21 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $miraklRefundsPending = $this->miraklRefundRepository->findBy([
             'status' => MiraklRefund::REFUND_PENDING,
         ]);
-        $this->assertEquals(5, count($miraklRefundsPending));
+        $this->assertEquals(8, count($miraklRefundsPending));
         $this->assertEquals(1, count($miraklRefundsCreated));
         $this->assertEquals('order_refunded_3', $miraklRefundsCreated[0]->getMiraklOrderId());
         $this->assertEquals('refund_3', $miraklRefundsCreated[0]->getStripeRefundId());
         $this->assertEquals('trr_3', $miraklRefundsCreated[0]->getStripeReversalId());
     }
 
-    public function testProcessRefundHandlerWithStripeError()
+    public function testProcessRefundHandlerWithRefundStripeApiError()
     {
         $commandTester = new CommandTester($this->command);
         $commandTester->execute([
             'command' => $this->command->getName(),
         ]);
 
-        $message = new ProcessRefundMessage('1107');
+        $message = new ProcessRefundMessage('1108');
 
         $handler = $this->handler;
         $handler($message);
@@ -147,7 +148,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => MiraklRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(4, count($miraklRefundsPending));
+        $this->assertEquals(7, count($miraklRefundsPending));
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
@@ -157,15 +158,99 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals([
             'type' => 'refund.failed',
             'payload' => [
-                'internalId' => 6,
+                'internalId' => 7,
                 'amount' => 6,
                 'currency' => 'EUR',
                 'miraklOrderId' => 'order_refunded_5',
-                'miraklRefundId' => '1107',
+                'miraklRefundId' => '1108',
                 'stripeRefundId' => null,
+                'stripeReversalId' => 'trr_8',
+                'status' => 'REFUND_FAILED',
+                'failedReason' => 'Could not create refund in stripe: ',
+           ],
+        ], $messageEnvelope->getMessage()->getContent());
+    }
+
+    public function testProcessRefundHandlerWithReversalStripeApiError()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $message = new ProcessRefundMessage('1109');
+
+        $handler = $this->handler;
+        $handler($message);
+
+        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_PENDING,
+        ]);
+        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_FAILED,
+        ]);
+
+        $this->assertEquals(7, count($miraklRefundsPending));
+        $this->assertEquals(1, count($miraklRefundsFailed));
+        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+
+        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
+        $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
+        $this->assertEquals([
+            'type' => 'refund.failed',
+            'payload' => [
+                'internalId' => 8,
+                'amount' => 6,
+                'currency' => 'EUR',
+                'miraklOrderId' => 'order_refunded_5',
+                'miraklRefundId' => '1109',
+                'stripeRefundId' => 'refund_9',
                 'stripeReversalId' => null,
                 'status' => 'REFUND_FAILED',
-                'failedReason' => '',
+                'failedReason' => 'Could not create reversal in stripe: ',
+           ],
+        ], $messageEnvelope->getMessage()->getContent());
+    }
+
+    public function testProcessRefundHandlerWithRefundValidationMiraklApiError()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $message = new ProcessRefundMessage('1110');
+
+        $handler = $this->handler;
+        $handler($message);
+
+        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_PENDING,
+        ]);
+        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_FAILED,
+        ]);
+
+        $this->assertEquals(7, count($miraklRefundsPending));
+        $this->assertEquals(1, count($miraklRefundsFailed));
+        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+
+        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
+        $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
+        $this->assertEquals([
+            'type' => 'refund.failed',
+            'payload' => [
+                'internalId' => 9,
+                'amount' => 6,
+                'currency' => 'EUR',
+                'miraklOrderId' => 'order_refunded_5',
+                'miraklRefundId' => '1110',
+                'stripeRefundId' => 'refund_10',
+                'stripeReversalId' => 'trr_10',
+                'status' => 'REFUND_FAILED',
+                'failedReason' => 'Mirakl refund id: 1110 and orderId: order_refunded_5 failed to be validated in mirakl. code: 400 message: Generated Error',
            ],
         ], $messageEnvelope->getMessage()->getContent());
     }
@@ -189,7 +274,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => MiraklRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(4, count($miraklRefundsPending));
+        $this->assertEquals(7, count($miraklRefundsPending));
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_2', $miraklRefundsFailed[0]->getMiraklOrderId());
 
@@ -233,7 +318,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => MiraklRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(4, count($miraklRefundsPending));
+        $this->assertEquals(7, count($miraklRefundsPending));
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
@@ -277,7 +362,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => MiraklRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(4, count($miraklRefundsPending));
+        $this->assertEquals(7, count($miraklRefundsPending));
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
@@ -300,5 +385,49 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         ], $messageEnvelope->getMessage()->getContent());
 
         $this->assertStringContainsString('has no stripe reversal id in connector', $miraklRefundsFailed[0]->getFailedReason());
+    }
+
+    public function testProcessRefundHandlerWithUnexistingMiraklValidationTime()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $message = new ProcessRefundMessage('1107');
+
+        $handler = $this->handler;
+        $handler($message);
+
+        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_PENDING,
+        ]);
+        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_FAILED,
+        ]);
+
+        $this->assertEquals(7, count($miraklRefundsPending));
+        $this->assertEquals(1, count($miraklRefundsFailed));
+        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+
+        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
+        $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
+        $this->assertEquals([
+            'type' => 'refund.failed',
+            'payload' => [
+                'internalId' => 6,
+                'amount' => 6,
+                'currency' => 'EUR',
+                'miraklOrderId' => 'order_refunded_5',
+                'miraklRefundId' => '1107',
+                'stripeRefundId' => 'refund_7',
+                'stripeReversalId' => 'trr_7',
+                'status' => 'REFUND_FAILED',
+                'failedReason' => 'Mirakl refund id: 1107 and orderId: order_refunded_5 has no mirakl validation time',
+            ],
+        ], $messageEnvelope->getMessage()->getContent());
+
+        $this->assertStringContainsString('has no mirakl validation time', $miraklRefundsFailed[0]->getFailedReason());
     }
 }

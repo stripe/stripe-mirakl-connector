@@ -12,6 +12,7 @@ App\Entity\MiraklRefund:
         currency: 'EUR'
         stripeRefundId: 'refund_3'
         stripeReversalId: 'trr_3'
+        miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
         status: 'REFUND_CREATED'
     mirakl_refund_2: # Failed no transfer in status CREATED
         miraklRefundId: '1102'
@@ -26,6 +27,7 @@ App\Entity\MiraklRefund:
         currency: 'EUR'
         status: 'REFUND_PENDING'
         stripeReversalId: 'trr_5'
+        miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
     mirakl_refund_6: # Failed no stripe reversal id
         miraklRefundId: '1106'
         miraklOrderId: 'order_refunded_5'
@@ -33,10 +35,37 @@ App\Entity\MiraklRefund:
         currency: 'EUR'
         status: 'REFUND_PENDING'
         stripeRefundId: 'refund_6'
-    mirakl_refund_7: # Failed api error
+        miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
+    mirakl_refund_7: # Failed no mirakl validation time
         miraklRefundId: '1107'
         miraklOrderId: 'order_refunded_5'
         amount: '6'
         currency: 'EUR'
         status: 'REFUND_PENDING'
+        stripeRefundId: 'refund_7'
+        stripeReversalId: 'trr_7'
+    mirakl_refund_8: # Failed stripe refund api error
+        miraklRefundId: '1108'
+        miraklOrderId: 'order_refunded_5'
+        amount: '6'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+        stripeReversalId: 'trr_8'
+        miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
+    mirakl_refund_9: # Failed stripe reversal api error
+        miraklRefundId: '1109'
+        miraklOrderId: 'order_refunded_5'
+        amount: '6'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+        stripeRefundId: 'refund_9'
+        miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
+    mirakl_refund_10: # Failed mirakl validation api error
+        miraklRefundId: '1110'
+        miraklOrderId: 'order_refunded_5'
+        amount: '6'
+        currency: 'EUR'
+        status: 'REFUND_PENDING'
+        stripeReversalId: 'trr_10'
+        stripeRefundId: 'refund_10'
     
