@@ -68,7 +68,7 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
         $stripeLoginResponse = new StripeObject();
         $stripeLoginResponse->stripe_user_id = $stripeUserId;
 
-        $stripeAccount = new Account();
+        $stripeAccount = new Account('acct_valid');
         $stripeAccount->payouts_enabled = false;
         $stripeAccount->charges_enabled = true;
         $stripeAccount->requirements = [
@@ -114,7 +114,7 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
         $stripeLoginResponse = new StripeObject();
         $stripeLoginResponse->stripe_user_id = $stripeUserId;
 
-        $stripeAccount = new Account();
+        $stripeAccount = new Account('acct_valid');
         $stripeAccount->payouts_enabled = false;
         $stripeAccount->charges_enabled = true;
         $stripeAccount->requirements = [
