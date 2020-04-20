@@ -47,6 +47,13 @@ framework:
                 retry_strategy:
                     max_retries: 0
 
+            process_refunds:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: process_refunds
+                retry_strategy:
+                    max_retries: 0
+
             failed:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
@@ -55,6 +62,8 @@ framework:
             'App\Message\AccountUpdateMessage': [operator_http_notification, update_login_link, update_kyc_status]
             'App\Message\ProcessTransferMessage': process_transfers
             'App\Message\ProcessPayoutMessage': process_payouts
+            'App\Message\ProcessRefundMessage': process_refunds
             'App\Message\TransferFailedMessage': operator_http_notification
+            'App\Message\RefundFailedMessage': operator_http_notification
             'App\Message\PayoutFailedMessage': operator_http_notification
 

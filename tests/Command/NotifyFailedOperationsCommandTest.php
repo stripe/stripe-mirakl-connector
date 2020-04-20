@@ -5,8 +5,10 @@ namespace App\Tests\Command;
 use App\Command\NotifyFailedOperationsCommand;
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
+use App\Entity\MiraklRefund;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
+use App\Repository\MiraklRefundRepository;
 use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Tests\TestCase;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
@@ -23,6 +25,7 @@ class NotifyFailedOperationsCommandTest extends TestCase
         $this->mailer = $this->createMock(MailerInterface::class);
         $this->transferRepository = $this->createMock(StripeTransferRepository::class);
         $this->payoutRepository = $this->createMock(StripePayoutRepository::class);
+        $this->refundRepository = $this->createMock(MiraklRefundRepository::class);
 
         $this->input = $this->createMock(InputInterface::class);
         $this->output = $this->createMock(OutputInterface::class);
@@ -30,7 +33,7 @@ class NotifyFailedOperationsCommandTest extends TestCase
             ->method('getFormatter')
             ->willReturn($this->createMock(OutputFormatterInterface::class));
 
-        $this->command = new NotifyFailedOperationsCommand($this->mailer, $this->transferRepository, $this->payoutRepository, 'mailfrom@example.com', 'mailto@example.com');
+        $this->command = new NotifyFailedOperationsCommand($this->mailer, $this->transferRepository, $this->payoutRepository, $this->refundRepository, 'mailfrom@example.com', 'mailto@example.com');
         $this->command->setLogger(new NullLogger());
     }
 
@@ -41,6 +44,10 @@ class NotifyFailedOperationsCommandTest extends TestCase
             ->method('findBy')
             ->willReturn([]);
         $this->payoutRepository
+            ->expects($this->once())
+            ->method('findBy')
+            ->willReturn([]);
+        $this->refundRepository
             ->expects($this->once())
             ->method('findBy')
             ->willReturn([]);
@@ -56,6 +63,7 @@ class NotifyFailedOperationsCommandTest extends TestCase
     {
         $failedTransfers = $this->createMock(StripeTransfer::class);
         $failedPayouts = $this->createMock(StripePayout::class);
+        $failedRefunds = $this->createMock(MiraklRefund::class);
         $this->transferRepository
             ->expects($this->once())
             ->method('findBy')
@@ -64,6 +72,10 @@ class NotifyFailedOperationsCommandTest extends TestCase
             ->expects($this->once())
             ->method('findBy')
             ->willReturn([$failedPayouts]);
+        $this->refundRepository
+                ->expects($this->once())
+                ->method('findBy')
+                ->willReturn([$failedRefunds]);
         $this->mailer
             ->expects($this->once())
             ->method('send');

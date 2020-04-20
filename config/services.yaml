@@ -12,6 +12,7 @@ parameters:
   env(BASE_HOST): ""
   env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
   env(ENABLES_AUTOMATIC_TRANSFER_CREATION): false
+  env(ENABLES_AUTOMATIC_REFUND_CREATION): false
   env(REDIRECT_ONBOARDING): "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
   env(STRIPE_PREFILL_ONBOARDING): false
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
@@ -24,6 +25,7 @@ parameters:
   app.stripe.webhook_secret: "%env(STRIPE_WEBHOOK_SECRET)%"
   app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
   app.stripe.enables_auto_transfer_creation: "%env(bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
+  app.stripe.enables_auto_refund_creation: "%env(bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
   app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
   app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
@@ -52,6 +54,7 @@ services:
       $miraklHostName: "%app.mirakl.host_name%"
       $customFieldCode: "%app.mirakl.stripe_custom_field_code%"
       $enablesAutoTransferCreation: "%app.stripe.enables_auto_transfer_creation%"
+      $enablesAutoRefundCreation: "%app.stripe.enables_auto_refund_creation%"
       $redirectOnboarding: "%app.redirect.onboarding%"
       $operatorNotificationUrl: "%app.operator.notification_url%"
 
