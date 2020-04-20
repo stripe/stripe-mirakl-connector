@@ -52,8 +52,36 @@ class MiraklMockedHttpClient extends MockHttpClient
             'id' => 1,
             'order_id' => $orderId,
             'shop_id' => '1',
-            'total_price' => '24',
-            'total_commission' => '5',
+            'total_price' => 24,
+            'order_lines' => [
+                [
+                    'order_line_id' => $orderId . '-1',
+                    'order_line_state' => 'RECEIVED',
+                    'price' => 24,
+                    'shipping_taxes' => [
+                        [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                        [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                    ],
+                    'taxes' => [
+                        [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                        [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                    ]
+                ],
+                [
+                    'order_line_id' => $orderId . '-2',
+                    'order_line_state' => 'REFUSED',
+                    'price' => 12,
+                    'shipping_taxes' => [
+                        [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                        [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                    ],
+                    'taxes' => [
+                        [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                        [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                    ]
+                ]
+            ],
+            'total_commission' => 5,
             'transaction_number' => 'ch_transaction_1',
             'currency_iso_code' => 'eur',
             'last_updated_date' => '2019-09-24T14:00:40Z',

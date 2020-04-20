@@ -66,4 +66,19 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         $this->assertEquals(2, $this->doctrineReceiver->getMessageCount());
         $this->assertEquals(5, count($stripeTransfersPending));
     }
+
+    public function testValidTransferAmount()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName()
+        ]);
+
+        $stripeTransfer = $this->stripeTransferRepository->findOneBy([
+          'miraklId' => 'order_4'
+        ]);
+
+        // Transfer amount should be 24 - 5 (commission) + 1 + 2 (shipping taxes) + 1 + 2 (taxes)
+        $this->assertEquals(2500, $stripeTransfer->getAmount());
+    }
 }
