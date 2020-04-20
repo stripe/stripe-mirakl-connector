@@ -107,6 +107,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
         $toCreateIds = array_column($miraklOrders, 'order_id');
         $alreadyCreatedMiraklIds = $this->stripeTransferRepository->findAlreadyCreatedMiraklIds($toCreateIds);
+        $ignoreOrderLineStates = array('REFUSED', 'CANCELED');
         foreach ($miraklOrders as $miraklOrder) {
             if (in_array($miraklOrder['order_id'], $alreadyCreatedMiraklIds)) {
                 continue;
@@ -128,7 +129,24 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 $newlyCreatedStripeTransfer->setTransactionId($transactionId);
             }
 
-            $amountToTransfer = (int) (100 * ($miraklOrder['total_price'] - $miraklOrder['total_commission']));
+            $taxes = 0;
+            if (isset($miraklOrder['order_lines']) && !empty($miraklOrder['order_lines'])) {
+                foreach ($miraklOrder['order_lines'] as $orderLine) {
+                    if (in_array($orderLine['order_line_state'], $ignoreOrderLineStates)) {
+                        continue;
+                    }
+
+                    foreach ((array) $orderLine['shipping_taxes'] as $tax) {
+                        $taxes += (float) $tax['amount'];
+                    }
+
+                    foreach ((array) $orderLine['taxes'] as $tax) {
+                        $taxes += (float) $tax['amount'];
+                    }
+                }
+            }
+
+            $amountToTransfer = (int) (100 * ($miraklOrder['total_price'] + $taxes - $miraklOrder['total_commission']));
             if ($amountToTransfer < 0) {
                 $failedReason = sprintf('Amount to tranfer must be positive');
                 $this->logger->error($failedReason, [

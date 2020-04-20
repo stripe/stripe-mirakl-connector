@@ -52,7 +52,7 @@ class UpdateKYCStatusHandlerTest extends TestCase
      */
     public function testShouldUpdateCorrectKYCStatus($requirements, $payoutEnabled, $chargesEnabled, $KYCStatus)
     {
-        $stripeAccount = new Account();
+        $stripeAccount = new Account('acct_valid');
         $stripeAccount->requirements = $requirements;
         $stripeAccount->payouts_enabled = $payoutEnabled;
         $stripeAccount->charges_enabled = $chargesEnabled;
@@ -60,7 +60,7 @@ class UpdateKYCStatusHandlerTest extends TestCase
         $this->stripeProxy
             ->expects($this->once())
             ->method('accountRetrieve')
-            ->with('acct_stripe_account')
+            ->with('acct_valid')
             ->willReturn($stripeAccount);
 
         $this->miraklClient
@@ -75,7 +75,7 @@ class UpdateKYCStatusHandlerTest extends TestCase
                 ]
             ]);
 
-        $message = new AccountUpdateMessage(2000, 'acct_stripe_account');
+        $message = new AccountUpdateMessage(2000, 'acct_valid');
 
         $handler = $this->handler;
         $handler($message);
@@ -150,7 +150,7 @@ class UpdateKYCStatusHandlerTest extends TestCase
      */
     public function testShouldThrowWhenInvalidAccount($requirements, $payoutEnabled, $chargesEnabled)
     {
-        $stripeAccount = new Account();
+        $stripeAccount = new Account('acct_valid');
         $stripeAccount->requirements = $requirements;
         $stripeAccount->payouts_enabled = $payoutEnabled;
         $stripeAccount->charges_enabled = $chargesEnabled;
@@ -158,12 +158,12 @@ class UpdateKYCStatusHandlerTest extends TestCase
         $this->stripeProxy
             ->expects($this->once())
             ->method('accountRetrieve')
-            ->with('acct_stripe_account')
+            ->with('acct_invalid')
             ->willReturn($stripeAccount);
 
         $this->expectException(InvalidStripeAccountException::class);
 
-        $message = new AccountUpdateMessage(2000, 'acct_stripe_account');
+        $message = new AccountUpdateMessage(2000, 'acct_invalid');
 
         $handler = $this->handler;
         $handler($message);

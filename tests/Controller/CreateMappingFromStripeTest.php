@@ -217,7 +217,7 @@ class CreateMappingFromStripeTest extends TestCase
         $stripeLoginResponse = new StripeObject();
         $stripeLoginResponse->stripe_user_id = 'acct_valid';
 
-        $stripeAccount = new Account();
+        $stripeAccount = new Account('acct_valid');
         $stripeAccount->payouts_enabled = false;
         $stripeAccount->charges_enabled = true;
         $stripeAccount->requirements = [
