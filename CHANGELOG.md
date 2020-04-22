@@ -1,5 +1,9 @@
 # Changelog
 
+- Version 1.1.0
+    - Upgrade to Symfony 4.4.7 (LTS)
+    - Fix PHP requirement to 7.1
+    - Add refund capabilities (thanks @ablanchard)
 - Version 1.0.0
     - Initiation of Stripe Express onboarding
     - Monitoring of Stripe accounts update
