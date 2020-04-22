@@ -24,8 +24,6 @@ class StripeTransferRepository extends ServiceEntityRepository
         $this->persist($stripeTransfer);
         $this->flush();
 
-        $this->getEntityManager()->detach($stripeTransfer);
-
         return $stripeTransfer;
     }
 

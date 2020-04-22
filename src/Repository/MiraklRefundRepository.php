@@ -24,8 +24,6 @@ class MiraklRefundRepository extends ServiceEntityRepository
         $this->getEntityManager()->persist($miraklRefund);
         $this->getEntityManager()->flush();
 
-        $this->getEntityManager()->detach($miraklRefund);
-
         return $miraklRefund;
     }
 }

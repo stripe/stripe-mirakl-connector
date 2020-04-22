@@ -24,8 +24,6 @@ class StripePayoutRepository extends ServiceEntityRepository
         $this->getEntityManager()->persist($stripePayout);
         $this->getEntityManager()->flush();
 
-        $this->getEntityManager()->detach($stripePayout);
-
         return $stripePayout;
     }
 
