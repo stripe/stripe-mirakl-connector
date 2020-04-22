@@ -11,3 +11,9 @@ App\Entity\MiraklStripeMapping:
         payout_enabled: true
         payin_enabled: '<boolean()>'
         disabled_reason: '<word()>'
+    mapping_3:
+        mirakl_shop_id: 3
+        stripe_account_id: 'acct_3'
+        payout_enabled: false
+        payin_enabled: '<boolean()>'
+        disabled_reason: '<word()>'

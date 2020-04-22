@@ -21,3 +21,10 @@ App\Entity\StripePayout:
         status: 'PAYOUT_PENDING'
         miraklInvoiceId: 3
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_payout_4:
+        miraklStripeMapping: '@mapping_3'
+        amount: '6000'
+        currency: 'eur'
+        status: 'PAYOUT_PENDING'
+        miraklInvoiceId: 999
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
