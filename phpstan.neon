@@ -13,3 +13,5 @@ services:
 		arguments:
 			properties:
 				'Stripe\StripeObject::$stripe_user_id': string
+				'Stripe\StripeObject::$disabled_reason': string
+				'Stripe\StripeObject::$object': '\Stripe\StripeObject::class'

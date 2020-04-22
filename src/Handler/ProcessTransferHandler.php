@@ -46,6 +46,11 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
         $transferToProcess = $this->stripeTransferRepository->findOneBy([
             'id' => $message->getStripeTransferId(),
         ]);
+
+        if (null === $transferToProcess) {
+            return;
+        }
+
         $this->processTransfer($transferToProcess, $message->getType());
     }
 

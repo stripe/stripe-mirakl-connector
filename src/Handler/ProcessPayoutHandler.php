@@ -48,7 +48,22 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
         $stripePayout = $this->stripePayoutRepository->findOneBy([
             'id' => $stripePayoutId,
         ]);
+
+        if (null === $stripePayout) {
+            return;
+        }
+
         $miraklStripeMapping = $stripePayout->getMiraklStripeMapping();
+
+        if (null === $miraklStripeMapping || null === $miraklStripeMapping->getStripeAccountId()) {
+            $stripePayout
+                ->setFailedReason('Onboarding has not yet been completed')
+                ->setStatus(StripePayout::PAYOUT_FAILED);
+            $this->stripePayoutRepository->persistAndFlush($stripePayout);
+
+            return;
+        }
+
         if (!$miraklStripeMapping->getPayoutEnabled()) {
             $stripePayout
                 ->setFailedReason('Payout is not enabled on this Stripe account')
