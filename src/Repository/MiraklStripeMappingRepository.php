@@ -4,7 +4,7 @@ namespace App\Repository;
 
 use App\Entity\MiraklStripeMapping;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @method MiraklStripeMapping|null find($id, $lockMode = null, $lockVersion = null)
