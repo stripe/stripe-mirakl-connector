@@ -4,7 +4,7 @@ namespace App\Repository;
 
 use App\Entity\StripePayout;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @method StripePayout|null find($id, $lockMode = null, $lockVersion = null)
@@ -23,8 +23,6 @@ class StripePayoutRepository extends ServiceEntityRepository
     {
         $this->getEntityManager()->persist($stripePayout);
         $this->getEntityManager()->flush();
-
-        $this->getEntityManager()->detach($stripePayout);
 
         return $stripePayout;
     }

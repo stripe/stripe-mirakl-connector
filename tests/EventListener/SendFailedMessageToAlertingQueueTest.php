@@ -4,13 +4,13 @@ namespace App\Tests\EventListener;
 
 use App\EventListener\SendFailedMessageToAlertingQueue;
 use App\Message\AccountUpdateMessage;
+use App\Tests\DummyMessage;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Tests\Fixtures\DummyMessage;
 
 class SendFailedMessageToAlertingQueueTest extends TestCase
 {

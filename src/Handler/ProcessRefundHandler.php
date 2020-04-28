@@ -58,6 +58,10 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             'miraklRefundId' => $message->geMiraklRefundId(),
         ]);
 
+        if (null === $refund) {
+            return;
+        }
+
         if (MiraklRefund::REFUND_CREATED == $refund->getStatus()) {
             // Already processed nothing todo
             return;
@@ -138,6 +142,10 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             // Transfer has a reversal with the mirakl refund id
             // Our systems are not in-sync but transfer has already been reversed
             return;
+        }
+
+        if (null === $transfer->getTransferId()) {
+            throw new \App\Exception\RefundProcessException('Could not create reversal in stripe, the transfer has not yet been processed');
         }
 
         // Make the reverse transfer in stripe

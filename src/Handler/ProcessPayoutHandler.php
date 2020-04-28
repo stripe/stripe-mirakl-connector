@@ -48,15 +48,25 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
         $stripePayout = $this->stripePayoutRepository->findOneBy([
             'id' => $stripePayoutId,
         ]);
+
+        if (null === $stripePayout) {
+            return;
+        }
+
         $miraklStripeMapping = $stripePayout->getMiraklStripeMapping();
-        if (!$miraklStripeMapping->getPayoutEnabled()) {
+        if (
+            null === $miraklStripeMapping ||
+            null === $miraklStripeMapping->getStripeAccountId() ||
+            !$miraklStripeMapping->getPayoutEnabled()
+        ) {
             $stripePayout
-                ->setFailedReason('Payout is not enabled on this Stripe account')
+                ->setFailedReason('Unknown account, or payout is not enabled on this Stripe account')
                 ->setStatus(StripePayout::PAYOUT_FAILED);
             $this->stripePayoutRepository->persistAndFlush($stripePayout);
 
             return;
         }
+
         $amount = $stripePayout->getAmount();
         $currency = $stripePayout->getCurrency();
         $stripeAccountId = $miraklStripeMapping->getStripeAccountId();

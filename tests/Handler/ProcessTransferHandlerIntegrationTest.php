@@ -181,4 +181,27 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
 
         $this->assertStringContainsString('has no associated Mirakl-Stripe mapping', $stripeTransfersFailed[0]->getFailedReason());
     }
+
+    public function testProcessTransferHandlerWithUnexistingTransferId()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $message = new ProcessTransferMessage(StripeTransfer::TRANSFER_ORDER, 9999);
+
+        $handler = $this->handler;
+        $handler($message);
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_PENDING,
+        ]);
+        $stripeTransfersFailed = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_FAILED,
+        ]);
+
+        $this->assertEquals(3, count($stripeTransfersPending));
+        $this->assertEquals(0, count($stripeTransfersFailed));
+    }
 }

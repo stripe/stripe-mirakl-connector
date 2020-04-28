@@ -4,7 +4,7 @@ namespace App\Repository;
 
 use App\Entity\MiraklRefund;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @method MiraklRefund|null find($id, $lockMode = null, $lockVersion = null)
@@ -23,8 +23,6 @@ class MiraklRefundRepository extends ServiceEntityRepository
     {
         $this->getEntityManager()->persist($miraklRefund);
         $this->getEntityManager()->flush();
-
-        $this->getEntityManager()->detach($miraklRefund);
 
         return $miraklRefund;
     }

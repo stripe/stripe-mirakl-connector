@@ -171,7 +171,7 @@ class StripeProxy implements LoggerAwareInterface
     }
 
     // Reversal
-    public function reverseTransfer(int $amount, ?string $transfer_id, array $metadata = [])
+    public function reverseTransfer(int $amount, string $transfer_id, array $metadata = [])
     {
         $mergedMetadata = array_merge($metadata, $this->getDefaultMetadata());
         $params = [

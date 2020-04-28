@@ -387,6 +387,29 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertStringContainsString('has no stripe reversal id in connector', $miraklRefundsFailed[0]->getFailedReason());
     }
 
+    public function testProcessRefundHandlerWithUnexistingRefund()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $message = new ProcessRefundMessage('9999');
+
+        $handler = $this->handler;
+        $handler($message);
+
+        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_PENDING,
+        ]);
+        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
+            'status' => MiraklRefund::REFUND_FAILED,
+        ]);
+
+        $this->assertEquals(8, count($miraklRefundsPending));
+        $this->assertEquals(0, count($miraklRefundsFailed));
+    }
+
     public function testProcessRefundHandlerWithUnexistingMiraklValidationTime()
     {
         $commandTester = new CommandTester($this->command);

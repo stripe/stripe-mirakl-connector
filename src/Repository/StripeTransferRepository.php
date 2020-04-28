@@ -4,7 +4,7 @@ namespace App\Repository;
 
 use App\Entity\StripeTransfer;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @method StripeTransfer|null find($id, $lockMode = null, $lockVersion = null)
@@ -23,8 +23,6 @@ class StripeTransferRepository extends ServiceEntityRepository
     {
         $this->persist($stripeTransfer);
         $this->flush();
-
-        $this->getEntityManager()->detach($stripeTransfer);
 
         return $stripeTransfer;
     }

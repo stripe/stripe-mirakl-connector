@@ -88,6 +88,26 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(2, count($stripePayoutsCreated));
     }
 
+    public function testProcessPayoutHandlerWithUnknownId()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $message = new ProcessPayoutMessage(9999);
+
+        $handler = $this->handler;
+        $handler($message);
+
+        $stripePayoutsCreated = $this->stripePayoutRepository->findBy([
+            'status' => StripePayout::PAYOUT_CREATED,
+        ]);
+
+        // No payout was created, no error
+        $this->assertEquals(1, count($stripePayoutsCreated));
+    }
+
     public function testProcessPayoutHandlerWithStripeError()
     {
         $commandTester = new CommandTester($this->command);
@@ -119,6 +139,40 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
                 'stripePayoutId' => null,
                 'status' => 'PAYOUT_FAILED',
                 'failedReason' => '',
+            ],
+        ], $messageEnvelope->getMessage()->getContent());
+    }
+    public function testProcessPayoutHandlerWithDisabledPayout()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $message = new ProcessPayoutMessage(4);
+
+        $handler = $this->handler;
+        $handler($message);
+
+        $stripePayoutsFailed = $this->stripePayoutRepository->findBy([
+            'status' => StripePayout::PAYOUT_FAILED,
+        ]);
+
+        $this->assertEquals(1, count($stripePayoutsFailed));
+
+        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
+        $this->assertInstanceOf(PayoutFailedMessage::class, $messageEnvelope->getMessage());
+        $this->assertEquals([
+            'type' => 'payout.failed',
+            'payload' => [
+                'internalId' => 4,
+                'miraklInvoiceId' => 999,
+                'amount' => 6000,
+                'currency' => 'eur',
+                'stripePayoutId' => null,
+                'status' => 'PAYOUT_FAILED',
+                'failedReason' => 'Unknown account, or payout is not enabled on this Stripe account',
             ],
         ], $messageEnvelope->getMessage()->getContent());
     }

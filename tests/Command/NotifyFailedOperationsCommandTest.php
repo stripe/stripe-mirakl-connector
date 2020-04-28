@@ -10,7 +10,7 @@ use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
 use App\Repository\MiraklRefundRepository;
 use Psr\Log\NullLogger;
-use Symfony\Bundle\FrameworkBundle\Tests\TestCase;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
