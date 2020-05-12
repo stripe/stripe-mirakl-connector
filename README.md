@@ -16,29 +16,6 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 Please make sure to update tests as appropriate.
 
-# How to start a development environment using docker
-
-`docker-compose` starts 3 containers:
-
-* `db`: This is the PostgreSQL database container (can be changed to postgresql or whatever you prefer in the `docker-compose.yml` file),
-* `php`: This is the PHP container including the application volume mounted on. It uses supervisord to start PHP, the required workers and cron.
-* `nginx`: This is the Nginx webserver container exposing the application.
-
-This results in the following running containers:
-
-```bash
-> $ docker-compose ps
-          Name                        Command               State                          Ports
-------------------------------------------------------------------------------------------------------------------------
-mirakl-stripe_db_1         docker-entrypoint.sh postgres    Up      5432/tcp
-mirakl-stripe_nginx_1      nginx -g daemon off;             Up      0.0.0.0:443->443/tcp, 0.0.0.0:80->80/tcp
-mirakl-stripe_php_1        docker-php-entrypoint /usr ...   Up      9000/tcp, 0.0.0.0:9001->9001/tcp
-```
-
-# Read logs
-
-All application logs in the Docker containers are redirected to `stdout` and `stderr`, meaning you can access Symfony application logs by running `docker-compose logs php`.
-
 # License
 
 [MIT](LICENSE.md)

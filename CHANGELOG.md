@@ -1,5 +1,8 @@
 # Changelog
 
+- Version 2.0.0
+    - Moved Docker sample to a new [project](https://github.com/stripe/stripe-mirakl-connector-docker-sample) for clarity
+
 - Version 1.1.0
     - Upgrade to Symfony 4.4.7 (LTS)
     - Fix PHP requirement to 7.1
