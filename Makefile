@@ -27,4 +27,4 @@ package:
 	 		--exclude='./config/packages/test' --exclude='./config/packages/dev' \
 	 		--exclude='./config/routes/dev' --exclude='./config/packages/dev' \
 	 		--exclude='./Makefile' --exclude='./Procfile' \
-			-zcvf app.tgz .
+			-zcvf app.tar.gz .
