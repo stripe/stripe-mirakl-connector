@@ -3,13 +3,13 @@ Stripe Mirakl Connector Docker Sample
 
 ## About this sample
 
-Based on [TrafeX/docker-php-nginx](https://github.com/TrafeX/docker-php-nginx), this sample project shows how to build and start the [Stripe Mirakl Connector](https://github.com/stripe/stripe-mirakl-connector) application on PHP-FPM 7.3, Nginx 1.16 and PostgreSQL 11.5 using Docker.
+Based on [TrafeX/docker-php-nginx](https://github.com/TrafeX/docker-php-nginx), this sample project shows how to build and start the [Stripe Mirakl Connector](../../README.md) application on PHP-FPM 7.3, Nginx 1.16 and PostgreSQL 11.5 using Docker.
 
 Although not production-ready as-is, it shows the basic configuration required.
 
 Some examples of tasks required to complete the configuration for production:
-- Replace the [certs](certs) content with valid certificates.
-- Update [nginx.conf](config/nginx.conf) to fit your server configuration.
+- Replace the [certs](app/certs) content with valid certificates.
+- Update [nginx.conf](app/config/nginx.conf) and [php.ini](app/config/php.ini) to fit your server configuration.
 - Deny access to the OpenAPI specs.
 
 ## How-to use it
