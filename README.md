@@ -14,7 +14,7 @@ Learn how to use the connector in the [Stripe Docs](https://stripe.com/docs/plug
 
 Deploying the application manually can be non-trivial and sometimes unstable.
 
-For Docker users, you can find an example under [examples/docker](https://github.com/stripe/stripe-mirakl-connector/tree/master/examples/docker).
+For Docker users, you can find an example under [examples/docker](examples/docker).
 
 Feel free to share a working example using your favorite tool via a pull request.
 
