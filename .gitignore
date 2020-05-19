@@ -4,4 +4,3 @@ vendor
 .phpunit.result.cache
 bin/.phpunit/
 .env
-app.tar.gz

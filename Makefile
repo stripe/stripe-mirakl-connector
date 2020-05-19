@@ -15,16 +15,3 @@ ci-phpunit:
 
 vendor: composer.json
 	composer install -n --prefer-dist
-
-package:
-	tar --exclude='./.env' --exclude='./.env.test' --exclude='./tests' \
-			--exclude='./.git' --exclude='./.gitignore' \
-			--exclude='./bin/phpunit' --exclude='./phpunit.xml.dist' \
-			--exclude='./bin/.phpunit' --exclude='./.phpunit.result.cache' \
-	 		--exclude='./.php_cs.cache' --exclude='./var' --exclude='./vendor' \
-	 		--exclude='./nginx_app.conf' --exclude='./var' --exclude='./vendor' \
-	 		--exclude='./.travis.yml' --exclude='./.coveralls.yml' --exclude='./phpstan.neon' \
-	 		--exclude='./config/packages/test' --exclude='./config/packages/dev' \
-	 		--exclude='./config/routes/dev' --exclude='./config/packages/dev' \
-	 		--exclude='./Makefile' --exclude='./Procfile' \
-			-zcvf app.tar.gz .

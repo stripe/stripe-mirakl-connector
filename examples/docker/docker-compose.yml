@@ -1,0 +1,19 @@
+version: "3.2"
+services:
+  db:
+    image: postgres:11.5-alpine
+    ports:
+      - "54320:5432"
+    environment:
+      POSTGRES_DB: symfony
+      POSTGRES_USER: symfony
+      POSTGRES_PASSWORD: symfony
+  app:
+    env_file:
+      - ../../.env
+    build:
+      context: ../../
+      dockerfile: ./examples/docker/app/Dockerfile
+    ports:
+      - "80:8080"
+      - "443:4430"

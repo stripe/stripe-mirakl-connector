@@ -10,9 +10,17 @@ Stripe provides a connector to allow marketplaces powered by Mirakl to onboard s
 
 Learn how to use the connector in the [Stripe Docs](https://stripe.com/docs/plugins/mirakl).
 
-# Contributing
+# Containerized examples
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Deploying the application manually can be non-trivial and sometimes unstable.
+
+For Docker users, you can find an example under [examples/docker](https://github.com/stripe/stripe-mirakl-connector/tree/master/examples/docker).
+
+Feel free to share a working example using your favorite tool via a pull request.
+
+# Contributing to the application
+
+Pull requests are welcome. For major changes, open an issue first to discuss what you would like to change.
 
 Please make sure to update tests accordingly.
 
