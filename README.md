@@ -5,12 +5,11 @@ Stripe Mirakl Connector
 [![Coverage Status](https://coveralls.io/repos/github/stripe/stripe-mirakl-connector/badge.svg?branch=master)](https://coveralls.io/github/stripe/stripe-mirakl-connector?branch=master)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-
 Stripe provides a connector to allow marketplaces powered by Mirakl to onboard sellers on Stripe and pay them out automatically.
 
 Learn how to use the connector in the [Stripe Docs](https://stripe.com/docs/plugins/mirakl).
 
-# Containerized examples
+## Containerized examples
 
 Deploying the application manually can be non-trivial and sometimes unstable.
 
@@ -18,12 +17,12 @@ For Docker users, you can find an example under [examples/docker](examples/docke
 
 Feel free to share a working example using your favorite tool via a pull request.
 
-# Contributing to the application
+## Contributing to the application
 
 Pull requests are welcome. For major changes, open an issue first to discuss what you would like to change.
 
 Please make sure to update tests accordingly.
 
-# License
+## License
 
 [MIT](LICENSE.md)
