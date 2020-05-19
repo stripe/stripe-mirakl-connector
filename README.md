@@ -11,7 +11,7 @@ Learn how to use the connector in the [Stripe Docs](https://stripe.com/docs/plug
 
 ## Containerized examples
 
-Deploying the application manually can be non-trivial and sometimes unstable.
+Deploying the application manually can be non-trivial and sometimes unstable. We recommend using containerization instead.
 
 For Docker users, you can find an example under [examples/docker](examples/docker).
 
