@@ -1,0 +1,6 @@
+# min   hour    day month   weekday command
+*/5     *       *   *       *       php /var/www/bin/console connector:dispatch:process-transfer -q 2>&1
+*/5     *       *   *       *       php /var/www/bin/console connector:dispatch:process-refund -q 2>&1
+0       1       *   *       *       php /var/www/bin/console connector:dispatch:process-payout -q 2>&1
+0       8       *   *       *       php /var/www/bin/console connector:notify:failed-operation -q 2>&1
+*       *       *   *       *       php /var/www/bin/console connector:sync:onboarding 5 2>&1

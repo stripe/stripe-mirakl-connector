@@ -1,5 +1,9 @@
 # Changelog
 
+- Version 1.2.0
+    - Moved Docker sample to a new [folder](examples/docker) for clarity
+    - Docker sample is now based on TrafeX/docker-php-nginx
+
 - Version 1.1.0
     - Upgrade to Symfony 4.4.7 (LTS)
     - Fix PHP requirement to 7.1
