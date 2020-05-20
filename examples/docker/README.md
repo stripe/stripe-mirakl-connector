@@ -14,7 +14,7 @@ Some examples of tasks required to complete the configuration for production:
 
 ## How-to use it
 
-1. Rename `.env.dist` to `.env` and update the configuration, see [Configuration](https://stripe.com/docs/plugins/mirakl/configuration) step in our docs.
+1. Rename [.env.dist](../../.env.dist) to `.env` and update the configuration, see [Configuration](https://stripe.com/docs/plugins/mirakl/configuration) step in our docs.
 2. Start the application: `docker-compose up -d` or `make install`.
 3. If you are starting the application for the first time, run `docker-compose run --rm app bin/console doctrine:migration:migrate --no-interaction` or `make db-install` to set up the database.
 
