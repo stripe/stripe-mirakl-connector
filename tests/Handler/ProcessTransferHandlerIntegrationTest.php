@@ -115,7 +115,7 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($stripeTransfersFailed));
         $this->assertEquals('order_2', $stripeTransfersFailed[0]->getMiraklId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(TransferFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -159,7 +159,7 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($stripeTransfersFailed));
         $this->assertEquals('order_3', $stripeTransfersFailed[0]->getMiraklId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(TransferFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([

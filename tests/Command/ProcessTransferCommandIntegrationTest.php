@@ -46,7 +46,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
-        $this->assertEquals(1, $this->doctrineReceiver->getMessageCount());
+        $this->assertCount(1, $this->doctrineReceiver->getSent());
         $this->assertEquals(4, count($stripeTransfersPending));
     }
 
@@ -63,7 +63,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
-        $this->assertEquals(2, $this->doctrineReceiver->getMessageCount());
+        $this->assertCount(2, $this->doctrineReceiver->getSent());
         $this->assertEquals(5, count($stripeTransfersPending));
     }
 
