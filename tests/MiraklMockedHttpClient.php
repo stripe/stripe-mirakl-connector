@@ -19,6 +19,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonMiraklOrders());
                 case 'https://mirakl.net/api/orders?customer_debited=true&order_ids=order_5%2Corder_6':
                     return new MockResponse($this->getJsonSpecifiedMiraklOrders());
+                case 'https://mirakl.net/api/orders?customer_debited=true&order_ids=order_failed_transfer%2Cnew_order':
+                    return new MockResponse($this->getJsonMiraklOrdersWithFailedTransfer());
                 case 'https://mirakl.net/api/orders?customer_debited=true&order_ids=order_1':
                     return new MockResponse($this->getJsonAlreadyExistingMiraklOrders());
                 case 'https://mirakl.net/api/orders?customer_debited=true&order_ids=order_8':
@@ -168,6 +170,16 @@ class MiraklMockedHttpClient extends MockHttpClient
             'orders' => [
                 $this->getMiraklOrder('order_5'),
                 $this->getMiraklOrder('order_6'),
+            ],
+        ]);
+    }
+
+    private function getJsonMiraklOrdersWithFailedTransfer()
+    {
+        return json_encode([
+            'orders' => [
+                $this->getMiraklOrder('order_failed_transfer'),
+                $this->getMiraklOrder('new_order'),
             ],
         ]);
     }
