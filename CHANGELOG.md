@@ -1,5 +1,9 @@
 # Changelog
 
+- Version 1.1.2
+    - Fix test-db messages table handling
+    - Retry failed and invalid_amount transfers in process transfers command
+
 - Version 1.1.1
     - Moved Docker sample to a new [folder](examples/docker) for clarity
     - Docker sample is now based on TrafeX/docker-php-nginx
