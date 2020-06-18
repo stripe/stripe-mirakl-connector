@@ -113,7 +113,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
             'type' => StripeTransfer::TRANSFER_ORDER,
         ]);
         $existingStripeTransfersByMiraklId = [];
-        foreach($existingStripeTransfers as $transfer) {
+        foreach ($existingStripeTransfers as $transfer) {
             $existingStripeTransfersByMiraklId[$transfer->getMiraklId()] = $transfer;
         }
 
