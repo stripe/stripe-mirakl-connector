@@ -126,7 +126,7 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
 
         $this->assertEquals(1, count($stripePayoutsFailed));
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(PayoutFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -160,7 +160,7 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
 
         $this->assertEquals(1, count($stripePayoutsFailed));
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(PayoutFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([

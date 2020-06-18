@@ -46,7 +46,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
-        $this->assertEquals(1, $this->doctrineReceiver->getMessageCount());
+        $this->assertCount(1, $this->doctrineReceiver->getSent());
         $this->assertEquals(4, count($stripeTransfersPending));
     }
 
@@ -63,7 +63,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
-        $this->assertEquals(2, $this->doctrineReceiver->getMessageCount());
+        $this->assertCount(2, $this->doctrineReceiver->getSent());
         $this->assertEquals(5, count($stripeTransfersPending));
     }
 
@@ -80,5 +80,40 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
 
         // Transfer amount should be 24 - 5 (commission) + 1 + 2 (shipping taxes) + 1 + 2 (taxes)
         $this->assertEquals(2500, $stripeTransfer->getAmount());
+    }
+
+    public function testRetryFailedTransfer()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $failedStripeTransfer = new StripeTransfer();
+        $failedStripeTransfer
+            ->setType(StripeTransfer::TRANSFER_ORDER)
+            ->setStatus(StripeTransfer::TRANSFER_FAILED)
+            ->setMiraklId('order_failed_transfer')
+            ->setAmount('24')
+            ->setCurrency('EUR')
+            ->setMiraklUpdateTime(new \DateTime("2019-01-01"));    
+        $this->stripeTransferRepository->persistAndFlush($failedStripeTransfer);
+
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_order_ids' => ['order_failed_transfer', 'new_order'],
+        ]);
+
+        // Failed transfer should be retried
+        $retriedStripeTransfer = $this->stripeTransferRepository->findOneBy([
+            'miraklId' => 'order_failed_transfer'
+        ]);
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $retriedStripeTransfer->getStatus());
+
+        // Subsequent transfer should not have failed (no "EntityManager closed" error)
+        $subsequentStripeTransfer = $this->stripeTransferRepository->findOneBy([
+            'miraklId' => 'new_order'
+        ]);
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $subsequentStripeTransfer->getStatus());
+
+        // Two messages should be sent
+        $this->assertCount(2, $this->doctrineReceiver->getSent());
     }
 }

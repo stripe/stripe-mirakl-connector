@@ -152,7 +152,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -194,7 +194,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -236,7 +236,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -278,7 +278,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_2', $miraklRefundsFailed[0]->getMiraklOrderId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -322,7 +322,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -366,7 +366,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
@@ -433,7 +433,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->assertEquals(1, count($miraklRefundsFailed));
         $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
 
-        $this->assertEquals(1, $this->httpNotificationReceiver->getMessageCount());
+        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
         $messageEnvelope = $this->httpNotificationReceiver->get()[0];
         $this->assertInstanceOf(RefundFailedMessage::class, $messageEnvelope->getMessage());
         $this->assertEquals([
