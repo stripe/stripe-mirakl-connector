@@ -6,6 +6,7 @@ use App\Message\AccountUpdateMessage;
 use App\Message\NotifiableMessageInterface;
 use App\Message\PayoutFailedMessage;
 use App\Message\TransferFailedMessage;
+use App\Message\RefundFailedMessage;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Messenger\Handler\MessageSubscriberInterface;
@@ -59,6 +60,7 @@ class OperatorHttpNotificationHandler implements MessageSubscriberInterface, Log
     public static function getHandledMessages(): iterable
     {
         yield TransferFailedMessage::class;
+        yield RefundFailedMessage::class;
         yield PayoutFailedMessage::class;
         yield AccountUpdateMessage::class => [
             'from_transport' => 'operator_http_notification',
