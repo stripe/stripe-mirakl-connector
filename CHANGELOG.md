@@ -1,5 +1,8 @@
 # Changelog
 
+- Version 1.1.3
+    - Fixed mapping for notifications of FailedRefundMessage
+
 - Version 1.1.2
     - Fix test-db messages table handling
     - Retry failed and invalid_amount transfers in process transfers command
