@@ -6,6 +6,7 @@ use App\Handler\OperatorHttpNotificationHandler;
 use App\Message\AccountUpdateMessage;
 use App\Message\PayoutFailedMessage;
 use App\Message\TransferFailedMessage;
+use App\Message\RefundFailedMessage;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\Exception\ClientException;
@@ -139,6 +140,7 @@ class OperatorHttpNotificationHandlerTest extends TestCase
         $handledMessage = iterator_to_array(OperatorHttpNotificationHandler::getHandledMessages());
         $this->assertEquals([
             TransferFailedMessage::class,
+            RefundFailedMessage::class,
             PayoutFailedMessage::class,
             AccountUpdateMessage::class => [
                 'from_transport' => 'operator_http_notification',
