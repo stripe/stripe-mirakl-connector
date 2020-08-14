@@ -7,7 +7,7 @@ ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.
 USER root
 
 # Install packages
-RUN apk add postgresql php7-pdo_pgsql php7-iconv php7-tokenizer --no-cache
+RUN apk add postgresql php7-pdo_pgsql php7-iconv php7-tokenizer php7-pcntl --no-cache
 
 # Install composer
 COPY --from=composer /usr/bin/composer /usr/bin/composer
