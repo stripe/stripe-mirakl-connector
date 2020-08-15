@@ -27,24 +27,39 @@ class MiraklClient implements LoggerAwareInterface
         $this->client = $miraklClient;
     }
 
-    // GET OR11
-    public function listMiraklOrders(?\DateTimeInterface $lastMiraklUpdateTime, ?array $orderIds)
+    private function getOrders(array $query = null)
     {
-        $filters = ['query' => []];
-        $filters['query']['customer_debited'] = 'true';
+        $filters = [
+            'query' => [ 'customer_debited' => 'true' ]
+        ];
 
-        if (null !== $lastMiraklUpdateTime) {
-            $filters['query']['start_update_date'] = $lastMiraklUpdateTime->format(self::DATE_FORMAT);
-        }
-
-        if (null !== $orderIds) {
-            $filters['query']['order_ids'] = implode(',', $orderIds);
+        if ($query) {
+            $filters['query'] = array_merge($filters['query'], (array) $query);
         }
 
         $this->logger->info('[Mirakl API] Call to OR11 - fetch orders');
         $response = $this->client->request('GET', '/api/orders', $filters);
 
         return json_decode($response->getContent(), true)['orders'];
+    }
+
+    // GET OR11
+    public function listOrders()
+    {
+        return $this->getOrders();
+    }
+
+    // GET OR11 by date
+    public function listOrdersByDate(\DateTimeInterface $datetime)
+    {
+        $dt = $datetime->format(self::DATE_FORMAT);
+        return $this->getOrders([ 'start_update_date' => $dt ]);
+    }
+
+    // GET OR11 by id
+    public function listOrdersById(array $orderIds)
+    {
+        return $this->getOrders([ 'order_ids' => implode(',', $orderIds) ]);
     }
 
     // GET PA12
