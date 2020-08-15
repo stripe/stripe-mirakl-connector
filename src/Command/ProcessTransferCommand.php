@@ -71,148 +71,193 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
-        $miraklOrderIds = $input->getArgument('mirakl_order_ids');
-
         if (!$this->enablesAutoTransferCreation) {
             $output->writeln('Transfer creation is disabled.');
             $output->writeln('You can enable it by setting the environement variable ENABLES_AUTOMATIC_TRANSFER_CREATION to true.');
 
             return 0;
         }
+
         // getArgument should never return a string when using InputArgument::IS_ARRAY
+        $miraklOrderIds = $input->getArgument('mirakl_order_ids');
         assert(null === $miraklOrderIds || is_array($miraklOrderIds));
-        if (null == $miraklOrderIds) {
-            $output->writeln('No Mirakl order ids specified. Will fetch latest orders from Mirakl.');
-            $output->writeln(sprintf('If needed, you can run `bin/console %s Order_0018-A` for instance.', self::$defaultName));
-        }
 
         if (null !== $miraklOrderIds && count($miraklOrderIds) > 0) {
-            $this->logger->info('Creating specified Mirakl orders', ['order_ids' => $miraklOrderIds]);
-            $miraklOrders = $this->miraklClient->listMiraklOrders(null, $miraklOrderIds);
-            $this->createTransfers($miraklOrders);
+            $this->logger->info(
+                'Executing with specific orders',
+                [ 'order_ids' => $miraklOrderIds ]
+            );
+            $miraklOrders = $this->miraklClient->listOrdersById($miraklOrderIds);
         } else {
             $lastMiraklUpdateTime = $this->stripeTransferRepository->getLastMiraklUpdateTime();
-            $miraklOrders = $this->miraklClient->listMiraklOrders($lastMiraklUpdateTime, null);
-            $this->createTransfers($miraklOrders);
+
+            if (null !== $lastMiraklUpdateTime) {
+                $this->logger->info(
+                    'Executing for recent orders',
+                    [ 'since' => $lastMiraklUpdateTime->format(MiraklClient::DATE_FORMAT) ]
+                );
+                $miraklOrders = $this->miraklClient->listOrdersByDate($lastMiraklUpdateTime);
+            } else {
+                $this->logger->info('Executing for all orders');
+                $miraklOrders = $this->miraklClient->listOrders();
+            }
+        }
+
+        if (count($miraklOrders) > 0) {
+            $transfers = $this->prepareTransfers($miraklOrders);
+            $this->dispatchTransfers($transfers);
         }
 
         return 0;
     }
 
-    private function createTransfers(array $miraklOrders): void
+    private function prepareTransfers(array $miraklOrders): array
     {
-        if (0 === count($miraklOrders)) {
-            return;
-        }
+        $ignoredOrderStatuses = array(
+            'STAGING', 'WAITING_ACCEPTANCE', // Order not scored or approved yet
+            'WAITING_DEBIT', 'WAITING_DEBIT_PAYMENT', // Payment not processed yet
+            'REFUSED', 'CANCELED' // Order aborted by operator or seller
+        );
 
-        $ignoredStripeTransferStatuses = array(StripeTransfer::TRANSFER_CREATED);
-        $ignoredOrderLineStates = array('REFUSED', 'CANCELED');
+        // Retrieve existing StripeTransfers with provided order IDs
+        $existingTransfers = $this->stripeTransferRepository
+            ->findExistingTransfersByOrderIds(array_column($miraklOrders, 'order_id'));
 
-        $existingStripeTransfers = $this->stripeTransferRepository->findBy([
-            'miraklId' => array_column($miraklOrders, 'order_id'),
-            'type' => StripeTransfer::TRANSFER_ORDER,
-        ]);
-        $existingStripeTransfersByMiraklId = [];
-        foreach ($existingStripeTransfers as $transfer) {
-            $existingStripeTransfersByMiraklId[$transfer->getMiraklId()] = $transfer;
-        }
-
+        $transfers = [];
         foreach ($miraklOrders as $miraklOrder) {
-            $hasStripeTransfer = array_key_exists($miraklOrder['order_id'], $existingStripeTransfersByMiraklId);
+            $orderId = $miraklOrder['order_id'];
 
-            if ($hasStripeTransfer) {
-                $orderStripeTransfer = $existingStripeTransfersByMiraklId[$miraklOrder['order_id']];
-                $orderStripeTransfer
-                    ->setStatus(StripeTransfer::TRANSFER_PENDING);
-            } else {
-                $orderStripeTransfer = new StripeTransfer();
-                $orderStripeTransfer
-                    ->setType(StripeTransfer::TRANSFER_ORDER)
-                    ->setStatus(StripeTransfer::TRANSFER_PENDING);
-            }
-
-            if (in_array($orderStripeTransfer->getStatus(), $ignoredStripeTransferStatuses)) {
+            if (in_array($miraklOrder['order_state'], $ignoredOrderStatuses)) {
+                $ignoreReason = sprintf(
+                    'Skipping order in state %s',
+                    $miraklOrder['order_state']
+                );
+                $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
                 continue;
             }
 
-            $transactionId = $miraklOrder['transaction_number'];
-            if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_')) {
-                $orderStripeTransfer->setTransactionId($transactionId);
+            if (isset($existingTransfers[$orderId])) {
+                // Use existing transfer
+                $transfer = $existingTransfers[$orderId];
+
+                // TODO: if failed with transfer ID linking to a Stripe transfer, transition to created
+                if ($transfer->getStatus() == StripeTransfer::TRANSFER_CREATED) {
+                    $ignoreReason = 'Skipping order with existing created transfer in status';
+                    $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
+                    continue;
+                }
+
+                // Transfer to be retried for this order
+                $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+            } else {
+                // Initiating new transfer
+                $transfer = new StripeTransfer();
+                $transfer->setType(StripeTransfer::TRANSFER_ORDER);
+                $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+                $transfer->setMiraklId($orderId);
+
+                // Setting payment ID
+                $transactionId = $miraklOrder['transaction_number'];
+                if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_')) {
+                    $transfer->setTransactionId($transactionId);
+                }
             }
 
-            $taxes = 0;
-            if (isset($miraklOrder['order_lines']) && !empty($miraklOrder['order_lines'])) {
+            // Setting amount
+            $amount = $miraklOrder['total_price'] - $miraklOrder['total_commission'];
+            if (isset($miraklOrder['order_lines'])) {
                 foreach ($miraklOrder['order_lines'] as $orderLine) {
-                    if (in_array($orderLine['order_line_state'], $ignoredOrderLineStates)) {
+                    if (in_array($orderLine['order_line_state'], $ignoredOrderStatuses)) {
                         continue;
                     }
 
-                    foreach ((array) $orderLine['shipping_taxes'] as $tax) {
-                        $taxes += (float) $tax['amount'];
-                    }
+                    $allTaxes = array_merge(
+                        (array) $orderLine['shipping_taxes'],
+                        (array) $orderLine['taxes']
+                    );
 
-                    foreach ((array) $orderLine['taxes'] as $tax) {
-                        $taxes += (float) $tax['amount'];
+                    foreach ($allTaxes as $tax) {
+                        $amount += (float) $tax['amount'];
                     }
                 }
             }
 
-            $amountToTransfer = (int) (100 * ($miraklOrder['total_price'] + $taxes - $miraklOrder['total_commission']));
-            if ($amountToTransfer < 0) {
-                $failedReason = sprintf('Amount to tranfer must be positive');
-                $this->logger->error($failedReason, [
-                    'amount' => $amountToTransfer,
-                ]);
-                $orderStripeTransfer
-                    ->setStatus(StripeTransfer::TRANSFER_INVALID_AMOUNT)
-                    ->setFailedReason($failedReason);
+            if ($amount < 0) {
+                $this->failTransfer($transfer, sprintf(
+                    'Cannot transfer negative amount, %s provided',
+                    (string) $amount
+                ));
+                continue;
             }
 
-            $miraklShopId = $miraklOrder['shop_id'];
-            $miraklStripeMapping = $this->miraklStripeMappingRepository->findOneBy([
-                'miraklShopId' => $miraklShopId,
+            $transfer->setAmount((int) ($amount * 100));
+            $transfer->setCurrency($miraklOrder['currency_iso_code']);
+
+            // Seller ID
+            $shopId = $miraklOrder['shop_id'];
+            $mapping = $this->miraklStripeMappingRepository->findOneBy([
+                'miraklShopId' => $shopId,
             ]);
 
-            if (null === $miraklStripeMapping) {
-                $failedReason = sprintf('Stripe-Mirakl Mapping associated with Mirakl Shop ID %s does not exist', $miraklShopId);
-                $this->logger->error($failedReason, [
-                    'miraklShopId' => $miraklShopId,
-                ]);
-                $orderStripeTransfer
-                    ->setStatus(StripeTransfer::TRANSFER_FAILED)
-                    ->setFailedReason($failedReason);
-            } else {
-                $orderStripeTransfer
-                    ->setMiraklStripeMapping($miraklStripeMapping);
+            if (!$mapping) {
+                $this->failTransfer($transfer, sprintf(
+                    'Cannot find Stripe account for Seller ID %s',
+                    $shopId
+                ));
+                continue;
             }
 
-            $miraklUpdateTime = \DateTime::createFromFormat(MiraklClient::DATE_FORMAT, $miraklOrder['last_updated_date']);
+            $transfer->setMiraklStripeMapping($mapping);
+
+            // Mirakl update time
+            $miraklUpdateTime = \DateTime::createFromFormat(
+                MiraklClient::DATE_FORMAT,
+                $miraklOrder['last_updated_date']
+            );
+
             if (!$miraklUpdateTime) {
-                $failedReason = sprintf('Cannot parse last_updated_date from Mirakl: %s', $miraklOrder['last_updated_date']);
-                $this->logger->error($failedReason, ['last_updated_date' => $miraklOrder['last_updated_date']]);
-                $orderStripeTransfer
-                    ->setStatus(StripeTransfer::TRANSFER_FAILED)
-                    ->setFailedReason($failedReason);
-                $miraklUpdateTime = new \DateTime();
-                $miraklUpdateTime->setTimestamp(0);
+                $this->failTransfer($transfer, sprintf(
+                    'Cannot parse last_updated_date %s',
+                    $miraklOrder['last_updated_date']
+                ));
+                continue;
             }
 
-            $orderStripeTransfer
-                ->setAmount($amountToTransfer)
-                ->setMiraklId($miraklOrder['order_id'])
-                ->setCurrency($miraklOrder['currency_iso_code'])
-                ->setMiraklUpdateTime($miraklUpdateTime);
+            $transfer->setMiraklUpdateTime($miraklUpdateTime);
 
-            if ($hasStripeTransfer) {
-                $this->stripeTransferRepository->flush();
-            } else {
-                $this->stripeTransferRepository->persistAndFlush($orderStripeTransfer);
+            // Persist new transfer
+            if (!$transfer->getId()) {
+                $this->stripeTransferRepository->persist($transfer);
             }
 
-            if (StripeTransfer::TRANSFER_PENDING === $orderStripeTransfer->getStatus() && null !== $orderStripeTransfer->getId()) {
-                $message = new ProcessTransferMessage(StripeTransfer::TRANSFER_ORDER, $orderStripeTransfer->getId());
-                $this->bus->dispatch($message);
-            }
+            $transfers[] = $transfer;
+        }
+
+        // Save everything
+        $this->stripeTransferRepository->flush();
+
+        return $transfers;
+    }
+
+    private function dispatchTransfers(array $transfers): void
+    {
+        foreach ($transfers as $transfer) {
+            $this->bus->dispatch(new ProcessTransferMessage(
+                StripeTransfer::TRANSFER_ORDER,
+                $transfer->getId()
+            ));
+        }
+    }
+
+    private function failTransfer($transfer, $reason)
+    {
+        $this->logger->error($reason, [ 'order_id' => $transfer->getMiraklId() ]);
+
+        $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);
+        $transfer->setFailedReason($reason);
+
+        if (!$transfer->getId()) {
+            $this->stripeTransferRepository->persist($transfer);
         }
     }
 }

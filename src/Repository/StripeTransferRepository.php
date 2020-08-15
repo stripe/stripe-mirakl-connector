@@ -68,4 +68,19 @@ class StripeTransferRepository extends ServiceEntityRepository
             $existingIds
         );
     }
+
+    public function findExistingTransfersByOrderIds($idsToCheck)
+    {
+        $existingTransfers = $this->findBy([
+            'miraklId' => $idsToCheck,
+            'type' => StripeTransfer::TRANSFER_ORDER,
+        ]);
+
+        $transfersByOrderId = [];
+        foreach ($existingTransfers as $transfer) {
+            $transfersByOrderId[$transfer->getMiraklId()] = $transfer;
+        }
+
+        return $transfersByOrderId;
+    }
 }
