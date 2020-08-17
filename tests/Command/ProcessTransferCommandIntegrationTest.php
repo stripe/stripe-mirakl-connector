@@ -151,4 +151,34 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         // Only one message should be sent
         $this->assertCount(1, $this->doctrineReceiver->getSent());
     }
+
+    public function testFailedTransferAlreadyProcessed()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $createdStripeTransfer = new StripeTransfer();
+        $createdStripeTransfer
+            ->setType(StripeTransfer::TRANSFER_ORDER)
+            ->setStatus(StripeTransfer::TRANSFER_FAILED)
+            ->setMiraklId('order_already_processed')
+            ->setAmount('24')
+            ->setCurrency('EUR')
+            ->setMiraklUpdateTime(new \DateTime("2019-01-01"))
+            ->setTransferId('tr_1');
+        $this->stripeTransferRepository->persistAndFlush($createdStripeTransfer);
+
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_order_ids' => ['order_already_processed']
+        ]);
+
+        // Transfer should be transition to created
+        $stripeTransfer = $this->stripeTransferRepository->findOneBy([
+            'miraklId' => 'order_already_processed'
+        ]);
+        $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $stripeTransfer->getStatus());
+
+        // No message should be sent
+        $this->assertCount(0, $this->doctrineReceiver->getSent());
+    }
 }

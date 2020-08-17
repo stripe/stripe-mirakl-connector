@@ -140,9 +140,14 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 // Use existing transfer
                 $transfer = $existingTransfers[$orderId];
 
-                // TODO: if failed with transfer ID linking to a Stripe transfer, transition to created
                 if ($transfer->getStatus() == StripeTransfer::TRANSFER_CREATED) {
-                    $ignoreReason = 'Skipping order with existing created transfer in status';
+                    $ignoreReason = 'Skipping order with existing created transfer';
+                    $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
+                    continue;
+                } elseif ($transfer->getTransferId()) {
+                    // Should not happen but in case it does let's clean it up
+                    $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+                    $ignoreReason = 'Cleaning order with existing Stripe transfer';
                     $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
                     continue;
                 }
