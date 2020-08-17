@@ -26,6 +26,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonMiraklOrdersWithFailedTransfer());
                 case '/orders?customer_debited=true&order_ids=order_created_transfer%2Cnew_order_2':
                     return new MockResponse($this->getJsonMiraklOrdersWithCreatedTransfer());
+                case '/orders?customer_debited=true&order_ids=order_already_processed':
+                    return new MockResponse($this->getJsonMiraklOrdersWithAlreadyProcessedTransfer());
                 case '/orders?customer_debited=true&order_ids=order_1':
                     return new MockResponse($this->getJsonAlreadyExistingMiraklOrders());
                 case '/orders?customer_debited=true&order_ids=order_8':
@@ -196,6 +198,15 @@ class MiraklMockedHttpClient extends MockHttpClient
             'orders' => [
                 $this->getMiraklOrder('order_created_transfer'),
                 $this->getMiraklOrder('new_order_2'),
+            ],
+        ]);
+    }
+
+    private function getJsonMiraklOrdersWithAlreadyProcessedTransfer()
+    {
+        return json_encode([
+            'orders' => [
+                $this->getMiraklOrder('order_already_processed'),
             ],
         ]);
     }
