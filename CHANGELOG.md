@@ -1,5 +1,9 @@
 # Changelog
 
+- Version 1.1.4
+    - Fixed retry attempts for already created transfers
+    - Fixed missing listener for KYC update job
+
 - Version 1.1.3
     - Fixed mapping for notifications of FailedRefundMessage
 
