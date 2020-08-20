@@ -18,40 +18,44 @@
           "description": "If you need to call operator APIs from a front on a different domain, you can enable CORS",
           "value": "^https?://localhost(:[0-9]+)?$"
         },
-        "MAILER_DSN": {
+        "SMC_MAILER": {
           "description": "The entire Symfony Mailer configuration using a DSN-like URL format. See https://symfony.com/doc/current/components/mailer.html#mailer-dsn",
           "value": "smtp://null"
         },
-        "MESSENGER_TRANSPORT_DSN": {
+        "SMC_MESSENGER": {
           "description": "The transport used for the queuing system.",
           "value": "doctrine://default"
         },
-        "MIRAKL_API_KEY": {
+        "SMC_MIRAKL_API_KEY": {
           "description": "",
           "value": ""
         },
-        "MIRAKL_HOST_NAME": {
+        "SMC_MIRAKL_URL": {
           "description": "",
           "value": ""
         },
-        "OPERATOR_PASSWORD": {
+        "SMC_API_SECRET_KEY": {
           "description": "",
           "generator": "secret"
         },
-        "REDIRECT_ONBOARDING": {
+        "SMC_KYC_REDIRECT_URL": {
           "description": "The URL we will redirect the seller to after a successful account creation. Will be requested by a seller, must be publicly available. Default will be $MIRAKL_HOST_NAME/mmp/shop/account/shop",
           "value": ""
         },
-        "STRIPE_CLIENT_ID": {
+        "SMC_STRIPE_CLIENT_ID": {
           "description": "Your Stripe Connect Client ID. Available in your connect dashboard. https://dashboard.stripe.com/account/applications/settings",
           "value": ""
         },
-        "STRIPE_CLIENT_SECRET": {
+        "SMC_STRIPE_API_KEY": {
           "description": "",
           "value": ""
         },
-        "ENABLES_AUTOMATIC_TRANSFER_CREATION": {
+        "SMC_ENABLE_TRANSFERS": {
           "description": "Flag to enable/disable the automatic transfer process for you. Default is false.",
+          "value": "false"
+        },
+        "SMC_ENABLE_REFUNDS": {
+          "description": "Flag to enable/disable the automatic refund process for you. Default is false.",
           "value": "false"
         }
       },

@@ -5,38 +5,38 @@
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
   env(CORS_ALLOW_ORIGIN): "^https?://localhost(:[0-9]+)?$"
-  env(DATABASE_URL): ""
-  env(TECHNICAL_ALERT_EMAIL): ""
-  env(TECHNICAL_ALERT_EMAIL_FROM): ""
-  env(MAILER_DSN): "smtp://null"
-  env(BASE_HOST): ""
-  env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
-  env(ENABLES_AUTOMATIC_TRANSFER_CREATION): false
-  env(ENABLES_AUTOMATIC_REFUND_CREATION): false
-  env(REDIRECT_ONBOARDING): "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
-  env(STRIPE_PREFILL_ONBOARDING): false
-  env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
-  env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
-  env(OPERATOR_NOTIFICATION_URL): ""
+  env(SMC_DATABASE): ""
+  env(SMC_MAILER_TO): ""
+  env(SMC_MAILER_FROM): ""
+  env(SMC_MAILER): "smtp://null"
+  env(SMC_URL): ""
+  env(SMC_KYC_MIRAKL_CUSTOM_FIELD): "stripe-url"
+  env(SMC_ENABLE_TRANSFERS): false
+  env(SMC_ENABLE_REFUNDS): false
+  env(SMC_KYC_REDIRECT_URL): "%env(SMC_MIRAKL_URL)%/mmp/shop/account/shop"
+  env(SMC_KYC_PREFILL_FORM): false
+  env(SMC_WEBHOOK_ENABLE_ALERTS): true
+  env(SMC_WEBHOOK_ALERTS_DELAY): 10
+  env(SMC_WEBHOOK_URL): ""
 
-  app.base_host: "%env(BASE_HOST)%"
-  app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
-  app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"
-  app.stripe.webhook_secret: "%env(STRIPE_WEBHOOK_SECRET)%"
-  app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
-  app.stripe.enables_auto_transfer_creation: "%env(bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
-  app.stripe.enables_auto_refund_creation: "%env(bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
-  app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
-  app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
-  app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
-  app.redirect.onboarding: "%env(REDIRECT_ONBOARDING)%"
-  app.operator.notification_url: "%env(OPERATOR_NOTIFICATION_URL)%"
-  app.mailer.technical: "%env(TECHNICAL_ALERT_EMAIL)%"
-  app.mailer.technical_from: "%env(TECHNICAL_ALERT_EMAIL_FROM)%"
-  router.request_context.host: "%env(BASE_HOST)%"
+  app.base_host: "%env(SMC_URL)%"
+  app.stripe.client_id: "%env(SMC_STRIPE_CLIENT_ID)%"
+  app.stripe.client_secret: "%env(SMC_STRIPE_API_KEY)%"
+  app.stripe.webhook_secret: "%env(SMC_STRIPE_WEBHOOK_SECRET)%"
+  app.stripe.prefill_onboarding: "%env(bool:SMC_KYC_PREFILL_FORM)%"
+  app.stripe.enables_auto_transfer_creation: "%env(bool:SMC_ENABLE_TRANSFERS)%"
+  app.stripe.enables_auto_refund_creation: "%env(bool:SMC_ENABLE_REFUNDS)%"
+  app.mirakl.api_key: "%env(SMC_MIRAKL_API_KEY)%"
+  app.mirakl.host_name: "%env(SMC_MIRAKL_URL)%"
+  app.mirakl.stripe_custom_field_code: "%env(SMC_KYC_MIRAKL_CUSTOM_FIELD)%"
+  app.redirect.onboarding: "%env(SMC_KYC_REDIRECT_URL)%"
+  app.operator.notification_url: "%env(SMC_WEBHOOK_URL)%"
+  app.mailer.technical: "%env(SMC_MAILER_TO)%"
+  app.mailer.technical_from: "%env(SMC_MAILER_FROM)%"
+  router.request_context.host: "%env(SMC_URL)%"
   router.request_context.scheme: 'https'
-  app.endpoint_down.mail_notification: "%env(bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
-  app.endpoint_down.mail_notification_throttle: "%env(int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
+  app.endpoint_down.mail_notification: "%env(bool:SMC_WEBHOOK_ENABLE_ALERTS)%"
+  app.endpoint_down.mail_notification_throttle: "%env(int:SMC_WEBHOOK_ALERTS_DELAY)%"
 
 services:
   # default configuration for services in *this* file
@@ -93,8 +93,8 @@ services:
     lazy: true
     autowire: false
     arguments:
-      $fromEmail: '%env(TECHNICAL_ALERT_EMAIL_FROM)%'
-      $toEmail:   '%env(TECHNICAL_ALERT_EMAIL)%'
+      $fromEmail: '%env(SMC_MAILER_FROM)%'
+      $toEmail:   '%env(SMC_MAILER_TO)%'
       $subject:    '[Stripe-Mirakl] An Error Occurred! %%message%%'
 
   symfony_mailer_monolog:

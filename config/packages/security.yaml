@@ -4,7 +4,7 @@ security:
             memory:
                 users:
                     operator:
-                        password: '%env(OPERATOR_PASSWORD)%'
+                        password: '%env(SMC_API_SECRET_KEY)%'
                         roles: 'ROLE_USER'
     encoders:
         Symfony\Component\Security\Core\User\User: plaintext
