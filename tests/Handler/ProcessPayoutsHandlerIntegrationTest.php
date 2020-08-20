@@ -126,22 +126,23 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
 
         $this->assertEquals(1, count($stripePayoutsFailed));
 
-        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
-        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
-        $this->assertInstanceOf(PayoutFailedMessage::class, $messageEnvelope->getMessage());
-        $this->assertEquals([
-            'type' => 'payout.failed',
-            'payload' => [
-                'internalId' => 3,
-                'miraklInvoiceId' => 3,
-                'amount' => 2000,
-                'currency' => 'eur',
-                'stripePayoutId' => null,
-                'status' => 'PAYOUT_FAILED',
-                'failedReason' => '',
-            ],
-        ], $messageEnvelope->getMessage()->getContent());
+        $this->assertTrue($this->hasNotification(
+            PayoutFailedMessage::class,
+            [
+                'type' => 'payout.failed',
+                'payload' => [
+                    'internalId' => 3,
+                    'miraklInvoiceId' => 3,
+                    'amount' => 2000,
+                    'currency' => 'eur',
+                    'stripePayoutId' => null,
+                    'status' => 'PAYOUT_FAILED',
+                    'failedReason' => '',
+                ]
+            ]
+        ));
     }
+
     public function testProcessPayoutHandlerWithDisabledPayout()
     {
         $commandTester = new CommandTester($this->command);
@@ -160,20 +161,31 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
 
         $this->assertEquals(1, count($stripePayoutsFailed));
 
-        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
-        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
-        $this->assertInstanceOf(PayoutFailedMessage::class, $messageEnvelope->getMessage());
-        $this->assertEquals([
-            'type' => 'payout.failed',
-            'payload' => [
-                'internalId' => 4,
-                'miraklInvoiceId' => 999,
-                'amount' => 6000,
-                'currency' => 'eur',
-                'stripePayoutId' => null,
-                'status' => 'PAYOUT_FAILED',
-                'failedReason' => 'Unknown account, or payout is not enabled on this Stripe account',
-            ],
-        ], $messageEnvelope->getMessage()->getContent());
+        $this->assertTrue($this->hasNotification(
+            PayoutFailedMessage::class,
+            [
+                'type' => 'payout.failed',
+                'payload' => [
+                    'internalId' => 4,
+                    'miraklInvoiceId' => 999,
+                    'amount' => 6000,
+                    'currency' => 'eur',
+                    'stripePayoutId' => null,
+                    'status' => 'PAYOUT_FAILED',
+                    'failedReason' => 'Unknown account, or payout is not enabled on this Stripe account',
+                ]
+            ]
+        ));
+    }
+
+    private function hasNotification($class, $content) {
+        foreach ($this->httpNotificationReceiver->get() as $messageEnvelope) {
+            $message = $messageEnvelope->getMessage();
+            if ($message instanceof $class && $message->getContent() == $content) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
