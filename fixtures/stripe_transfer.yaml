@@ -68,3 +68,11 @@ App\Entity\StripeTransfer:
         status: 'TRANSFER_FAILED'
         currency: 'EUR'
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_transfer_9:
+        miraklId: 'order_failed_transfer'
+        type: 'TRANSFER_SUBSCRIPTION'
+        transactionId: 'ch_transaction_8'
+        amount: '24'
+        status: 'TRANSFER_FAILED'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'

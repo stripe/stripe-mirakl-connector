@@ -47,6 +47,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonMiraklInvoices());
                 case '/invoices?shop=1':
                     return new MockResponse($this->getSpecifiedJsonMiraklInvoices());
+                case '/invoices?shop=2':
+                    return new MockResponse($this->getJsonMiraklInvoicesWithFailedPayout());
                 case '/payment/refund':
                     switch ($method) {
                         case 'GET':
@@ -274,11 +276,11 @@ class MiraklMockedHttpClient extends MockHttpClient
         ]);
     }
 
-    private function getMiraklInvoice($invoiceId)
+    private function getMiraklInvoice($shopId, $invoiceId)
     {
         return [
             'invoice_id' => $invoiceId,
-            'shop_id' => 1,
+            'shop_id' => $shopId,
             'summary' => [
                 'amount_transferred' => 5000,
                 'total_subscription_incl_tax' => 1000,
@@ -294,7 +296,7 @@ class MiraklMockedHttpClient extends MockHttpClient
     {
         return json_encode([
             'invoices' => [
-                $this->getMiraklInvoice(4),
+                $this->getMiraklInvoice(1, 4),
             ],
         ]);
     }
@@ -303,7 +305,17 @@ class MiraklMockedHttpClient extends MockHttpClient
     {
         return json_encode([
             'invoices' => [
-                $this->getMiraklInvoice(5),
+                $this->getMiraklInvoice(1, 5),
+            ],
+        ]);
+    }
+
+    private function getJsonMiraklInvoicesWithFailedPayout()
+    {
+        return json_encode([
+            'invoices' => [
+                $this->getMiraklInvoice(2, 6),
+                $this->getMiraklInvoice(2, 7),
             ],
         ]);
     }

@@ -79,4 +79,29 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
         $this->assertEquals(4, count($stripePayoutsPending));
         $this->assertEquals(6, count($stripeTransfersPending));
     }
+
+    public function testRetryFailedPayout()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_shop_id' => '2',
+        ]);
+
+        // Failed payout should be retried
+        $retriedStripePayout = $this->stripePayoutRepository->findOneBy([
+            'miraklId' => 6
+        ]);
+        $this->assertEquals(StripePayout::PAYOUT_PENDING, $retriedStripePayout->getStatus());
+
+        // Subsequent transfer should not have failed (no "EntityManager closed" error)
+        $subsequentStripePayout = $this->stripePayoutRepository->findOneBy([
+            'miraklId' => 7
+        ]);
+        $this->assertEquals(StripePayout::PAYOUT_PENDING, $subsequentStripePayout->getStatus());
+
+        // Two messages should be sent
+        $this->assertCount(2, $this->doctrineReceiver->getSent());
+    }
 }

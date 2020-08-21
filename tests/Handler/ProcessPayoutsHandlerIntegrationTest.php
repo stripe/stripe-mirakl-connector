@@ -64,67 +64,73 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
             $this->messageBus
         );
 
-        $logger = new NullLogger();
-
-        $this->handler->setLogger($logger);
+        $this->handler->setLogger(new NullLogger());
     }
 
     public function testProcessPayoutHandler()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $countPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $countFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
         $message = new ProcessPayoutMessage(2);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripePayoutsCreated = $this->stripePayoutRepository->findBy([
-            'status' => StripePayout::PAYOUT_CREATED,
-        ]);
+        $newCountCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $newCountPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $newCountFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
-        $this->assertEquals(2, count($stripePayoutsCreated));
+        $this->assertEquals($countCreated + 1, $newCountCreated);
+        $this->assertEquals($countPending - 1, $newCountPending);
+        $this->assertEquals($countFailed, $newCountFailed);
     }
 
     public function testProcessPayoutHandlerWithUnknownId()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $countPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $countFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
         $message = new ProcessPayoutMessage(9999);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripePayoutsCreated = $this->stripePayoutRepository->findBy([
-            'status' => StripePayout::PAYOUT_CREATED,
-        ]);
+        $newCountCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $newCountPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $newCountFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
-        // No payout was created, no error
-        $this->assertEquals(1, count($stripePayoutsCreated));
+        $this->assertEquals($countCreated, $newCountCreated);
+        $this->assertEquals($countPending, $newCountPending);
+        $this->assertEquals($countFailed, $newCountFailed);
     }
 
     public function testProcessPayoutHandlerWithStripeError()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $countPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $countFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
         $message = new ProcessPayoutMessage(3);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripePayoutsFailed = $this->stripePayoutRepository->findBy([
-            'status' => StripePayout::PAYOUT_FAILED,
-        ]);
+        $newCountCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $newCountPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $newCountFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
-        $this->assertEquals(1, count($stripePayoutsFailed));
+        $this->assertEquals($countCreated, $newCountCreated);
+        $this->assertEquals($countPending - 1, $newCountPending);
+        $this->assertEquals($countFailed + 1, $newCountFailed);
 
         $this->assertTrue($this->hasNotification(
             PayoutFailedMessage::class,
@@ -146,20 +152,23 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
     public function testProcessPayoutHandlerWithDisabledPayout()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $countPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $countFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
         $message = new ProcessPayoutMessage(4);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripePayoutsFailed = $this->stripePayoutRepository->findBy([
-            'status' => StripePayout::PAYOUT_FAILED,
-        ]);
+        $newCountCreated = $this->countByStatus(StripePayout::PAYOUT_CREATED);
+        $newCountPending = $this->countByStatus(StripePayout::PAYOUT_PENDING);
+        $newCountFailed = $this->countByStatus(StripePayout::PAYOUT_FAILED);
 
-        $this->assertEquals(1, count($stripePayoutsFailed));
+        $this->assertEquals($countCreated, $newCountCreated);
+        $this->assertEquals($countPending - 1, $newCountPending);
+        $this->assertEquals($countFailed + 1, $newCountFailed);
 
         $this->assertTrue($this->hasNotification(
             PayoutFailedMessage::class,
@@ -176,6 +185,12 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
                 ]
             ]
         ));
+    }
+
+    private function countByStatus($status) {
+        return count($this->stripePayoutRepository->findBy([
+            'status' => $status,
+        ]));
     }
 
     private function hasNotification($class, $content) {

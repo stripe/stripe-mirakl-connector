@@ -64,15 +64,13 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
             $this->messageBus,
         );
 
-        $logger = new NullLogger();
-
-        $this->handler->setLogger($logger);
+        $this->handler->setLogger(new NullLogger());
     }
 
     public function testProcessTransferHandler()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([ 'command' => $this->command->getName() ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
 
         $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
         $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
@@ -94,7 +92,7 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
     public function testProcessTransferHandlerWithStripeError()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([ 'command' => $this->command->getName() ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
 
         $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
         $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
@@ -136,7 +134,7 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
     public function testProcessTransferHandlerWithUnexistingMapping()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([ 'command' => $this->command->getName() ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
 
         $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
         $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
@@ -178,9 +176,7 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
     public function testProcessTransferHandlerWithUnexistingTransferId()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
 
         $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
         $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
@@ -193,7 +189,6 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
         $newCountCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
         $newCountPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
         $newCountFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
-
 
         $this->assertEquals($countCreated, $newCountCreated);
         $this->assertEquals($countPending, $newCountPending);
