@@ -12,10 +12,23 @@ Some examples of tasks required to complete the configuration for production:
 - Update [nginx.conf](app/config/nginx.conf) and [php.ini](app/config/php.ini) to fit your server configuration.
 - Deny access to the OpenAPI specs.
 
-## How-to use it
+## Installation
 
 1. Rename [.env.dist](../../.env.dist) to `.env` and update the configuration, see the [Configuration](https://stripe.com/docs/plugins/mirakl/configuration) step in our docs.
-2. Start the application: `docker-compose up -d` or `make install`.
-3. If you are starting the application for the first time, run `docker-compose run --rm app bin/console doctrine:migration:migrate --no-interaction` or `make db-install` to set up the database.
+2. From the [examples/docker](./) folder, run `make install` to start the application.
+3. If you are starting the application for the first time, run `make db-install` to set up the database.
+
+## Upgrade
+
+1. From the root of your clone, run `git pull` to download changes.
+2. From the [examples/docker](./) folder, run `docker-compose up -d --build app` to rebuild and deploy the new version.
+3. Run `make db-install` to check and apply database updates.
+
+## Start jobs manually
+
+1. Find the command you wish to run manually in [examples/docker](app/config/crontab).
+2. Run the command through docker, e.g. `docker-compose run --rm app php bin/console connector:dispatch:process-transfer`
+
+## Read logs
 
 Logs are available under the `app` service: `docker-compose logs -tf app`.
