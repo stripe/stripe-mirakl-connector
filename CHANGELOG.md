@@ -1,5 +1,9 @@
 # Changelog
 
+- Version 1.1.5
+    - Improved process-payouts job
+    - Fixed rare cases of one cent discrepancy in amount calculation
+
 - Version 1.1.4
     - Fixed retry attempts for already created transfers
     - Fixed missing listener for KYC update job
