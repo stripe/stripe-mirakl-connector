@@ -195,13 +195,15 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
         $this->assertEquals($countFailed, $newCountFailed);
     }
 
-    private function countByStatus($status) {
+    private function countByStatus($status): int
+    {
         return count($this->stripeTransferRepository->findBy([
             'status' => $status,
         ]));
     }
 
-    private function hasNotification($class, $content) {
+    private function hasNotification($class, $content): bool
+    {
         foreach ($this->httpNotificationReceiver->get() as $messageEnvelope) {
             $message = $messageEnvelope->getMessage();
             if ($message instanceof $class && $message->getContent() == $content) {

@@ -54,21 +54,6 @@ class StripeTransferRepository extends ServiceEntityRepository
         return $lastUpdatedStripeTransfer->getMiraklUpdateTime();
     }
 
-    public function findAlreadyCreatedMiraklIds($idsToCheck)
-    {
-        $existingIds = $this->findBy([
-            'miraklId' => $idsToCheck,
-            'status' => StripeTransfer::TRANSFER_CREATED,
-        ]);
-
-        return array_map(
-            function ($transfer) {
-                return $transfer->getMiraklId();
-            },
-            $existingIds
-        );
-    }
-
     public function findExistingTransfersByOrderIds($idsToCheck)
     {
         $existingTransfers = $this->findBy([
@@ -82,5 +67,26 @@ class StripeTransferRepository extends ServiceEntityRepository
         }
 
         return $transfersByOrderId;
+    }
+
+    public function findExistingTransfersByInvoiceIds($idsToCheck)
+    {
+        $existingTransfers = $this->findBy([
+            'miraklId' => $idsToCheck,
+            'type' => [
+                StripeTransfer::TRANSFER_SUBSCRIPTION,
+                StripeTransfer::TRANSFER_EXTRA_CREDITS,
+                StripeTransfer::TRANSFER_EXTRA_INVOICES
+            ]
+        ]);
+
+        $transfersByInvoiceIdAndType = [];
+        foreach ($existingTransfers as $transfer) {
+            $transfersByInvoiceIdAndType[$transfer->getMiraklId()] = [
+                $transfer->getType() => $transfer
+            ];
+        }
+
+        return $transfersByInvoiceIdAndType;
     }
 }

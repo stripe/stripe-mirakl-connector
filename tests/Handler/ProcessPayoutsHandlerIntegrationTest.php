@@ -139,7 +139,7 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
                 'payload' => [
                     'internalId' => 3,
                     'miraklInvoiceId' => 3,
-                    'amount' => 2000,
+                    'amount' => 1234,
                     'currency' => 'eur',
                     'stripePayoutId' => null,
                     'status' => 'PAYOUT_FAILED',
@@ -177,7 +177,7 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
                 'payload' => [
                     'internalId' => 4,
                     'miraklInvoiceId' => 999,
-                    'amount' => 6000,
+                    'amount' => 1234,
                     'currency' => 'eur',
                     'stripePayoutId' => null,
                     'status' => 'PAYOUT_FAILED',
@@ -187,13 +187,15 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
         ));
     }
 
-    private function countByStatus($status) {
+    private function countByStatus($status): int
+    {
         return count($this->stripePayoutRepository->findBy([
             'status' => $status,
         ]));
     }
 
-    private function hasNotification($class, $content) {
+    private function hasNotification($class, $content): bool
+    {
         foreach ($this->httpNotificationReceiver->get() as $messageEnvelope) {
             $message = $messageEnvelope->getMessage();
             if ($message instanceof $class && $message->getContent() == $content) {

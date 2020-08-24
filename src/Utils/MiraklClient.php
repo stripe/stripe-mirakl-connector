@@ -27,7 +27,7 @@ class MiraklClient implements LoggerAwareInterface
         $this->client = $miraklClient;
     }
 
-    private function getOrders(array $query = null)
+    private function getOrders(?array $query)
     {
         $filters = [
             'query' => [ 'customer_debited' => 'true' ]
@@ -46,20 +46,20 @@ class MiraklClient implements LoggerAwareInterface
     // GET OR11
     public function listOrders()
     {
-        return $this->getOrders();
+        return $this->getOrders([]);
     }
 
     // GET OR11 by date
-    public function listOrdersByDate(\DateTimeInterface $datetime)
+    public function listOrdersByDate(?\DateTimeInterface $datetime)
     {
-        $dt = $datetime->format(self::DATE_FORMAT);
+        $dt = $datetime !== null ? $datetime->format(self::DATE_FORMAT) : null;
         return $this->getOrders([ 'start_update_date' => $dt ]);
     }
 
     // GET OR11 by id
-    public function listOrdersById(array $orderIds)
+    public function listOrdersById(?array $orderIds)
     {
-        return $this->getOrders([ 'order_ids' => implode(',', $orderIds) ]);
+        return $this->getOrders([ 'order_ids' => implode(',', (array) $orderIds) ]);
     }
 
     // GET PA12
@@ -80,22 +80,33 @@ class MiraklClient implements LoggerAwareInterface
         ]);
     }
 
-    // GET IV01
-    public function listMiraklInvoices(?\DateTimeInterface $lastMiraklUpdateTime, ?string $miraklShopId)
+    private function getInvoices(?array $query)
     {
-        $filters = ['query' => []];
+        $filters = ['query' => $query ?: []];
 
-        if (null !== $lastMiraklUpdateTime) {
-            $filters['query']['start_date'] = $lastMiraklUpdateTime->format(self::DATE_FORMAT);
-        }
-
-        if ('' !== $miraklShopId) {
-            $filters['query']['shop'] = $miraklShopId;
-        }
         $this->logger->info('[Mirakl API] Call to IV01 - fetch invoices');
         $response = $this->client->request('GET', '/api/invoices', $filters);
 
         return json_decode($response->getContent(), true)['invoices'];
+    }
+
+    // GET IV01
+    public function listInvoices()
+    {
+        return $this->getInvoices([]);
+    }
+
+    // GET IV01 by date
+    public function listInvoicesByDate(?\DateTimeInterface $datetime)
+    {
+        $dt = $datetime !== null ? $datetime->format(self::DATE_FORMAT) : null;
+        return $this->getInvoices([ 'start_date' => $dt ]);
+    }
+
+    // GET IV01 by shop
+    public function listInvoicesByShopId(?string $shopId)
+    {
+        return $this->getInvoices([ 'shop' => $shopId ]);
     }
 
     // GET S20
