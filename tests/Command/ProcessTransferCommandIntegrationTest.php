@@ -86,16 +86,6 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
     {
         $commandTester = new CommandTester($this->command);
 
-        $failedStripeTransfer = new StripeTransfer();
-        $failedStripeTransfer
-            ->setType(StripeTransfer::TRANSFER_ORDER)
-            ->setStatus(StripeTransfer::TRANSFER_FAILED)
-            ->setMiraklId('order_failed_transfer')
-            ->setAmount('24')
-            ->setCurrency('EUR')
-            ->setMiraklUpdateTime(new \DateTime("2019-01-01"));
-        $this->stripeTransferRepository->persistAndFlush($failedStripeTransfer);
-
         $commandTester->execute([
             'command' => $this->command->getName(),
             'mirakl_order_ids' => ['order_failed_transfer', 'new_order_1']
@@ -120,16 +110,6 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
     public function testRetryCreatedTransfer()
     {
         $commandTester = new CommandTester($this->command);
-
-        $createdStripeTransfer = new StripeTransfer();
-        $createdStripeTransfer
-            ->setType(StripeTransfer::TRANSFER_ORDER)
-            ->setStatus(StripeTransfer::TRANSFER_CREATED)
-            ->setMiraklId('order_created_transfer')
-            ->setAmount('24')
-            ->setCurrency('EUR')
-            ->setMiraklUpdateTime(new \DateTime("2019-01-01"));
-        $this->stripeTransferRepository->persistAndFlush($createdStripeTransfer);
 
         $commandTester->execute([
             'command' => $this->command->getName(),
@@ -156,23 +136,12 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
     {
         $commandTester = new CommandTester($this->command);
 
-        $createdStripeTransfer = new StripeTransfer();
-        $createdStripeTransfer
-            ->setType(StripeTransfer::TRANSFER_ORDER)
-            ->setStatus(StripeTransfer::TRANSFER_FAILED)
-            ->setMiraklId('order_already_processed')
-            ->setAmount('24')
-            ->setCurrency('EUR')
-            ->setMiraklUpdateTime(new \DateTime("2019-01-01"))
-            ->setTransferId('tr_1');
-        $this->stripeTransferRepository->persistAndFlush($createdStripeTransfer);
-
         $commandTester->execute([
             'command' => $this->command->getName(),
             'mirakl_order_ids' => ['order_already_processed']
         ]);
 
-        // Transfer should be transition to created
+        // Transfer should be transitioned back to created
         $stripeTransfer = $this->stripeTransferRepository->findOneBy([
             'miraklId' => 'order_already_processed'
         ]);

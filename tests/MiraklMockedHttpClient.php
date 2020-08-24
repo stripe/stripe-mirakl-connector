@@ -43,10 +43,18 @@ class MiraklMockedHttpClient extends MockHttpClient
                 case '/shops?paginate=false':
                 case '/shops?paginate=false&updated_since=2019-10-01T00%3A00%3A00%2B0000':
                     return new MockResponse($this->getJsonShops());
+                case '/invoices':
+                    return new MockResponse($this->getJsonMiraklInvoices());
                 case '/invoices?start_date=2019-01-01T00%3A00%3A00%2B0000':
                     return new MockResponse($this->getJsonMiraklInvoices());
                 case '/invoices?shop=1':
                     return new MockResponse($this->getSpecifiedJsonMiraklInvoices());
+                case '/invoices?shop=2':
+                    return new MockResponse($this->getJsonMiraklInvoicesWithFailedPayout());
+                case '/invoices?shop=3':
+                    return new MockResponse($this->getJsonAlreadyExistingMiraklInvoices());
+                case '/invoices?shop=4':
+                    return new MockResponse($this->getJsonFailedTransferMiraklInvoices());
                 case '/payment/refund':
                     switch ($method) {
                         case 'GET':
@@ -274,16 +282,16 @@ class MiraklMockedHttpClient extends MockHttpClient
         ]);
     }
 
-    private function getMiraklInvoice($invoiceId)
+    private function getMiraklInvoice($shopId, $invoiceId)
     {
         return [
             'invoice_id' => $invoiceId,
-            'shop_id' => 1,
+            'shop_id' => $shopId,
             'summary' => [
-                'amount_transferred' => 5000,
-                'total_subscription_incl_tax' => 1000,
-                'total_other_credits_incl_tax' => 1500,
-                'total_other_invoices_incl_tax' => 2000,
+                'amount_transferred' => 12.34,
+                'total_subscription_incl_tax' => 9.99,
+                'total_other_credits_incl_tax' => 56.78,
+                'total_other_invoices_incl_tax' => 98.76,
             ],
             'currency_iso_code' => 'eur',
             'end_time' => '2019-09-24T14:00:40Z',
@@ -294,7 +302,7 @@ class MiraklMockedHttpClient extends MockHttpClient
     {
         return json_encode([
             'invoices' => [
-                $this->getMiraklInvoice(4),
+                $this->getMiraklInvoice(1, 4),
             ],
         ]);
     }
@@ -303,7 +311,37 @@ class MiraklMockedHttpClient extends MockHttpClient
     {
         return json_encode([
             'invoices' => [
-                $this->getMiraklInvoice(5),
+                $this->getMiraklInvoice(1, 5),
+            ],
+        ]);
+    }
+
+    private function getJsonMiraklInvoicesWithFailedPayout()
+    {
+        return json_encode([
+            'invoices' => [
+                $this->getMiraklInvoice(2, 6),
+                $this->getMiraklInvoice(2, 7),
+            ],
+        ]);
+    }
+
+    private function getJsonAlreadyExistingMiraklInvoices()
+    {
+        return json_encode([
+            'invoices' => [
+                $this->getMiraklInvoice(3, 8),
+                $this->getMiraklInvoice(3, 9),
+            ],
+        ]);
+    }
+
+    private function getJsonFailedTransferMiraklInvoices()
+    {
+        return json_encode([
+            'invoices' => [
+                $this->getMiraklInvoice(3, 10),
+                $this->getMiraklInvoice(3, 11),
             ],
         ]);
     }

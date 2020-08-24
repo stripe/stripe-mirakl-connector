@@ -1,5 +1,5 @@
 App\Entity\StripeTransfer:
-    stripe_transfer_1:
+    stripe_transfer_1: # Good order
         miraklId: 'order_1'
         miraklStripeMapping: '@mapping_1'
         type: 'TRANSFER_ORDER'
@@ -8,7 +8,7 @@ App\Entity\StripeTransfer:
         status: 'TRANSFER_PENDING'
         currency: 'EUR'
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
-    stripe_transfer_2:
+    stripe_transfer_2: # Fails due to Stripe API error
         miraklId: 'order_2'
         miraklStripeMapping: '@mapping_2'
         type: 'TRANSFER_ORDER'
@@ -17,7 +17,7 @@ App\Entity\StripeTransfer:
         status: 'TRANSFER_PENDING'
         currency: 'EUR'
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
-    stripe_transfer_3:
+    stripe_transfer_3: # Fails due to missing mapping
         miraklId: 'order_3'
         type: 'TRANSFER_ORDER'
         transactionId: 'ch_transaction_3'
@@ -41,5 +41,37 @@ App\Entity\StripeTransfer:
         transferId: 'transfer_5'
         amount: '24'
         status: 'TRANSFER_CREATED'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_transfer_6:
+        miraklId: 'order_created_transfer'
+        type: 'TRANSFER_ORDER'
+        transactionId: 'ch_transaction_6'
+        amount: '24'
+        status: 'TRANSFER_CREATED'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_transfer_7:
+        miraklId: 'order_already_processed'
+        type: 'TRANSFER_ORDER'
+        transactionId: 'ch_transaction_7'
+        transferId: 'transfer_7'
+        amount: '24'
+        status: 'TRANSFER_FAILED'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_transfer_8:
+        miraklId: 'order_failed_transfer'
+        type: 'TRANSFER_ORDER'
+        transactionId: 'ch_transaction_8'
+        amount: '24'
+        status: 'TRANSFER_FAILED'
+        currency: 'EUR'
+        mirakl_update_time: '<(new DateTime("2019-01-01"))>'
+    stripe_transfer_9:
+        miraklId: 10
+        type: 'TRANSFER_SUBSCRIPTION'
+        amount: '1000'
+        status: 'TRANSFER_FAILED'
         currency: 'EUR'
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'

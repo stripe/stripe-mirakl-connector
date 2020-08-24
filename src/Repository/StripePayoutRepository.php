@@ -27,6 +27,18 @@ class StripePayoutRepository extends ServiceEntityRepository
         return $stripePayout;
     }
 
+    public function persist(StripePayout $stripePayout): StripePayout
+    {
+        $this->getEntityManager()->persist($stripePayout);
+
+        return $stripePayout;
+    }
+
+    public function flush()
+    {
+        $this->getEntityManager()->flush();
+    }
+
     public function getLastMiraklUpdateTime(): ?\DateTimeInterface
     {
         $lastUpdatedStripePayout = $this->createQueryBuilder('p')
@@ -42,18 +54,17 @@ class StripePayoutRepository extends ServiceEntityRepository
         return $lastUpdatedStripePayout->getMiraklUpdateTime();
     }
 
-    public function findAlreadyCreatedInvoiceIds($idsToCheck)
+    public function findExistingPayoutsByInvoiceIds($idsToCheck)
     {
-        $existingIds = $this->findBy([
-            'miraklInvoiceId' => $idsToCheck,
-            'status' => StripePayout::PAYOUT_CREATED,
+        $existingPayouts = $this->findBy([
+            'miraklInvoiceId' => $idsToCheck
         ]);
 
-        return array_map(
-            function ($stripePayout) {
-                return $stripePayout->getMiraklInvoiceId();
-            },
-            $existingIds
-        );
+        $payoutsByInvoiceId = [];
+        foreach ($existingPayouts as $payout) {
+            $payoutsByInvoiceId[$payout->getMiraklInvoiceId()] = $payout;
+        }
+
+        return $payoutsByInvoiceId;
     }
 }

@@ -64,144 +64,153 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
             $this->messageBus,
         );
 
-        $logger = new NullLogger();
-
-        $this->handler->setLogger($logger);
+        $this->handler->setLogger(new NullLogger());
     }
 
     public function testProcessTransferHandler()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $countFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
 
         $message = new ProcessTransferMessage(StripeTransfer::TRANSFER_ORDER, 1);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripeTransfersCreated = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_CREATED,
-        ]);
-        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_PENDING,
-        ]);
-        $this->assertEquals(2, count($stripeTransfersPending));
-        $this->assertEquals(3, count($stripeTransfersCreated));
-        $this->assertEquals('order_1', $stripeTransfersCreated[0]->getMiraklId());
+        $newCountCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $newCountPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $newCountFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
+
+        $this->assertEquals($countCreated + 1, $newCountCreated);
+        $this->assertEquals($countPending - 1, $newCountPending);
+        $this->assertEquals($countFailed, $newCountFailed);
     }
 
     public function testProcessTransferHandlerWithStripeError()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $countFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
 
         $message = new ProcessTransferMessage(StripeTransfer::TRANSFER_ORDER, 2);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_PENDING,
-        ]);
-        $stripeTransfersFailed = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_FAILED,
-        ]);
+        $newCountCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $newCountPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $newCountFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
 
-        $this->assertEquals(2, count($stripeTransfersPending));
-        $this->assertEquals(1, count($stripeTransfersFailed));
-        $this->assertEquals('order_2', $stripeTransfersFailed[0]->getMiraklId());
+        $this->assertEquals($countCreated, $newCountCreated);
+        $this->assertEquals($countPending - 1, $newCountPending);
+        $this->assertEquals($countFailed + 1, $newCountFailed);
 
-        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
-        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
-        $this->assertInstanceOf(TransferFailedMessage::class, $messageEnvelope->getMessage());
-        $this->assertEquals([
-            'type' => 'transfer.failed',
-            'payload' => [
-                'internalId' => 2,
-                'type' => StripeTransfer::TRANSFER_ORDER,
-                'miraklId' => 'order_2',
-                'stripeAccountId' => 'acct_2',
-                'miraklShopId' => 2,
-                'transferId' => null,
-                'transactionId' => 'py_transaction_2',
-                'amount' => 24,
-                'status' => 'TRANSFER_FAILED',
-                'failedReason' => '',
-                'currency' => 'EUR',
-            ],
-        ], $messageEnvelope->getMessage()->getContent());
+        $this->assertTrue($this->hasNotification(
+            TransferFailedMessage::class,
+            [
+                'type' => 'transfer.failed',
+                'payload' => [
+                    'internalId' => 2,
+                    'type' => StripeTransfer::TRANSFER_ORDER,
+                    'miraklId' => 'order_2',
+                    'stripeAccountId' => 'acct_2',
+                    'miraklShopId' => 2,
+                    'transferId' => null,
+                    'transactionId' => 'py_transaction_2',
+                    'amount' => 24,
+                    'status' => 'TRANSFER_FAILED',
+                    'failedReason' => '',
+                    'currency' => 'EUR',
+                ]
+            ]
+        ));
     }
 
     public function testProcessTransferHandlerWithUnexistingMapping()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $countFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
 
         $message = new ProcessTransferMessage(StripeTransfer::TRANSFER_ORDER, 3);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_PENDING,
-        ]);
-        $stripeTransfersFailed = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_FAILED,
-        ]);
+        $newCountCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $newCountPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $newCountFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
 
-        $this->assertEquals(2, count($stripeTransfersPending));
-        $this->assertEquals(1, count($stripeTransfersFailed));
-        $this->assertEquals('order_3', $stripeTransfersFailed[0]->getMiraklId());
+        $this->assertEquals($countCreated, $newCountCreated);
+        $this->assertEquals($countPending - 1, $newCountPending);
+        $this->assertEquals($countFailed + 1, $newCountFailed);
 
-        $this->assertCount(1, $this->httpNotificationReceiver->getSent());
-        $messageEnvelope = $this->httpNotificationReceiver->get()[0];
-        $this->assertInstanceOf(TransferFailedMessage::class, $messageEnvelope->getMessage());
-        $this->assertEquals([
-            'type' => 'transfer.failed',
-            'payload' => [
-                'internalId' => 3,
-                'type' => StripeTransfer::TRANSFER_ORDER,
-                'miraklId' => 'order_3',
-                'stripeAccountId' => null,
-                'miraklShopId' => null,
-                'transferId' => null,
-                'transactionId' => 'ch_transaction_3',
-                'amount' => 24,
-                'status' => 'TRANSFER_FAILED',
-                'failedReason' => 'Stripe transfer 3 has no associated Mirakl-Stripe mapping',
-                'currency' => 'EUR',
-            ],
-        ], $messageEnvelope->getMessage()->getContent());
-
-        $this->assertStringContainsString('has no associated Mirakl-Stripe mapping', $stripeTransfersFailed[0]->getFailedReason());
+        $this->assertTrue($this->hasNotification(
+            TransferFailedMessage::class,
+            [
+                'type' => 'transfer.failed',
+                'payload' => [
+                    'internalId' => 3,
+                    'type' => StripeTransfer::TRANSFER_ORDER,
+                    'miraklId' => 'order_3',
+                    'stripeAccountId' => null,
+                    'miraklShopId' => null,
+                    'transferId' => null,
+                    'transactionId' => 'ch_transaction_3',
+                    'amount' => 24,
+                    'status' => 'TRANSFER_FAILED',
+                    'failedReason' => 'Stripe transfer 3 has no associated Mirakl-Stripe mapping',
+                    'currency' => 'EUR',
+                ]
+            ]
+        ));
     }
 
     public function testProcessTransferHandlerWithUnexistingTransferId()
     {
         $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-        ]);
+        $commandTester->execute(['command' => $this->command->getName()]);
+
+        $countCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $countPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $countFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
 
         $message = new ProcessTransferMessage(StripeTransfer::TRANSFER_ORDER, 9999);
-
         $handler = $this->handler;
         $handler($message);
 
-        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_PENDING,
-        ]);
-        $stripeTransfersFailed = $this->stripeTransferRepository->findBy([
-            'status' => StripeTransfer::TRANSFER_FAILED,
-        ]);
+        $newCountCreated = $this->countByStatus(StripeTransfer::TRANSFER_CREATED);
+        $newCountPending = $this->countByStatus(StripeTransfer::TRANSFER_PENDING);
+        $newCountFailed = $this->countByStatus(StripeTransfer::TRANSFER_FAILED);
 
-        $this->assertEquals(3, count($stripeTransfersPending));
-        $this->assertEquals(0, count($stripeTransfersFailed));
+        $this->assertEquals($countCreated, $newCountCreated);
+        $this->assertEquals($countPending, $newCountPending);
+        $this->assertEquals($countFailed, $newCountFailed);
+    }
+
+    private function countByStatus($status): int
+    {
+        return count($this->stripeTransferRepository->findBy([
+            'status' => $status,
+        ]));
+    }
+
+    private function hasNotification($class, $content): bool
+    {
+        foreach ($this->httpNotificationReceiver->get() as $messageEnvelope) {
+            $message = $messageEnvelope->getMessage();
+            if ($message instanceof $class && $message->getContent() == $content) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

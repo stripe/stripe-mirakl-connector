@@ -90,173 +90,288 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
         }
 
         if ('' !== $miraklShopId) {
+            $this->logger->info(
+                'Executing with specific shop',
+                [ 'shop_id' => $miraklShopId ]
+            );
             $this->logger->info('Creating specified Mirakl invoices', ['mirakl_shop_id' => $miraklShopId]);
-            $miraklInvoices = $this->miraklClient->listMiraklInvoices(null, $miraklShopId);
+            $miraklInvoices = $this->miraklClient->listInvoicesByShopId($miraklShopId);
         } else {
             $lastMiraklUpdateTime = $this->stripePayoutRepository->getLastMiraklUpdateTime();
-            $miraklInvoices = $this->miraklClient->listMiraklInvoices($lastMiraklUpdateTime, null);
+
+            if (null !== $lastMiraklUpdateTime) {
+                $this->logger->info(
+                    'Executing for recent invoices',
+                    [ 'since' => $lastMiraklUpdateTime->format(MiraklClient::DATE_FORMAT) ]
+                );
+                $miraklInvoices = $this->miraklClient->listInvoicesByDate($lastMiraklUpdateTime);
+            } else {
+                $this->logger->info('Executing for all invoices');
+                $miraklInvoices = $this->miraklClient->listInvoices();
+            }
         }
-        $this->createInvoices($miraklInvoices);
-        $output->writeln('Dispatching in process_payout queue');
+
+        if (count($miraklInvoices) > 0) {
+            $transfers = $this->prepareTransfers($miraklInvoices);
+            $payouts = $this->preparePayouts($miraklInvoices);
+
+            $this->dispatchTransfers($transfers);
+            $this->dispatchPayouts($payouts);
+        }
 
         return 0;
     }
 
-    private function createInvoices(array $miraklInvoicesToCreate): void
+    private function prepareTransfers(array $miraklInvoices): array
     {
-        if (0 === count($miraklInvoicesToCreate)) {
-            return;
-        }
-        $toCreateIds = array_column($miraklInvoicesToCreate, 'invoice_id');
+        // Retrieve existing StripeTransfers with provided invoice IDs
+        $existingTransfers = $this->stripeTransferRepository
+            ->findExistingTransfersByInvoiceIds(array_column($miraklInvoices, 'invoice_id'));
 
-        $alreadyCreatedInvoiceIds = $this->stripePayoutRepository->findAlreadyCreatedInvoiceIds($toCreateIds);
-        foreach ($miraklInvoicesToCreate as $miraklInvoice) {
-            if (in_array($miraklInvoice['invoice_id'], $alreadyCreatedInvoiceIds)) {
-                continue;
+        $transfers = [];
+        foreach ($miraklInvoices as $miraklInvoice) {
+            $invoiceId = $miraklInvoice['invoice_id'];
+
+            foreach (self::$typeToAmountKey as $type => $amountKey) {
+                if (isset($existingTransfers[$invoiceId][$type])) {
+                    // Use existing transfer
+                    $transfer = $existingTransfers[$invoiceId][$type];
+
+                    if ($transfer->getStatus() == StripeTransfer::TRANSFER_CREATED) {
+                        $ignoreReason = sprintf(
+                            'Skipping transfer of type %s with existing created transfer',
+                            $type
+                        );
+                        $this->logger->info($ignoreReason, [ 'invoice_id' => $invoiceId ]);
+                        continue;
+                    } elseif ($transfer->getTransferId()) {
+                        // Should not happen but in case it does let's clean it up
+                        $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+                        $ignoreReason = sprintf(
+                            'Cleaning transfer of type %s with existing Stripe transfer',
+                            $type
+                        );
+                        $this->logger->info($ignoreReason, [ 'invoice_id' => $invoiceId ]);
+                        continue;
+                    }
+
+                    // Transfer to be retried for this invoice
+                    $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+                    $transfer = $this->prepareTransfer($miraklInvoice, $transfer);
+                } else {
+                    // Initiating new transfer
+                    $transfer = new StripeTransfer();
+                    $transfer->setType($type);
+                    $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+                    $transfer->setMiraklId($invoiceId);
+
+                    $transfer = $this->prepareTransfer($miraklInvoice, $transfer);
+                    if ($transfer === null) {
+                        continue;
+                    }
+
+                    // Create new transfer
+                    $this->stripeTransferRepository->persist($transfer);
+                }
+
+                $transfers[] = $transfer;
             }
-            $this->createStripePayout($miraklInvoice);
         }
 
-        $alreadyCreatedTransferIds = $this->stripeTransferRepository->findAlreadyCreatedMiraklIds($toCreateIds);
-        foreach ($miraklInvoicesToCreate as $miraklInvoice) {
-            if (in_array($miraklInvoice['invoice_id'], $alreadyCreatedTransferIds)) {
-                continue;
-            }
-            $this->createStripeTransfer($miraklInvoice, StripeTransfer::TRANSFER_SUBSCRIPTION);
-            $this->createStripeTransfer($miraklInvoice, StripeTransfer::TRANSFER_EXTRA_CREDITS);
-            $this->createStripeTransfer($miraklInvoice, StripeTransfer::TRANSFER_EXTRA_INVOICES);
-        }
+        // Save everything
+        $this->stripeTransferRepository->flush();
+
+        return $transfers;
     }
 
-    private function createStripeTransfer(array $miraklInvoice, string $type)
+    private function prepareTransfer(array $miraklInvoice, StripeTransfer $transfer): ?StripeTransfer
     {
-        try {
-            $amount = $this->getAmount($miraklInvoice, self::$typeToAmountKey[$type]);
-            $miraklUpdateTime = $this->getMiraklUpdateTime($miraklInvoice);
-        } catch (UndispatchableException $e) {
-            $this->logger->info('Not dispatching', [
-                'Reason' => $e->getMessage(),
-                'miraklInvoiceId' => $miraklInvoice['invoice_id'],
-                'type' => $type,
+        // Transfer amount
+        $amountKey = self::$typeToAmountKey[$transfer->getType()];
+        $rawAmount = $miraklInvoice['summary'][$amountKey];
+        $amount = gmp_intval((string) ($rawAmount * 100));
+        if ($amount == 0) {
+            $this->logger->info('Transfer amount is 0. Nothing to dispatch.', [
+                'invoice_id' => $transfer->getMiraklId(),
+                'type' => $transfer->getType(),
+                'raw_amount' => $rawAmount
             ]);
-
-            return;
+            return null; // No need to persist transfer if amount = 0
         }
 
-        $newlyCreatedTransfer = new StripeTransfer();
-        $miraklStripeMapping = $this->getMiraklStripeMapping($miraklInvoice);
-        if (null === $miraklStripeMapping) {
-            $failedReason = sprintf('Stripe-Mirakl Mapping associated with Mirakl Shop ID %s does not exist', $miraklInvoice['shop_id']);
-            $this->logger->error($failedReason, [
-                'miraklShopId' => $miraklInvoice['shop_id'],
-            ]);
-            $newlyCreatedTransfer
-                ->setStatus(StripeTransfer::TRANSFER_FAILED)
-                ->setFailedReason($failedReason);
-        } else {
-            $newlyCreatedTransfer->setMiraklStripeMapping($miraklStripeMapping);
-        }
+        $transfer->setAmount($amount);
+        $transfer->setCurrency($miraklInvoice['currency_iso_code']);
 
-        $newlyCreatedTransfer
-            ->setAmount($amount)
-            ->setMiraklId($miraklInvoice['invoice_id'])
-            ->setCurrency($miraklInvoice['currency_iso_code'])
-            ->setMiraklUpdateTime($miraklUpdateTime)
-            ->setType($type)
-            ->setStatus(StripeTransfer::TRANSFER_PENDING);
-        try {
-            $this->stripeTransferRepository->persistAndFlush($newlyCreatedTransfer);
-        } catch (UniqueConstraintViolationException $e) {
-            $this->logger->info('Stripe Transfer already exists but not created on Stripe', [
-                'miraklInvoice' => $miraklInvoice,
-            ]);
-        }
-
-        // Id can never be null after persist
-        assert(null !== $newlyCreatedTransfer->getId());
-        $message = new ProcessTransferMessage($type, $newlyCreatedTransfer->getId());
-        $this->bus->dispatch($message);
-    }
-
-    private function createStripePayout(array $miraklInvoice)
-    {
-        try {
-            $amount = $this->getAmount($miraklInvoice, 'amount_transferred');
-            $miraklUpdateTime = $this->getMiraklUpdateTime($miraklInvoice);
-        } catch (UndispatchableException $e) {
-            $this->logger->info('Not dispatching', [
-                'Reason' => $e,
-            ]);
-
-            return;
-        }
-        $newlyCreatedPayout = new StripePayout();
-        $newlyCreatedPayout->setStatus(StripePayout::PAYOUT_PENDING);
-
-        $miraklStripeMapping = $this->getMiraklStripeMapping($miraklInvoice);
-        if (null === $miraklStripeMapping) {
-            $failedReason = sprintf('Stripe-Mirakl Mapping associated with Mirakl Shop ID %s does not exist', $miraklInvoice['shop_id']);
-            $this->logger->error($failedReason, [
-                'miraklShopId' => $miraklInvoice['shop_id'],
-            ]);
-            $newlyCreatedPayout
-                ->setStatus(StripePayout::PAYOUT_FAILED)
-                ->setFailedReason($failedReason);
-        } else {
-            $newlyCreatedPayout->setMiraklStripeMapping($miraklStripeMapping);
-        }
-
-        $newlyCreatedPayout
-            ->setAmount($amount)
-            ->setMiraklInvoiceId($miraklInvoice['invoice_id'])
-            ->setCurrency($miraklInvoice['currency_iso_code'])
-            ->setMiraklUpdateTime($miraklUpdateTime);
-        try {
-            $this->stripePayoutRepository->persistAndFlush($newlyCreatedPayout);
-        } catch (UniqueConstraintViolationException $e) {
-            $this->logger->info('Stripe Payout already exists but not created on Stripe', [
-                'miraklInvoice' => $miraklInvoice,
-            ]);
-        }
-        // Id can never be null after persist
-        assert(null !== $newlyCreatedPayout->getId());
-        $message = new ProcessPayoutMessage($newlyCreatedPayout->getId());
-        $this->bus->dispatch($message);
-    }
-
-    private function getAmount(array $miraklInvoice, string $amountKey)
-    {
-        $amount = (int) abs(100 * $miraklInvoice['summary'][$amountKey]);
-        if (0 === $amount) {
-            $this->logger->info('Transfer amount is 0. Nothing to dispatch', [
-                'mirakl_order' => $miraklInvoice,
-                'key' => $amountKey,
-            ]);
-
-            throw new UndispatchableException('Transfer amount is 0. Nothing to dispatch');
-        }
-
-        return $amount;
-    }
-
-    private function getMiraklStripeMapping(array $miraklInvoice)
-    {
-        $miraklStripeMapping = $this->miraklStripeMappingRepository->findOneBy([
-            'miraklShopId' => $miraklInvoice['shop_id'],
+        // Seller ID
+        $shopId = $miraklInvoice['shop_id'];
+        $mapping = $this->miraklStripeMappingRepository->findOneBy([
+            'miraklShopId' => $shopId,
         ]);
 
-        return $miraklStripeMapping;
-    }
-
-    private function getMiraklUpdateTime(array $miraklInvoice)
-    {
-        $miraklUpdateTime = \DateTime::createFromFormat(MiraklClient::DATE_FORMAT, $miraklInvoice['end_time']);
-        if (!$miraklUpdateTime) {
-            $this->logger->error('Cannot parse last_updated_date from Mirakl', ['mirakl_order' => $miraklInvoice]);
-
-            throw new UndispatchableException('Cannot parse last_updated_date from Mirakl');
+        if (!$mapping) {
+            return $this->failTransfer($transfer, sprintf(
+                'Cannot find Stripe account for Seller ID %s',
+                $shopId
+            ));
         }
 
-        return $miraklUpdateTime;
+        $transfer->setMiraklStripeMapping($mapping);
+
+        // Mirakl update time
+        $miraklUpdateTime = \DateTime::createFromFormat(
+            MiraklClient::DATE_FORMAT,
+            $miraklInvoice['end_time']
+        );
+
+        if (!$miraklUpdateTime) {
+            return $this->failTransfer($transfer, sprintf(
+                'Cannot parse last_updated_date %s',
+                $miraklInvoice['end_time']
+            ));
+        }
+
+        $transfer->setMiraklUpdateTime($miraklUpdateTime);
+
+        return $transfer;
+    }
+
+    private function preparePayouts(array $miraklInvoices): array
+    {
+        // Retrieve existing StripeTransfers with provided invoice IDs
+        $existingPayouts = $this->stripePayoutRepository
+            ->findExistingPayoutsByInvoiceIds(array_column($miraklInvoices, 'invoice_id'));
+
+        $payouts = [];
+        foreach ($miraklInvoices as $miraklInvoice) {
+            $invoiceId = $miraklInvoice['invoice_id'];
+            if (isset($existingPayouts[$invoiceId])) {
+                // Use existing payout
+                $payout = $existingPayouts[$invoiceId];
+
+                if ($payout->getStatus() == StripePayout::PAYOUT_CREATED) {
+                    $ignoreReason = 'Skipping payout with existing created payout';
+                    $this->logger->info($ignoreReason, [ 'invoice_id' => $invoiceId ]);
+                    continue;
+                } elseif ($payout->getStripePayoutId()) {
+                    // Should not happen but in case it does let's clean it up
+                    $payout->setStatus(StripePayout::PAYOUT_CREATED);
+                    $ignoreReason = 'Cleaning payout with existing Stripe payout';
+                    $this->logger->info($ignoreReason, [ 'invoice_id' => $invoiceId ]);
+                    continue;
+                }
+
+                // Payout to be retried for this invoice
+                $payout->setStatus(StripePayout::PAYOUT_PENDING);
+                $payout = $this->preparePayout($miraklInvoice, $payout);
+            } else {
+                // Initiating new payout
+                $payout = new StripePayout();
+                $payout->setStatus(StripePayout::PAYOUT_PENDING);
+                $payout->setMiraklInvoiceId($invoiceId);
+
+                $payout = $this->preparePayout($miraklInvoice, $payout);
+                if ($payout === null) {
+                    continue;
+                }
+
+                // Create new payout
+                $this->stripePayoutRepository->persist($payout);
+            }
+
+            $payouts[] = $payout;
+        }
+
+        // Save everything
+        $this->stripePayoutRepository->flush();
+
+        return $payouts;
+    }
+
+    private function preparePayout(array $miraklInvoice, StripePayout $payout): ?StripePayout
+    {
+        // Payout amount
+        $rawAmount = $miraklInvoice['summary']['amount_transferred'];
+        $amount = gmp_intval((string) ($rawAmount * 100));
+        if ($amount == 0) {
+            $this->logger->info('Payout amount is 0. Nothing to dispatch.', [
+                'invoice_id' => $payout->getMiraklInvoiceId(),
+                'raw_amount' => $rawAmount
+            ]);
+            return null; // No need to persist payout if amount = 0
+        }
+
+        $payout->setAmount($amount);
+        $payout->setCurrency($miraklInvoice['currency_iso_code']);
+
+        // Seller ID
+        $shopId = $miraklInvoice['shop_id'];
+        $mapping = $this->miraklStripeMappingRepository->findOneBy([
+            'miraklShopId' => $shopId,
+        ]);
+
+        if (!$mapping) {
+            return $this->failPayout($payout, sprintf(
+                'Cannot find Stripe account for Seller ID %s',
+                $shopId
+            ));
+        }
+
+        $payout->setMiraklStripeMapping($mapping);
+
+        // Mirakl update time
+        $miraklUpdateTime = \DateTime::createFromFormat(
+            MiraklClient::DATE_FORMAT,
+            $miraklInvoice['end_time']
+        );
+
+        if (!$miraklUpdateTime) {
+            return $this->failPayout($payout, sprintf(
+                'Cannot parse last_updated_date %s',
+                $miraklInvoice['end_time']
+            ));
+        }
+
+        $payout->setMiraklUpdateTime($miraklUpdateTime);
+
+        return $payout;
+    }
+
+    private function failTransfer($transfer, $reason): StripeTransfer
+    {
+        $this->logger->error($reason, ['invoice_id' => $transfer->getMiraklId()]);
+
+        $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);
+        $transfer->setFailedReason($reason);
+
+        return $transfer;
+    }
+
+    private function failPayout($payout, $reason): StripePayout
+    {
+        $this->logger->error($reason, ['invoice_id' => $payout->getMiraklInvoiceId()]);
+
+        $payout->setStatus(StripePayout::PAYOUT_FAILED);
+        $payout->setFailedReason($reason);
+
+        return $payout;
+    }
+
+    private function dispatchTransfers(array $transfers): void
+    {
+        foreach ($transfers as $transfer) {
+            $this->bus->dispatch(new ProcessTransferMessage(
+                $transfer->getType(),
+                $transfer->getId()
+            ));
+        }
+    }
+
+    private function dispatchPayouts(array $payouts): void
+    {
+        foreach ($payouts as $payout) {
+            $this->bus->dispatch(new ProcessPayoutMessage(
+                $payout->getId()
+            ));
+        }
     }
 }
