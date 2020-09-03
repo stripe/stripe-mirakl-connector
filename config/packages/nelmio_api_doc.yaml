@@ -6,7 +6,7 @@ nelmio_api_doc:
                 This application is the connector between Stripe and Mirakl.
 
                 It is in charge of onboarding the sellers in Stripe and sending them money through payouts.
-            version: 1.1.5
+            version: 1.1.6
         securityDefinitions:
             Bearer:
                 type: apiKey
