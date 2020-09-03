@@ -1,5 +1,8 @@
 # Changelog
 
+- Version 1.1.6
+    - Bump symfony/http-kernel from 4.4.7 to 4.4.13
+
 - Version 1.1.5
     - Improved process-payouts job
     - Fixed rare cases of one cent discrepancy in amount calculation
