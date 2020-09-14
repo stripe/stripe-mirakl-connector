@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\UniqueConstraint;
 use Gedmo\Mapping\Annotation as Gedmo;
@@ -16,6 +18,7 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "get"={"path"="/transfers/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
+ * @ApiFilter(SearchFilter::class, properties={"miraklId":"exact" })
  * @ORM\Table(
  *    uniqueConstraints={
  *        @UniqueConstraint(name="transfer",
