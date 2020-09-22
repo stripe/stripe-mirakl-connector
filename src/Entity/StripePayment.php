@@ -111,10 +111,10 @@ class StripePayment
     }
 
     /**
-     * @param $status
+     * @param string $status
      * @return self
      */
-    public function setStatus($status): self
+    public function setStatus(string $status): self
     {
         if (!in_array($status, self::getAvailableStatus(), true)) {
             throw new \InvalidArgumentException('Invalid payment status');
