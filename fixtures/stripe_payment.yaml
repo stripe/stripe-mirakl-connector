@@ -1,0 +1,9 @@
+App\Entity\StripePayment:
+    stripe_payment_1:
+        miraklOrderId: 'order_66'
+        stripePaymentId: 'pi_valid'
+        status: 'TO_CAPTURE'
+    stripe_payment_2:
+        miraklOrderId: 'order_42'
+        stripePaymentId: 'pi_valid'
+        status: 'SUCCEEDED'
