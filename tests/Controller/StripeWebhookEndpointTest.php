@@ -6,6 +6,7 @@ use App\Controller\StripeWebhookEndpoint;
 use App\Entity\MiraklStripeMapping;
 use App\Message\AccountUpdateMessage;
 use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\StripePaymentRepository;
 use App\Utils\StripeProxy;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -19,6 +20,7 @@ class StripeWebhookEndpointTest extends TestCase
     protected $bus;
     protected $controller;
     protected $miraklStripeMappingRepository;
+    protected $stripePaymentRepository;
     protected $stripeProxy;
 
     protected function setUp(): void
@@ -34,12 +36,19 @@ class StripeWebhookEndpointTest extends TestCase
             ->disableOriginalConstructor()
             ->setMethods(['findOneByStripeAccountId', 'persistAndFlush'])
             ->getMock();
+
+        $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
         $logger = new NullLogger();
 
         $this->controller = new StripeWebhookEndpoint(
             $this->bus,
             $this->stripeProxy,
-            $this->miraklStripeMappingRepository
+            $this->miraklStripeMappingRepository,
+            $this->stripePaymentRepository,
+            'mirakl_order_id'
         );
         $this->controller->setLogger($logger);
     }
