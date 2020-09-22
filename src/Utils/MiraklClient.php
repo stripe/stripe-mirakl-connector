@@ -71,12 +71,30 @@ class MiraklClient implements LoggerAwareInterface
         return json_decode($response->getContent(), true)['orders']['order'];
     }
 
+    // GET PA11
+    public function listPendingPayments()
+    {
+        $this->logger->info('[Mirakl API] Call to PA11 - List pending payments');
+        $response = $this->client->request('GET', '/api/payment/debit');
+
+        return json_decode($response->getContent(), true)['orders']['order'];
+    }
+
     // PUT PA02
     public function validateRefunds(array $refunds)
     {
         $this->logger->info('[Mirakl API] Call to PA02 - validate refunds');
         $this->client->request('PUT', '/api/payment/refund', [
             'json' => ['refunds' => $refunds],
+        ]);
+    }
+
+    // PUT PA01
+    public function validatePayments(array $orders)
+    {
+        $this->logger->info('[Mirakl API] Call to PA01 - validate payments');
+        $this->client->request('PUT', '/api/payment/debit', [
+            'json' => ['orders' => $orders],
         ]);
     }
 

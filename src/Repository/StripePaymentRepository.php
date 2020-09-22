@@ -24,6 +24,24 @@ class StripePaymentRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param array $orderIds
+     * @return array
+     */
+    public function findPendingPaymentByOrderIds(array $orderIds): array
+    {
+        $payments = $this->findBy([
+            'miraklOrderId' => $orderIds
+        ]);
+
+        $paymentByOrderId = [];
+        foreach ($payments as $payment) {
+            $paymentByOrderId[$payment->getMiraklOrderId()] = $payment;
+        }
+
+        return $paymentByOrderId;
+    }
+
+    /**
      * @param StripePayment $stripePayment
      * @return StripePayment
      * @throws \Doctrine\ORM\ORMException
