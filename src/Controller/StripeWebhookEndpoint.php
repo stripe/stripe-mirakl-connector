@@ -118,10 +118,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 case 'charge.updated':
                     $message = $this->onPaymentIntentOrChargeCreated($event);
                     break;
-                case 'charge.captured':
-                case 'payment_intent.succeeded':
-                $message = $this->onPaymentIntentOrChargeSucceed($event);
-                    break;
                 default:
                     // should never be trigger
                     $message = 'Not managed yet';
@@ -200,31 +196,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $this->stripePaymentRepository->persistAndFlush($stripePayment);
 
         return 'Payment created';
-    }
-
-    /**
-     * @param Event $event
-     * @return string
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
-     */
-    private function onPaymentIntentOrChargeSucceed(Event $event): string
-    {
-        $apiStripePayment = $event->data->object;
-
-        $stripePayment = $this->stripePaymentRepository->findOneByStripePaymentId($apiStripePayment['id']);
-
-        if (!$stripePayment) {
-            $this->logger->error(sprintf('This Stripe payment does not exist %s', $apiStripePayment['id']));
-
-            throw new \Exception('This Stripe Payment does not exist', Response::HTTP_BAD_REQUEST);
-        }
-
-        $stripePayment->setStatus(StripePayment::PAYMENT_SUCCEEDED);
-
-        $this->stripePaymentRepository->persistAndFlush($stripePayment);
-
-        return 'Payment updated';
     }
 
     /**
