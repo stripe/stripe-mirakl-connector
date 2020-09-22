@@ -10,8 +10,13 @@ use Gedmo\Mapping\Annotation as Gedmo;
  */
 class StripePayment
 {
-    public const PAYMENT_SUCCEEDED = 'SUCCEEDED';
-    public const PAYMENT_TO_CAPTURE = 'TO_CAPTURE';
+    public const SUCCEEDED = 'succeeded';
+    public const TO_CAPTURE = 'to_capture';
+
+    public const ALLOWED_STATUS = [
+        self::SUCCEEDED,
+        self::TO_CAPTURE
+    ];
 
     /**
      * @ORM\Id()
@@ -31,11 +36,6 @@ class StripePayment
     private $stripePaymentId;
 
     /**
-     * @ORM\Column(type="string")
-     */
-    private $status;
-
-    /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
      * @Gedmo\Timestampable(on="create")
      */
@@ -46,17 +46,6 @@ class StripePayment
      * @Gedmo\Timestampable(on="update")
      */
     private $modificationDatetime;
-
-    /**
-     * @return string[]
-     */
-    public static function getAvailableStatus(): array
-    {
-        return [
-            self::PAYMENT_SUCCEEDED,
-            self::PAYMENT_TO_CAPTURE,
-        ];
-    }
 
     /**
      * @return mixed
@@ -99,28 +88,6 @@ class StripePayment
     public function setStripePaymentId($stripePaymentId): self
     {
         $this->stripePaymentId = $stripePaymentId;
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getStatus()
-    {
-        return $this->status;
-    }
-
-    /**
-     * @param string $status
-     * @return self
-     */
-    public function setStatus(string $status): self
-    {
-        if (!in_array($status, self::getAvailableStatus(), true)) {
-            throw new \InvalidArgumentException('Invalid payment status');
-        }
-
-        $this->status = $status;
         return $this;
     }
 

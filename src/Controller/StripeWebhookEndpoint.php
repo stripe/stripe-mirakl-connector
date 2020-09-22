@@ -24,6 +24,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     const HANDLED_EVENT_TYPES = [
         'account.updated',
         'payment_intent.created',
+        'payment_intent.succeeded',
         'charge.succeeded',
         'charge.updated'
     ];
@@ -114,6 +115,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                     $message = $this->onAccountUpdated($event);
                     break;
                 case 'payment_intent.created':
+                case 'payment_intent.succeeded':
                 case 'charge.succeeded':
                 case 'charge.updated':
                     $message = $this->onPaymentIntentOrChargeCreated($event);
@@ -180,6 +182,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $apiStripePayment = $event->data->object;
 
         $miraklOrderId = $this->checkAndReturnMetadataOrderId($apiStripePayment);
+        $this->checkPaymentIntentOrChargeStatus($apiStripePayment);
         $stripePaymentId = $apiStripePayment['id'];
 
         $stripePayment = $this->stripePaymentRepository->findOneByStripePaymentId($stripePaymentId);
@@ -190,8 +193,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 ->setMiraklOrderId($miraklOrderId)
                 ->setStripePaymentId($stripePaymentId);
         }
-
-        $stripePayment->setStatus(StripePayment::PAYMENT_TO_CAPTURE);
 
         $this->stripePaymentRepository->persistAndFlush($stripePayment);
 
@@ -213,6 +214,19 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         return $stripeObject['metadata'][$this->metadataOrderIdFieldName];
+    }
+
+    /**
+     * @param mixed $stripeObject
+     * @throws \Exception
+     */
+    private function checkPaymentIntentOrChargeStatus($stripeObject)
+    {
+        $status = $stripeObject['status'] ?? '';
+
+        if (!in_array($status, StripePayment::ALLOWED_STATUS, true)) {
+            throw new \Exception('Status has not a valid value', Response::HTTP_BAD_REQUEST);
+        }
     }
 
 }
