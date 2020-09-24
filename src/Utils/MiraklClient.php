@@ -37,6 +37,11 @@ class MiraklClient implements LoggerAwareInterface
             $filters['query'] = array_merge($filters['query'], (array) $query);
         }
 
+        return $this->getAllOrders($filters);
+    }
+
+    private function getAllOrders(?array $filters)
+    {
         $this->logger->info('[Mirakl API] Call to OR11 - fetch orders');
         $response = $this->client->request('GET', '/api/orders', $filters);
 
@@ -60,6 +65,16 @@ class MiraklClient implements LoggerAwareInterface
     public function listOrdersById(?array $orderIds)
     {
         return $this->getOrders([ 'order_ids' => implode(',', (array) $orderIds) ]);
+    }
+
+    // GET OR11 by commercial_id (without prefilter)
+    public function listCommercialOrdersById(?array $commercialOrderIds)
+    {
+        $filters = [
+            'query' => [ 'commercial_ids' => implode(',', (array) $commercialOrderIds) ]
+        ];
+
+        return $this->getAllOrders($filters);
     }
 
     // GET PA12

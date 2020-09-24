@@ -25,7 +25,7 @@ class StripePaymentRepository extends ServiceEntityRepository
 
     /**
      * @param array $orderIds
-     * @return array
+     * @return StripePayment[]
      */
     public function findPendingPaymentByOrderIds(array $orderIds): array
     {

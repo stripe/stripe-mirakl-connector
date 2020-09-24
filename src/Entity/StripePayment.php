@@ -12,10 +12,12 @@ class StripePayment
 {
     public const SUCCEEDED = 'succeeded';
     public const TO_CAPTURE = 'to_capture';
+    public const REQUIRES_CAPTURE = 'requires_capture';
 
     public const ALLOWED_STATUS = [
         self::SUCCEEDED,
-        self::TO_CAPTURE
+        self::TO_CAPTURE,
+        self::REQUIRES_CAPTURE
     ];
 
     /**
@@ -26,7 +28,7 @@ class StripePayment
     private $id;
 
     /**
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="string", nullable=true)
      */
     private $miraklOrderId;
 
@@ -48,80 +50,80 @@ class StripePayment
     private $modificationDatetime;
 
     /**
-     * @return mixed
+     * @return int|null
      */
-    public function getId()
+    public function getId(): ?int
     {
         return $this->id;
     }
 
     /**
-     * @return mixed
+     * @return string|null
      */
-    public function getMiraklOrderId()
+    public function getMiraklOrderId(): ?string
     {
         return $this->miraklOrderId;
     }
 
     /**
-     * @param mixed $miraklOrderId
+     * @param string|null $miraklOrderId
      * @return self
      */
-    public function setMiraklOrderId($miraklOrderId): self
+    public function setMiraklOrderId(?string $miraklOrderId): self
     {
         $this->miraklOrderId = $miraklOrderId;
         return $this;
     }
 
     /**
-     * @return mixed
+     * @return string|null
      */
-    public function getStripePaymentId()
+    public function getStripePaymentId(): ?string
     {
         return $this->stripePaymentId;
     }
 
     /**
-     * @param mixed $stripePaymentId
+     * @param string $stripePaymentId
      * @return self
      */
-    public function setStripePaymentId($stripePaymentId): self
+    public function setStripePaymentId(string $stripePaymentId): self
     {
         $this->stripePaymentId = $stripePaymentId;
         return $this;
     }
 
     /**
-     * @return mixed
+     * @return \DateTimeInterface|null
      */
-    public function getCreationDatetime()
+    public function getCreationDatetime():  ?\DateTimeInterface
     {
         return $this->creationDatetime;
     }
 
     /**
-     * @param mixed $creationDatetime
+     * @param \DateTimeInterface $creationDatetime
      * @return self
      */
-    public function setCreationDatetime($creationDatetime): self
+    public function setCreationDatetime(\DateTimeInterface $creationDatetime): self
     {
         $this->creationDatetime = $creationDatetime;
         return $this;
     }
 
     /**
-     * @return mixed
+     * @return \DateTimeInterface|null
      */
-    public function getModificationDatetime()
+    public function getModificationDatetime(): ?\DateTimeInterface
     {
         return $this->modificationDatetime;
     }
 
     /**
-     * @param mixed $modificationDatetime
+     * @param \DateTimeInterface $modificationDatetime
      * @return self
      */
-    public function setModificationDatetime($modificationDatetime): self
+    public function setModificationDatetime(\DateTimeInterface $modificationDatetime): self
     {
         $this->modificationDatetime = $modificationDatetime;
         return $this;

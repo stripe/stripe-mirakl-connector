@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Repository\StripePaymentRepository;
 use App\Utils\MiraklClient;
+use App\Utils\StripeProxy;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Console\Command\Command;
@@ -16,6 +17,8 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
     use LoggerAwareTrait;
 
     protected static $defaultName = 'connector:validate:pending-debit';
+    protected const ORDER_STATUS_VALIDATED = ['SHIPPING', 'SHIPPED', 'TO_COLLECT', 'RECEIVED', 'CLOSED', 'REFUSED', 'CANCELED', 'WAITING_DEBIT_PAYMENT'];
+    protected const ORDER_STATUS_TO_CAPTURE = ['SHIPPING', 'SHIPPED', 'TO_COLLECT', 'RECEIVED', 'WAITING_DEBIT_PAYMENT'];
 
     /**
      * @var MiraklClient
@@ -27,12 +30,19 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
      */
     private $stripePaymentRepository;
 
+    /**
+     * @var StripeProxy
+     */
+    private $stripeProxy;
+
     public function __construct(
         MiraklClient $miraklClient,
+        StripeProxy $stripeProxy,
         StripePaymentRepository $stripePaymentRepository
     ) {
         $this->miraklClient = $miraklClient;
         $this->stripePaymentRepository = $stripePaymentRepository;
+        $this->stripeProxy = $stripeProxy;
 
         parent::__construct();
     }
@@ -78,7 +88,9 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
 
         // Prepare order for validation
         $orders = [];
-        foreach ($ordersToValidate as $orderToValidate) {
+        $orderCommercialIds = [];
+        foreach ($ordersToValidate as $orderCommercialId => $orderToValidate) {
+            $orderCommercialIds[] = $orderCommercialId;
             foreach ($orderToValidate as $order) {
                 $orders[] = [
                     'amount' => $order['amount'],
@@ -92,8 +104,47 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
         // Validate payment on order
         $this->miraklClient->validatePayments($orders);
 
+        // list all orders with the same commercial id as those previously validated
+        $ordersToCapture = $this->miraklClient->listCommercialOrdersById($orderCommercialIds);
+
+        // we keep complete order to capture payment
+        $notTotalyValidated = [];
+        $orderCanBeCaptured = [];
+        foreach ($ordersToCapture as $order) {
+            $commercialOrderId = $order['commercial_id'];
+
+            if (in_array($commercialOrderId, $notTotalyValidated, true)) {
+                continue;
+            }
+
+            $status = $order['order_state'];
+
+            if (!in_array($status, self::ORDER_STATUS_VALIDATED, true)) {
+                $notTotalyValidated[] = $commercialOrderId;
+
+                if (isset($orderCanBeCaptured[$commercialOrderId])) {
+                    unset($orderCanBeCaptured[$commercialOrderId]);
+                }
+                continue;
+            }
+
+            if (in_array($status, self::ORDER_STATUS_TO_CAPTURE)) {
+                $totalPrice = $order['total_price'];
+
+                if (!isset($orderCanBeCaptured[$commercialOrderId])) {
+                    $orderCanBeCaptured[$commercialOrderId] = 0;
+                }
+
+                $orderCanBeCaptured[$commercialOrderId] += $totalPrice;
+            }
+        }
+
+        // we capture payment
+        foreach ($orderCanBeCaptured as $commercialId => $amount) {
+            $paymentId = $stripePayments[$commercialId]->getStripePaymentId();
+            $this->stripeProxy->capture($paymentId, $amount * 100);
+        }
+
         return 0;
     }
-
-
 }

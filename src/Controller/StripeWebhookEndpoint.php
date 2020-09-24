@@ -26,7 +26,8 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         'payment_intent.created',
         'payment_intent.succeeded',
         'charge.succeeded',
-        'charge.updated'
+        'charge.updated',
+        'payment_intent.amount_capturable_updated'
     ];
 
     /**
@@ -118,6 +119,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 case 'payment_intent.succeeded':
                 case 'charge.succeeded':
                 case 'charge.updated':
+                case 'payment_intent.amount_capturable_updated':
                     $message = $this->onPaymentIntentOrChargeCreated($event);
                     break;
                 default:
@@ -189,10 +191,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         if (!$stripePayment) {
             $stripePayment = new StripePayment();
-            $stripePayment
-                ->setMiraklOrderId($miraklOrderId)
-                ->setStripePaymentId($stripePaymentId);
+            $stripePayment->setStripePaymentId($stripePaymentId);
         }
+
+        $stripePayment->setMiraklOrderId($miraklOrderId);
 
         $this->stripePaymentRepository->persistAndFlush($stripePayment);
 
@@ -208,6 +210,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     {
         if (!isset($stripeObject['metadata'][$this->metadataOrderIdFieldName])) {
             $message = sprintf('%s not found in metadata webhook event', $this->metadataOrderIdFieldName);
+            $this->logger->error($message);
+
+            throw new \Exception($message, Response::HTTP_BAD_REQUEST);
+        }
+
+        if ('' === $stripeObject['metadata'][$this->metadataOrderIdFieldName]) {
+            $message = sprintf('%s is empty in metadata webhook event', $this->metadataOrderIdFieldName);
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_BAD_REQUEST);

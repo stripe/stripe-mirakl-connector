@@ -58,9 +58,9 @@ class MiraklMockedHttpClient extends MockHttpClient
                 case '/payment/debit':
                     switch ($method) {
                         case 'GET':
-                            return new MockResponse($this->getPendingRefunds());
+                            return new MockResponse($this->getPendingPayment());
                         case 'PUT':
-                            return $this->mockRefundValidation($options);
+                            return $this->mockPendingValidation($options);
                     }
                     return new MockResponse($this->getEmptyJson());
                     break;
@@ -91,6 +91,18 @@ class MiraklMockedHttpClient extends MockHttpClient
         } else {
             return new MockResponse(json_encode([]), ['http_code' => 204]);
         }
+    }
+
+    private function mockPendingValidation($options)
+    {
+        $body = json_decode($options['body'], true);
+        $orderToValidate = $body['orders'][0]['order_id'];
+
+        if ($orderToValidate === 'Order_00007-A') {
+            return new MockResponse(['message' => "Cannot update the order with id 'Order_00003-A' to status 'SHIPPING'. The order does not have the expected status 'WAITING_DEBIT_PAYMENT'."], ['http_code' => 400]);
+        }
+
+        return new MockResponse(json_encode([]), ['http_code' => 204]);
     }
 
     private function getMiraklOrder($orderId)
@@ -444,80 +456,50 @@ class MiraklMockedHttpClient extends MockHttpClient
             'orders' => [
                 'order' => [
                     [
-                        'amount' => 100,
-                        'currency_iso_code' => 'USD',
-                        'customer_id' => 'Customer_id_001',
-                        'order_commercial_id' => 'Order_Amount_Breakdown_0002',
-                        'order_id' => 'Order_Amount_Breakdown_0002-A',
-                        'order_lines' => [
-                            'order_line' => [
+                        "amount" => 503.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_66",
+                        "order_id" => "Order_66-A",
+                        "order_lines" => [
+                            "order_line" => [
                                 [
-                                    'offer_id' => '2130',
-                                    'order_line_amount' => 20,
-                                    'order_line_id' => 'Order_Amount_Breakdown_0002-A-1',
-                                    'order_line_quantity' => 10,
-                                    'refunds' => [
-                                        'refund' => [
-                                            [
-                                                'amount' => 10,
-                                                'id' => '6666',
-                                            ],
-                                            [
-                                                'amount' => 5,
-                                                'id' => '1105',
-                                            ],
-                                        ],
-                                    ],
+                                    "offer_id" => "2015",
+                                    "order_line_amount" => 173.00,
+                                    "order_line_id" => "Order_66-A-1",
+                                    "order_line_quantity" => 3
                                 ],
                                 [
-                                    'offer_id' => '2130',
-                                    'order_line_amount' => 80,
-                                    'order_line_id' => 'Order_Amount_Breakdown_0002-A-2',
-                                    'order_line_quantity' => 10,
-                                    'refunds' => [
-                                        'refund' => [
-                                            [
-                                                'amount' => 8,
-                                                'id' => '1106',
-                                            ],
-                                        ],
-                                    ],
-                                ],
-                            ],
+                                    "offer_id" => "2017",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-A-2",
+                                    "order_line_quantity" => 5
+                                ]
+                            ]
                         ],
-                        'payment_workflow' => 'PAY_ON_ACCEPTANCE',
-                        'shop_id' => '2000',
+                        "shop_id" => "2015"
                     ],
                     [
-                        'amount' => 100,
-                        'currency_iso_code' => 'EUR',
-                        'customer_id' => 'Customer_id_001',
-                        'order_commercial_id' => 'Order_Amount_Breakdown_0003',
-                        'order_id' => 'Order_Amount_Breakdown_0002-A',
-                        'order_lines' => [
-                            'order_line' => [
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_66",
+                        "order_id" => "Order_66-B",
+                        "order_lines" => [
+                            "order_line" => [
                                 [
-                                    'offer_id' => '1599',
-                                    'order_line_amount' => 100,
-                                    'order_line_id' => 'Order_Amount_Breakdown_0003-A-1',
-                                    'order_line_quantity' => 1,
-                                    'refunds' => [
-                                        'refund' => [
-                                            [
-                                                'amount' => 10,
-                                                'id' => '1199',
-                                            ],
-                                        ],
-                                    ],
-                                ],
-                            ],
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-b-2",
+                                    "order_line_quantity" => 5
+                                ]
+                            ]
                         ],
-                        'payment_workflow' => 'PAY_ON_ACCEPTANCE',
-                        'shop_id' => '2002',
+                        "shop_id" => "2016"
                     ],
                 ],
             ],
-            'total_count' => 2,
+            'total_count' => 1,
         ]);
     }
 }
