@@ -6,7 +6,6 @@ use App\Message\CapturePendingPaymentMessage;
 use App\Message\ValidateMiraklOrderMessage;
 use App\Repository\StripePaymentRepository;
 use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Console\Command\Command;

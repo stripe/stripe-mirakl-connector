@@ -32,6 +32,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonAlreadyExistingMiraklOrders());
                 case '/orders?customer_debited=true&order_ids=order_8':
                     return new MockResponse($this->getJsonInvalidAmountMiraklOrders());
+                case '/orders?commercial_ids=Order_66':
+                    return new MockResponse($this->getJsonOrdersWithCommercialId());
                 case '/shops':
                     return new MockResponse($this->getReturnJsonShops());
                 case '/shops?paginate=true&shop_ids=1':
@@ -99,7 +101,7 @@ class MiraklMockedHttpClient extends MockHttpClient
         $orderToValidate = $body['orders'][0]['order_id'];
 
         if ($orderToValidate === 'Order_00007-A') {
-            return new MockResponse(['message' => "Cannot update the order with id 'Order_00003-A' to status 'SHIPPING'. The order does not have the expected status 'WAITING_DEBIT_PAYMENT'."], ['http_code' => 400]);
+            return new MockResponse(['message' => "Cannot update the order with id 'Order_00007-A' to status 'SHIPPING'. The order does not have the expected status 'WAITING_DEBIT_PAYMENT'."], ['http_code' => 400]);
         }
 
         return new MockResponse(json_encode([]), ['http_code' => 204]);
@@ -456,10 +458,13 @@ class MiraklMockedHttpClient extends MockHttpClient
             'orders' => [
                 'order' => [
                     [
-                        "amount" => 503.00,
+                        'order_state' => 'SHIPPING',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
                         "currency_iso_code" => "EUR",
                         "customer_id" => "Customer_id_001",
                         "order_commercial_id" => "Order_66",
+                        "commercial_id" => "Order_66",
                         "order_id" => "Order_66-A",
                         "order_lines" => [
                             "order_line" => [
@@ -467,19 +472,23 @@ class MiraklMockedHttpClient extends MockHttpClient
                                     "offer_id" => "2015",
                                     "order_line_amount" => 173.00,
                                     "order_line_id" => "Order_66-A-1",
-                                    "order_line_quantity" => 3
+                                    "order_line_quantity" => 3,
+                                    'order_line_state' => 'REFUSED',
                                 ],
                                 [
                                     "offer_id" => "2017",
                                     "order_line_amount" => 330.00,
                                     "order_line_id" => "Order_66-A-2",
-                                    "order_line_quantity" => 5
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
                                 ]
                             ]
                         ],
                         "shop_id" => "2015"
                     ],
                     [
+                        'order_state' => 'RECEIVED',
+                        "total_price" => 330.00,
                         "amount" => 330.00,
                         "currency_iso_code" => "EUR",
                         "customer_id" => "Customer_id_001",
@@ -491,7 +500,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                                     "offer_id" => "2016",
                                     "order_line_amount" => 330.00,
                                     "order_line_id" => "Order_66-b-2",
-                                    "order_line_quantity" => 5
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
                                 ]
                             ]
                         ],
@@ -500,6 +510,63 @@ class MiraklMockedHttpClient extends MockHttpClient
                 ],
             ],
             'total_count' => 1,
+        ]);
+    }
+
+    private function getJsonOrdersWithCommercialId()
+    {
+        return json_encode([
+            'orders' => [
+                    [
+                        'order_state' => 'SHIPPING',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "commercial_id" => "Order_66",
+                        "order_id" => "Order_66-A",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2015",
+                                    "order_line_amount" => 173.00,
+                                    "order_line_id" => "Order_66-A-1",
+                                    "order_line_quantity" => 3,
+                                    'order_line_state' => 'REFUSED',
+                                ],
+                                [
+                                    "offer_id" => "2017",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-A-2",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2015"
+                    ],
+                    [
+                        'order_state' => 'RECEIVED',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "commercial_id" => "Order_66",
+                        "order_id" => "Order_66-B",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-b-2",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2016"
+                    ],
+                ],
         ]);
     }
 }

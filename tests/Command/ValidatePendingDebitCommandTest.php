@@ -26,12 +26,25 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
      */
     protected $stripePaymentRepository;
 
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    protected $validateDoctrineReceiver;
+
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    protected $captureDoctrineReceiver;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
 
         $application = new Application($kernel);
         $this->command = $application->find('connector:validate:pending-debit');
+
+        $this->validateDoctrineReceiver = self::$container->get('messenger.transport.validate_mirakl_order');
+        $this->captureDoctrineReceiver = self::$container->get('messenger.transport.capture_pending_payment');
 
         $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
             ->disableOriginalConstructor()
@@ -47,6 +60,8 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
+        $this->assertCount(1, $this->validateDoctrineReceiver->getSent());
+        $this->assertCount(1, $this->captureDoctrineReceiver->getSent());
     }
 
 }

@@ -22,6 +22,11 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
      */
     private $miraklRefundRepository;
 
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    private $doctrineReceiver;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
