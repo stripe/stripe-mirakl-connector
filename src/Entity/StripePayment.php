@@ -11,12 +11,10 @@ use Gedmo\Mapping\Annotation as Gedmo;
 class StripePayment
 {
     public const TO_CAPTURE = 'to_capture';
-    public const CAN_BE_CAPTURE = 'can_be_capture';
     public const CAPTURED = 'captured';
 
     public const ALLOWED_STATUS = [
         self::TO_CAPTURE,
-        self::CAN_BE_CAPTURE,
         self::CAPTURED,
     ];
 
@@ -33,7 +31,7 @@ class StripePayment
     private $miraklOrderId;
 
     /**
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="string", unique=true)
      */
     private $stripePaymentId;
 
