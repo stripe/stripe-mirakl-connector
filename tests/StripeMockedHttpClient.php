@@ -2,6 +2,7 @@
 
 namespace App\Tests;
 
+use Stripe\Exception\ApiConnectionException;
 use Stripe\HttpClient\ClientInterface;
 
 class StripeMockedHttpClient implements ClientInterface
@@ -59,6 +60,14 @@ class StripeMockedHttpClient implements ClientInterface
                 // no break
             case 'https://api.stripe.com/v1/transfers/transfer_4/reversals':
                 return [$this->getJsonStripeReversal('trr_4'), 200, []];
+            case 'https://api.stripe.com/v1/payment_intents/pi_valid/capture':
+                return [$this->getJsonStripeReversal('pi_valid'), 200, []];
+            case 'https://api.stripe.com/v1/charges/ch_valid/capture':
+                return [$this->getJsonStripeReversal('ch_valid'), 200, []];
+            case 'https://api.stripe.com/v1/payment_intents/pi_invalid/capture':
+                throw new ApiConnectionException("Already captured", 400);
+            case 'https://api.stripe.com/v1/charges/ch_invalid/capture':
+                throw new ApiConnectionException("Already captured", 400);
             default:
                 return [$this->errorMessage, 403, []];
         }

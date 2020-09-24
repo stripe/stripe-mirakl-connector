@@ -392,7 +392,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'metadata' => [
                         $this->metadataOrderIdFieldName => $orderId,
                     ],
-                    'status' => StripePayment::TO_CAPTURE
+                    'status' => 'requires_capture'
                 ],
             ],
             'type' => 'payment_intent.created',
@@ -453,7 +453,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'metadata' => [
                         $this->metadataOrderIdFieldName => $orderId,
                     ],
-                    'status' => StripePayment::SUCCEEDED
+                    'status' => 'succeeded'
                 ],
             ],
             'type' => 'charge.succeeded',
@@ -514,7 +514,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'metadata' => [
                         $this->metadataOrderIdFieldName => $orderId,
                     ],
-                    'status' => StripePayment::SUCCEEDED
+                    'status' => 'succeeded'
                 ],
             ],
             'type' => 'charge.updated',

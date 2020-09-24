@@ -2,7 +2,6 @@
 
 namespace App\Tests\Command;
 
-use App\Entity\StripePayment;
 use App\Repository\StripePaymentRepository;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
