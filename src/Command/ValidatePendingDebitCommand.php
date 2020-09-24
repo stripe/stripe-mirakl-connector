@@ -2,23 +2,29 @@
 
 namespace App\Command;
 
+use App\Message\CapturePendingPaymentMessage;
+use App\Message\ValidateMiraklOrderMessage;
 use App\Repository\StripePaymentRepository;
 use App\Utils\MiraklClient;
 use App\Utils\StripeProxy;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 class ValidatePendingDebitCommand extends Command implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
-    protected static $defaultName = 'connector:validate:pending-debit';
     protected const ORDER_STATUS_VALIDATED = ['SHIPPING', 'SHIPPED', 'TO_COLLECT', 'RECEIVED', 'CLOSED', 'REFUSED', 'CANCELED', 'WAITING_DEBIT_PAYMENT'];
     protected const ORDER_STATUS_TO_CAPTURE = ['SHIPPING', 'SHIPPED', 'TO_COLLECT', 'RECEIVED', 'WAITING_DEBIT_PAYMENT'];
+    protected static $defaultName = 'connector:validate:pending-debit';
+    /**
+     * @var MessageBusInterface
+     */
+    private $bus;
 
     /**
      * @var MiraklClient
@@ -30,19 +36,14 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
      */
     private $stripePaymentRepository;
 
-    /**
-     * @var StripeProxy
-     */
-    private $stripeProxy;
-
     public function __construct(
+        MessageBusInterface $bus,
         MiraklClient $miraklClient,
-        StripeProxy $stripeProxy,
         StripePaymentRepository $stripePaymentRepository
     ) {
+        $this->bus = $bus;
         $this->miraklClient = $miraklClient;
         $this->stripePaymentRepository = $stripePaymentRepository;
-        $this->stripeProxy = $stripeProxy;
 
         parent::__construct();
     }
@@ -51,8 +52,7 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
     {
         $this
             ->setDescription('Validate pending order whose  payment can be captured')
-            ->setHelp('This command will fetch pending Mirakl order , check if we have payment intent or charge and confirm it on mirakl')
-    ;
+            ->setHelp('This command will fetch pending Mirakl order , check if we have payment intent or charge and confirm it on mirakl');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
@@ -65,6 +65,7 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
             return 0;
         }
 
+        // format Mirakl orders
         $orderIds = [];
         foreach ($miraklOrderDebits as $miraklOrderDebit) {
             $orderId = $miraklOrderDebit['order_id'];
@@ -81,31 +82,36 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
         // keep orders to validate
         $ordersToValidate = array_intersect_key($miraklOrderDebits, $stripePayments);
 
+        // validate payment to mirakl when we have a charge/paymentIntent
+        $this->validateOrders($ordersToValidate);
+
+        // capture payment when mirakl order is totally validate
+        $this->capturePendingPayment(array_keys($ordersToValidate), $stripePayments);
+
+        return 0;
+    }
+
+    /**
+     * @param array $ordersToValidate
+     */
+    protected function validateOrders(array $ordersToValidate): void
+    {
         if (empty($ordersToValidate)) {
-            $output->writeln('No mirakl order to validate');
-            return 0;
+            $this->logger->info('No mirakl order to validate');
+            return;
         }
 
-        // Prepare order for validation
-        $orders = [];
-        $orderCommercialIds = [];
-        foreach ($ordersToValidate as $orderCommercialId => $orderToValidate) {
-            $orderCommercialIds[] = $orderCommercialId;
-            foreach ($orderToValidate as $order) {
-                $orders[] = [
-                    'amount' => $order['amount'],
-                    'order_id' => $order['order_id'],
-                    'customer_id' => $order['customer_id'],
-                    'payment_status' => 'OK',
-                ];
-            }
-        }
+        $this->bus->dispatch(new ValidateMiraklOrderMessage($ordersToValidate));
+    }
 
-        // Validate payment on order
-        $this->miraklClient->validatePayments($orders);
-
+    /**
+     * @param array $commercialIds
+     * @param array $stripePayments
+     */
+    protected function capturePendingPayment(array $commercialIds, array $stripePayments): void
+    {
         // list all orders with the same commercial id as those previously validated
-        $ordersToCapture = $this->miraklClient->listCommercialOrdersById($orderCommercialIds);
+        $ordersToCapture = $this->miraklClient->listCommercialOrdersById($commercialIds);
 
         // we keep complete order to capture payment
         $notTotalyValidated = [];
@@ -141,10 +147,7 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
 
         // we capture payment
         foreach ($orderCanBeCaptured as $commercialId => $amount) {
-            $paymentId = $stripePayments[$commercialId]->getStripePaymentId();
-            $this->stripeProxy->capture($paymentId, $amount * 100);
+            $this->bus->dispatch(new CapturePendingPaymentMessage($stripePayments[$commercialId], $amount * 100));
         }
-
-        return 0;
     }
 }

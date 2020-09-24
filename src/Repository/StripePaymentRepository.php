@@ -30,15 +30,23 @@ class StripePaymentRepository extends ServiceEntityRepository
     public function findPendingPaymentByOrderIds(array $orderIds): array
     {
         $payments = $this->findBy([
-            'miraklOrderId' => $orderIds
+            'miraklOrderId' => $orderIds,
+            'status' => StripePayment::TO_CAPTURE
         ]);
 
-        $paymentByOrderId = [];
-        foreach ($payments as $payment) {
-            $paymentByOrderId[$payment->getMiraklOrderId()] = $payment;
-        }
+        return $this->orderByMiraklOrderId($payments);
+    }
 
-        return $paymentByOrderId;
+    /**
+     * @return StripePayment[]
+     */
+    public function findPendingPayments(): array
+    {
+        $payments = $this->findBy([
+            'status' => StripePayment::TO_CAPTURE
+        ]);
+
+        return $this->orderByMiraklOrderId($payments);
     }
 
     /**
@@ -74,5 +82,19 @@ class StripePaymentRepository extends ServiceEntityRepository
     public function flush()
     {
         $this->getEntityManager()->flush();
+    }
+
+    /**
+     * @param array $payments
+     * @return array
+     */
+    protected function orderByMiraklOrderId(array $payments): array
+    {
+        $paymentByOrderId = [];
+        foreach ($payments as $payment) {
+            $paymentByOrderId[$payment->getMiraklOrderId()] = $payment;
+        }
+
+        return $paymentByOrderId;
     }
 }

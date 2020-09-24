@@ -10,14 +10,14 @@ use Gedmo\Mapping\Annotation as Gedmo;
  */
 class StripePayment
 {
-    public const SUCCEEDED = 'succeeded';
     public const TO_CAPTURE = 'to_capture';
-    public const REQUIRES_CAPTURE = 'requires_capture';
+    public const CAN_BE_CAPTURE = 'can_be_capture';
+    public const CAPTURED = 'captured';
 
     public const ALLOWED_STATUS = [
-        self::SUCCEEDED,
         self::TO_CAPTURE,
-        self::REQUIRES_CAPTURE
+        self::CAN_BE_CAPTURE,
+        self::CAPTURED,
     ];
 
     /**
@@ -36,6 +36,11 @@ class StripePayment
      * @ORM\Column(type="string")
      */
     private $stripePaymentId;
+
+    /**
+     * @ORM\Column(type="string")
+     */
+    private $status = self::TO_CAPTURE;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
@@ -94,9 +99,39 @@ class StripePayment
     }
 
     /**
-     * @return \DateTimeInterface|null
+     * @return mixed
      */
-    public function getCreationDatetime():  ?\DateTimeInterface
+    public function getStatus()
+    {
+        return $this->status;
+    }
+
+    /**
+     * @param string $status
+     * @return self
+     */
+    public function setStatus($status): self
+    {
+        if (!in_array($status, self::ALLOWED_STATUS, true)) {
+            throw new \InvalidArgumentException('Invalid payment status');
+        }
+
+        $this->status = $status;
+        return $this;
+    }
+
+    /**
+     * @return self
+     */
+    public function capture()
+    {
+        return $this->setStatus(self::CAPTURED);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCreationDatetime()
     {
         return $this->creationDatetime;
     }

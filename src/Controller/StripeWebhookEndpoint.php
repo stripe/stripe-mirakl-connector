@@ -21,13 +21,18 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 {
     use LoggerAwareTrait;
 
-    const HANDLED_EVENT_TYPES = [
+    public const HANDLED_EVENT_TYPES = [
         'account.updated',
         'payment_intent.created',
         'payment_intent.succeeded',
         'charge.succeeded',
         'charge.updated',
         'payment_intent.amount_capturable_updated'
+    ];
+
+    public const STRIPE_PAYMENT_LISTEN_STATUS = [
+        'succeeded',
+        'requires_capture'
     ];
 
     /**
@@ -61,8 +66,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         MiraklStripeMappingRepository $miraklStripeMappingRepository,
         StripePaymentRepository $stripePaymentRepository,
         string $metadataOrderIdFieldName
-    )
-    {
+    ) {
         $this->bus = $bus;
         $this->stripeProxy = $stripeProxy;
         $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
@@ -233,9 +237,8 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     {
         $status = $stripeObject['status'] ?? '';
 
-        if (!in_array($status, StripePayment::ALLOWED_STATUS, true)) {
+        if (!in_array($status, self::STRIPE_PAYMENT_LISTEN_STATUS, true)) {
             throw new \Exception('Status has not a valid value', Response::HTTP_BAD_REQUEST);
         }
     }
-
 }
