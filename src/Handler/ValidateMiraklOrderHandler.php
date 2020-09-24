@@ -26,7 +26,7 @@ class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAware
 
     public function __invoke(ValidateMiraklOrderMessage $message)
     {
-        $ordersToValidate = $message->geOrders();
+        $ordersToValidate = $message->getOrders();
 
         if (empty($ordersToValidate)) {
             return;

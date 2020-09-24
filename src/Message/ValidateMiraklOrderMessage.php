@@ -14,7 +14,7 @@ class ValidateMiraklOrderMessage
         $this->orders = $orders;
     }
 
-    public function geOrders(): array
+    public function getOrders(): array
     {
         return $this->orders;
     }

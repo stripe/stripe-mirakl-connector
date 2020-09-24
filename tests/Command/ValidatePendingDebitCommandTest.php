@@ -60,8 +60,22 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
-        $this->assertCount(1, $this->validateDoctrineReceiver->getSent());
-        $this->assertCount(1, $this->captureDoctrineReceiver->getSent());
+
+        $validateMessages = $this->validateDoctrineReceiver->getSent();
+        $captureMessages = $this->captureDoctrineReceiver->getSent();
+
+        $this->assertCount(1, $validateMessages);
+        $this->assertCount(1, $captureMessages);
+
+        $ordersToValidate = $validateMessages[0]->getMessage()->getOrders();
+
+        $this->assertEquals(['Order_66'], array_keys($ordersToValidate));
+        $this->assertCount(2, $ordersToValidate['Order_66']);
+
+        $captureMessage = $captureMessages[0]->getMessage();
+
+        $this->assertEquals('pi_valid', $captureMessage->getStripePayment()->getStripePaymentId());
+        $this->assertEquals(66000, $captureMessage->getAmount());
     }
 
 }
