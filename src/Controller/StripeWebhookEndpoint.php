@@ -191,6 +191,11 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $this->checkPaymentIntentOrChargeStatus($apiStripePayment);
         $stripePaymentId = $apiStripePayment['id'];
 
+        // when a PI is created a linked charge was also created. Prevent duplicate DB entry.
+        if (isset($apiStripePayment['payment_intent']) && null !== $apiStripePayment['payment_intent']) {
+            $stripePaymentId = $apiStripePayment['payment_intent'];
+        }
+
         $stripePayment = $this->stripePaymentRepository->findOneByStripePaymentId($stripePaymentId);
 
         if (!$stripePayment) {
