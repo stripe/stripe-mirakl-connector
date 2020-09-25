@@ -176,7 +176,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 if (isset($miraklOrder['transaction_number'])) {
                     // Setting payment ID
                     $transactionId = $miraklOrder['transaction_number'];
-                    if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_')) {
+                    if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_') || 0 === strpos($transactionId, 'pi_')) {
                         $transfer->setTransactionId($transactionId);
                     }
                 }

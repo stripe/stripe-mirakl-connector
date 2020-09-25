@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\StripePayment;
 use App\Message\CapturePendingPaymentMessage;
 use App\Message\ValidateMiraklOrderMessage;
 use App\Repository\StripePaymentRepository;
@@ -81,8 +82,11 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
         // keep orders to validate
         $ordersToValidate = array_intersect_key($miraklOrderDebits, $stripePayments);
 
+        // keep payment for pending orders
+        $stripePayments = array_intersect_key($stripePayments, $ordersToValidate);
+
         // validate payment to mirakl when we have a charge/paymentIntent
-        $this->validateOrders($ordersToValidate);
+        $this->validateOrders($ordersToValidate, $stripePayments);
 
         // capture payment when mirakl order is totally validate
         $this->capturePendingPayment(array_keys($ordersToValidate), $stripePayments);
@@ -92,15 +96,16 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
 
     /**
      * @param array $ordersToValidate
+     * @param StripePayment[] $stripePayment
      */
-    protected function validateOrders(array $ordersToValidate): void
+    protected function validateOrders(array $ordersToValidate, array $stripePayment): void
     {
         if (empty($ordersToValidate)) {
             $this->logger->info('No mirakl order to validate');
             return;
         }
 
-        $this->bus->dispatch(new ValidateMiraklOrderMessage($ordersToValidate));
+        $this->bus->dispatch(new ValidateMiraklOrderMessage($ordersToValidate, $stripePayment));
     }
 
     /**
