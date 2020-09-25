@@ -3,6 +3,7 @@
 namespace App\Tests\Command;
 
 use App\Entity\StripeTransfer;
+use App\Repository\StripeTransferRepository;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -47,7 +48,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
 
         $this->assertEquals(0, $commandTester->getStatusCode());
         $this->assertCount(1, $this->doctrineReceiver->getSent());
-        $this->assertEquals(4, count($stripeTransfersPending));
+        $this->assertCount(4, $stripeTransfersPending);
     }
 
     public function testExecuteWithArguments()
@@ -64,7 +65,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
 
         $this->assertEquals(0, $commandTester->getStatusCode());
         $this->assertCount(2, $this->doctrineReceiver->getSent());
-        $this->assertEquals(5, count($stripeTransfersPending));
+        $this->assertCount(5, $stripeTransfersPending);
     }
 
     public function testValidTransferAmount()
@@ -75,11 +76,11 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         ]);
 
         $stripeTransfer = $this->stripeTransferRepository->findOneBy([
-          'miraklId' => 'order_4'
+          'miraklId' => 'order_3'
         ]);
 
         // Transfer amount should be 24 - 5 (commission) + 1 + 2 (shipping taxes) + 1 + 2 (taxes)
-        $this->assertEquals(2500, $stripeTransfer->getAmount());
+        $this->assertEquals(24, $stripeTransfer->getAmount());
     }
 
     public function testRetryFailedTransfer()

@@ -4,4 +4,4 @@ App\Entity\StripePayment:
         stripePaymentId: 'pi_valid'
     stripe_payment_2:
         miraklOrderId: 'Order_42'
-        stripePaymentId: 'pi_valid'
+        stripePaymentId: 'pi_valid2'

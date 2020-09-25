@@ -2,6 +2,7 @@
 
 namespace App\Tests\Handler;
 
+use App\Entity\StripePayment;
 use App\Exception\InvalidStripeAccountException;
 use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
@@ -58,12 +59,19 @@ class ValidateMiraklOrderHandlerTest extends TestCase
             ]
         ];
 
+        $stripePayment = new StripePayment();
+        $stripePayment
+            ->setStripePaymentId('pi_valid')
+            ->setMiraklOrderId('Order_66');
+
+        $stripePayments = ['Order_66' => $stripePayment];
+
         $this
             ->miraklClient
             ->expects($this->once())
              ->method('validatePayments');
 
-        $message = new ValidateMiraklOrderMessage($orders);
+        $message = new ValidateMiraklOrderMessage($orders, $stripePayments);
 
         $handler = $this->handler;
         $handler($message);

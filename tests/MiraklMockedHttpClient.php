@@ -112,6 +112,7 @@ class MiraklMockedHttpClient extends MockHttpClient
         return [
             'id' => 1,
             'order_id' => $orderId,
+            'commercial_id' => $orderId,
             'shop_id' => '1',
             'total_price' => 24,
             'order_state' => 'RECEIVED',
