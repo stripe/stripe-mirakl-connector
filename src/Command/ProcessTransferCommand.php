@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\StripePayment;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
 use App\Repository\MiraklStripeMappingRepository;
@@ -135,11 +136,22 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         $existingTransfers = $this->stripeTransferRepository
             ->findExistingTransfersByOrderIds(array_column($miraklOrders, 'order_id'));
 
+        $stripePaymentToCapture = $this->stripePaymentRepository->findPendingPayments();
+
         $transfers = [];
         foreach ($miraklOrders as $miraklOrder) {
             $orderId = $miraklOrder['order_id'];
 
-            if (in_array($miraklOrder['order_state'], self::$ignoredOrderStatuses)) {
+            if (isset($stripePaymentToCapture[$miraklOrder['commercial_id']])) {
+                $ignoreReason = sprintf(
+                    'Skipping order with pending payment %s',
+                    $stripePaymentToCapture[$miraklOrder['commercial_id']]->getStripePaymentId()
+                );
+                $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
+                continue;
+            }
+
+            if (in_array($miraklOrder['order_state'], self::$ignoredOrderStatuses, true)) {
                 $ignoreReason = sprintf(
                     'Skipping order in state %s',
                     $miraklOrder['order_state']
@@ -152,11 +164,13 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 // Use existing transfer
                 $transfer = $existingTransfers[$orderId];
 
-                if ($transfer->getStatus() == StripeTransfer::TRANSFER_CREATED) {
+                if ($transfer->getStatus() === StripeTransfer::TRANSFER_CREATED) {
                     $ignoreReason = 'Skipping order transfer with existing created transfer';
                     $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
                     continue;
-                } elseif ($transfer->getTransferId()) {
+                }
+
+                if ($transfer->getTransferId()) {
                     // Should not happen but in case it does let's clean it up
                     $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
                     $ignoreReason = 'Cleaning order transfer with existing Stripe transfer';
