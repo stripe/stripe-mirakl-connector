@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
 use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\StripePaymentRepository;
 use App\Repository\StripeTransferRepository;
 use App\Utils\MiraklClient;
 use App\Utils\StripeProxy;
@@ -45,11 +46,6 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
     private $miraklClient;
 
     /**
-     * @var StripeProxy
-     */
-    private $stripeProxy;
-
-    /**
      * @var StripeTransferRepository
      */
     private $stripeTransferRepository;
@@ -59,14 +55,25 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
      */
     private $miraklStripeMappingRepository;
 
-    public function __construct(MessageBusInterface $bus, bool $enablesAutoTransferCreation, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripeTransferRepository $stripeTransferRepository, MiraklStripeMappingRepository $miraklStripeMappingRepository)
-    {
+    /**
+     * @var StripePaymentRepository
+     */
+    private $stripePaymentRepository;
+
+    public function __construct(
+        MessageBusInterface $bus,
+        bool $enablesAutoTransferCreation,
+        MiraklClient $miraklClient,
+        StripeTransferRepository $stripeTransferRepository,
+        MiraklStripeMappingRepository $miraklStripeMappingRepository,
+        StripePaymentRepository $stripePaymentRepository
+    ) {
         $this->bus = $bus;
         $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->stripePaymentRepository = $stripePaymentRepository;
         parent::__construct();
     }
 
@@ -103,6 +110,11 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                     [ 'since' => $lastMiraklUpdateTime->format(MiraklClient::DATE_FORMAT) ]
                 );
                 $miraklOrders = $this->miraklClient->listOrdersByDate($lastMiraklUpdateTime);
+
+                // add failed mirakl orders older than $lastMiraklUpdateTime
+                $failedOrderId = $this->stripeTransferRepository->getMiraklOrderIdFailTransfersBefore($lastMiraklUpdateTime);
+                $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderId);
+                $miraklOrders = array_merge($miraklOrders, $miraklFailedTransferOrders);
             } else {
                 $this->logger->info('Executing for all orders');
                 $miraklOrders = $this->miraklClient->listOrders();
@@ -161,10 +173,12 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
                 $transfer->setMiraklId($orderId);
 
-                // Setting payment ID
-                $transactionId = $miraklOrder['transaction_number'];
-                if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_')) {
-                    $transfer->setTransactionId($transactionId);
+                if (isset($miraklOrder['transaction_number'])) {
+                    // Setting payment ID
+                    $transactionId = $miraklOrder['transaction_number'];
+                    if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_')) {
+                        $transfer->setTransactionId($transactionId);
+                    }
                 }
 
                 // Create new transfer
