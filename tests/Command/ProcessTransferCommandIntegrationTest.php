@@ -26,7 +26,6 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
-
         $application = new Application($kernel);
         $this->command = $application->find('connector:dispatch:process-transfer');
 
@@ -149,6 +148,130 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $stripeTransfer->getStatus());
 
         // No message should be sent
+        $this->assertCount(0, $this->doctrineReceiver->getSent());
+    }
+
+    public function testIntegrateOldFailedTransfert()
+    {
+        $failedTransfert = (new StripeTransfer())
+            ->setStatus(StripeTransfer::TRANSFER_FAILED)
+            ->setAmount(24)
+            ->setMiraklUpdateTime(new \DateTime('2018-01-01'))
+            ->setCurrency('EUR')
+            ->setMiraklId('old_order_failed_transfer')
+            ->setTransactionId('ch_transaction_8')
+            ->setType('TRANSFER_ORDER')
+            ;
+
+        // add olf failed transfert
+        $this->stripeTransferRepository->persistAndFlush($failedTransfert);
+
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $stripeTransfer = $this->stripeTransferRepository->findOneBy([
+            'miraklId' => 'old_order_failed_transfer'
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
+        // must be testNominalExecute() number + 1 old failed transfert
+        $this->assertCount(2, $this->doctrineReceiver->getSent());
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $stripeTransfer->getStatus());
+    }
+
+    public function testNolastMiraklUpdateTime()
+    {
+        // Suppress all transfert
+        $this->stripeTransferRepository
+            ->createQueryBuilder('t')
+            ->delete(StripeTransfer::class, 't')
+            ->where('t.miraklUpdateTime is not null')
+            ->getQuery()
+            ->execute()
+        ;
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_PENDING
+        ]);
+
+        $this->assertCount(0, $stripeTransfersPending);
+
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_PENDING
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
+        $this->assertCount(1, $this->doctrineReceiver->getSent());
+        $this->assertCount(1, $stripeTransfersPending);
+    }
+
+    public function testTransfertWithNegativeAmount()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_PENDING
+        ]);
+
+        $this->assertCount(3, $stripeTransfersPending);
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_FAILED
+        ]);
+
+        $this->assertCount(3, $stripeTransfersPending);
+
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_order_ids' => ['order_11']
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
+        $this->assertCount(1, $this->doctrineReceiver->getSent());
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_PENDING
+        ]);
+
+        $this->assertCount(3, $stripeTransfersPending);
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_FAILED
+        ]);
+
+        $this->assertCount(4, $stripeTransfersPending);
+    }
+
+    public function testTransfertWithPendingPaiment()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_order_ids' => ['Order_66']
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
+        $this->assertCount(0, $this->doctrineReceiver->getSent());
+    }
+
+    public function testTransfertWithOrderBadState()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_order_ids' => ['Order_51']
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
         $this->assertCount(0, $this->doctrineReceiver->getSent());
     }
 }

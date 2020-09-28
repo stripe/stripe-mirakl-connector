@@ -113,8 +113,8 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 $miraklOrders = $this->miraklClient->listOrdersByDate($lastMiraklUpdateTime);
 
                 // add failed mirakl orders older than $lastMiraklUpdateTime
-                $failedOrderId = $this->stripeTransferRepository->getMiraklOrderIdFailTransfersBefore($lastMiraklUpdateTime);
-                $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderId);
+                $failedOrderIds = $this->stripeTransferRepository->getMiraklOrderIdFailTransfersBefore($lastMiraklUpdateTime);
+                $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderIds);
                 $miraklOrders = array_merge($miraklOrders, $miraklFailedTransferOrders);
             } else {
                 $this->logger->info('Executing for all orders');
@@ -214,11 +214,15 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
     private function prepareTransfer(array $miraklOrder, StripeTransfer $transfer)
     {
+        $failed = false;
+        $failedReason = '';
+        $transfer->setCurrency($miraklOrder['currency_iso_code']);
+
         // Transfer amount
         $amount = $miraklOrder['total_price'] - $miraklOrder['total_commission'];
         if (isset($miraklOrder['order_lines'])) {
             foreach ($miraklOrder['order_lines'] as $orderLine) {
-                if (in_array($orderLine['order_line_state'], self::$ignoredOrderStatuses)) {
+                if (in_array($orderLine['order_line_state'], self::$ignoredOrderStatuses, true)) {
                     continue;
                 }
 
@@ -235,14 +239,12 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount < 0) {
-            return $this->failTransfer($transfer, sprintf(
-                'Cannot transfer negative amount, %s provided',
-                (string) $amount
-            ));
+            $failed = true;
+            $failedReason = sprintf('Cannot transfer negative amount, %s provided', (string) $amount);
+            $transfer->setAmount(0); // can't be null
+        } else {
+            $transfer->setAmount($amount);
         }
-
-        $transfer->setAmount($amount);
-        $transfer->setCurrency($miraklOrder['currency_iso_code']);
 
         // Seller ID
         $shopId = $miraklOrder['shop_id'];
@@ -251,13 +253,11 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         ]);
 
         if (!$mapping) {
-            return $this->failTransfer($transfer, sprintf(
-                'Cannot find Stripe account for Seller ID %s',
-                $shopId
-            ));
+            $failed = true;
+            $failedReason .= ' '.sprintf('Cannot find Stripe account for Seller ID %s', $shopId);
+        } else {
+            $transfer->setMiraklStripeMapping($mapping);
         }
-
-        $transfer->setMiraklStripeMapping($mapping);
 
         // Mirakl update time
         $miraklUpdateTime = \DateTime::createFromFormat(
@@ -266,18 +266,21 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         );
 
         if (!$miraklUpdateTime) {
-            return $this->failTransfer($transfer, sprintf(
-                'Cannot parse last_updated_date %s',
-                $miraklOrder['last_updated_date']
-            ));
+            $failed = true;
+            $failedReason .= ' '.sprintf('Cannot parse last_updated_date %s', $miraklOrder['last_updated_date']);
+            $transfer->setMiraklUpdateTime(new \DateTime('2000-01-01')); // can't be null
+        } else {
+            $transfer->setMiraklUpdateTime($miraklUpdateTime);
         }
 
-        $transfer->setMiraklUpdateTime($miraklUpdateTime);
-
-        return $transfer;
+        if ($failed) {
+            return $this->failTransfer($transfer, $failedReason);
+        } else {
+            return $transfer;
+        }
     }
 
-    private function failTransfer($transfer, $reason): StripeTransfer
+    private function failTransfer(StripeTransfer $transfer, $reason): StripeTransfer
     {
         $this->logger->error($reason, ['order_id' => $transfer->getMiraklId()]);
 
