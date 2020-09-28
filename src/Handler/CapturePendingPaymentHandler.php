@@ -47,6 +47,5 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);
         }
-
     }
 }
