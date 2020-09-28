@@ -77,4 +77,24 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $handler($message);
     }
 
+    public function testWithNoOrders()
+    {
+        $stripePayment = new StripePayment();
+        $stripePayment
+            ->setStripePaymentId('pi_valid')
+            ->setMiraklOrderId('Order_66');
+
+        $stripePayments = ['Order_66' => $stripePayment];
+
+        $this
+            ->miraklClient
+            ->expects($this->never())
+            ->method('validatePayments');
+
+        $message = new ValidateMiraklOrderMessage([], $stripePayments);
+
+        $handler = $this->handler;
+        $handler($message);
+    }
+
 }

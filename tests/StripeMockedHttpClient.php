@@ -3,6 +3,7 @@
 namespace App\Tests;
 
 use Stripe\Exception\ApiConnectionException;
+use Stripe\Exception\BadMethodCallException;
 use Stripe\HttpClient\ClientInterface;
 
 class StripeMockedHttpClient implements ClientInterface

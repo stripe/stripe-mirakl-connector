@@ -202,11 +202,11 @@ class StripeProxy implements LoggerAwareInterface
         $prefix = substr($paymentId, 0, 2);
 
         if ('pi' === $prefix) {
-            $obj = new PaymentIntent($paymentId);
+            $obj = PaymentIntent::constructFrom(['id' => $paymentId]);
             $params['amount_to_capture'] = $amount;
             $message = '[Stripe API] Call to PaymentIntent/Capture';
-        } elseif ('ch' === $prefix) {
-            $obj = new Charge($paymentId);
+        } elseif ('ch' === $prefix || 'py' === $prefix) {
+            $obj = Charge::constructFrom(['id' => $paymentId]);
             $params['amount'] = $amount;
             $message = '[Stripe API] Call to Charge/Capture';
         } else {

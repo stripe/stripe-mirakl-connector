@@ -3,25 +3,17 @@
 namespace App\Tests\Handler;
 
 use App\Entity\StripePayment;
-use App\Exception\InvalidStripeAccountException;
-use App\Factory\MiraklPatchShopFactory;
 use App\Handler\CapturePendingPaymentHandler;
 use App\Handler\UpdateAccountLoginLinkHandler;
-use App\Handler\UpdateKYCStatusHandler;
-use App\Handler\ValidateMiraklOrderHandler;
-use App\Message\AccountUpdateMessage;
 use App\Message\CapturePendingPaymentMessage;
-use App\Message\ValidateMiraklOrderMessage;
-use App\Repository\MiraklStripeMappingRepository;
 use App\Repository\StripePaymentRepository;
-use App\Utils\MiraklClient;
+use App\Tests\StripeWebTestCase;
 use App\Utils\StripeProxy;
-use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
-use Stripe\Account;
 use Stripe\Exception\ApiConnectionException;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 
-class CapturePendingPaymentHandlerTest extends TestCase
+class CapturePendingPaymentHandlerTest extends StripeWebTestCase
 {
 
     /**
@@ -41,7 +33,10 @@ class CapturePendingPaymentHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->stripeProxy = $this->createMock(StripeProxy::class);
+        self::bootKernel();
+        $container = self::$kernel->getContainer();
+
+        $this->stripeProxy = $container->get('App\Utils\StripeProxy');
 
         $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
             ->disableOriginalConstructor()
@@ -63,11 +58,6 @@ class CapturePendingPaymentHandlerTest extends TestCase
             ->setStripePaymentId('pi_valid')
             ->setMiraklOrderId('Order_66');
 
-        $this
-            ->stripeProxy
-            ->expects($this->once())
-            ->method('capture');
-
         $message = new CapturePendingPaymentMessage($stripePayment, 33000);
         $handler = $this->handler;
         $handler($message);
@@ -81,11 +71,6 @@ class CapturePendingPaymentHandlerTest extends TestCase
         $stripePayment
             ->setStripePaymentId('ch_valid')
             ->setMiraklOrderId('Order_66');
-
-        $this
-            ->stripeProxy
-            ->expects($this->once())
-            ->method('capture');
 
         $message = new CapturePendingPaymentMessage($stripePayment, 33000);
         $handler = $this->handler;
@@ -101,16 +86,11 @@ class CapturePendingPaymentHandlerTest extends TestCase
             ->setStripePaymentId('pi_invalid')
             ->setMiraklOrderId('Order_66');
 
-        $this
-            ->stripeProxy
-            ->expects($this->once())
-            ->method('capture');
-
         $message = new CapturePendingPaymentMessage($stripePayment, 42000);
         $handler = $this->handler;
         $handler($message);
 
-        $this->assertEquals(StripePayment::CAPTURED, $stripePayment->getStatus());
+        $this->assertEquals(StripePayment::TO_CAPTURE, $stripePayment->getStatus());
     }
 
     public function testNominalChargeErrorExecute()
@@ -120,15 +100,10 @@ class CapturePendingPaymentHandlerTest extends TestCase
             ->setStripePaymentId('ch_invalid')
             ->setMiraklOrderId('Order_66');
 
-        $this
-            ->stripeProxy
-            ->expects($this->once())
-            ->method('capture');
-
         $message = new CapturePendingPaymentMessage($stripePayment, 42000);
         $handler = $this->handler;
         $handler($message);
 
-        $this->assertEquals(StripePayment::CAPTURED, $stripePayment->getStatus());
+        $this->assertEquals(StripePayment::TO_CAPTURE, $stripePayment->getStatus());
     }
 }
