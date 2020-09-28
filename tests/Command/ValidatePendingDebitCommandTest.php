@@ -68,7 +68,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
 
         $ordersToValidate = $validateMessages[0]->getMessage()->getOrders();
 
-        $this->assertEquals(['Order_66'], array_keys($ordersToValidate));
+        $this->assertEquals(['Order_66', 'Order_42'], array_keys($ordersToValidate));
         $this->assertCount(2, $ordersToValidate['Order_66']);
 
         $captureMessage = $captureMessages[0]->getMessage();

@@ -45,7 +45,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                             $this->getMiraklOrder('old_order_failed_transfer'),
                         ],
                     ]));
-                case '/orders?commercial_ids=Order_66':
+                case '/orders?commercial_ids=Order_66%2COrder_42':
                     return new MockResponse($this->getJsonOrdersWithCommercialId());
                 case '/shops':
                     return new MockResponse($this->getReturnJsonShops());
@@ -522,6 +522,48 @@ class MiraklMockedHttpClient extends MockHttpClient
                         ],
                         "shop_id" => "2016"
                     ],
+                    [
+                        'order_state' => 'NOT_VALID',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_42",
+                        "order_id" => "Order_42-A",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_42-a-1",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2016"
+                    ],
+                    [
+                        'order_state' => 'SHIPPING',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_42",
+                        "order_id" => "Order_42-B",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_42-a-1",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2016"
+                    ],
                 ],
             ],
             'total_count' => 1,
@@ -581,7 +623,49 @@ class MiraklMockedHttpClient extends MockHttpClient
                         ],
                         "shop_id" => "2016"
                     ],
+                [
+                    'order_state' => 'NOT_VALID',
+                    "total_price" => 330.00,
+                    "amount" => 330.00,
+                    "currency_iso_code" => "EUR",
+                    "customer_id" => "Customer_id_001",
+                    "commercial_id" => "Order_42",
+                    "order_id" => "Order_42-A",
+                    "order_lines" => [
+                        "order_line" => [
+                            [
+                                "offer_id" => "2016",
+                                "order_line_amount" => 330.00,
+                                "order_line_id" => "Order_42-a-1",
+                                "order_line_quantity" => 5,
+                                'order_line_state' => 'SHIPPING',
+                            ]
+                        ]
+                    ],
+                    "shop_id" => "2016"
                 ],
+                [
+                    'order_state' => 'SHIPPING',
+                    "total_price" => 330.00,
+                    "amount" => 330.00,
+                    "currency_iso_code" => "EUR",
+                    "customer_id" => "Customer_id_001",
+                    "commercial_id" => "Order_42",
+                    "order_id" => "Order_42-B",
+                    "order_lines" => [
+                        "order_line" => [
+                            [
+                                "offer_id" => "2016",
+                                "order_line_amount" => 330.00,
+                                "order_line_id" => "Order_42-a-1",
+                                "order_line_quantity" => 5,
+                                'order_line_state' => 'SHIPPING',
+                            ]
+                        ]
+                    ],
+                    "shop_id" => "2016"
+                ],
+            ],
         ]);
     }
 
