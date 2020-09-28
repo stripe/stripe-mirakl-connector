@@ -135,6 +135,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         } catch (\Exception $e) {
             $message = $e->getMessage();
             $status = $e->getCode();
+
+            if (!isset(Response::$statusTexts[$status])) {
+                $status = Response::HTTP_INTERNAL_SERVER_ERROR;
+            }
         }
 
         return new Response($message, $status);

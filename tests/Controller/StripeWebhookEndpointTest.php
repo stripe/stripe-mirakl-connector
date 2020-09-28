@@ -48,6 +48,38 @@ class StripeWebhookEndpointTest extends TestCase
      */
     protected $metadataOrderIdFieldName;
 
+    protected function setUp(): void
+    {
+        $this->metadataOrderIdFieldName = 'mirakl_order_id';
+        $this->bus = $this->getMockBuilder(MessageBusInterface::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['dispatch'])
+            ->getMock();
+
+        $this->stripeProxy = $this->createMock(StripeProxy::class);
+
+        $this->miraklStripeMappingRepository = $this->getMockBuilder(MiraklStripeMappingRepository::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['findOneByStripeAccountId', 'persistAndFlush'])
+            ->getMock();
+
+        $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
+            ->disableOriginalConstructor()
+            ->setMethods(['findOneByStripePaymentId', 'persistAndFlush'])
+            ->getMock();
+
+        $logger = new NullLogger();
+
+        $this->controller = new StripeWebhookEndpoint(
+            $this->bus,
+            $this->stripeProxy,
+            $this->miraklStripeMappingRepository,
+            $this->stripePaymentRepository,
+            $this->metadataOrderIdFieldName
+        );
+        $this->controller->setLogger($logger);
+    }
+
     public function testHandleStripeWebhookWithInvalidPayload()
     {
         $payload = 'invalidPayload';
@@ -328,6 +360,47 @@ class StripeWebhookEndpointTest extends TestCase
         $this->assertEquals("{$this->metadataOrderIdFieldName} not found in metadata webhook event", $response->getContent());
     }
 
+    public function testHandleStripeWebhookWithEmptyMetadata()
+    {
+        $payload = 'validPayload';
+        $signature = 'validSignature';
+        $request = Request::create(
+            '/api/public/webhook',
+            'POST',
+            [],
+            [],
+            [],
+            ['HTTP_STRIPE_SIGNATURE' => $signature],
+            $payload
+        );
+
+        $stripePaymentIntentId = 'pi_valid';
+        $data = [
+            'data' => [
+                'object' => [
+                    'id' => $stripePaymentIntentId,
+                    'metadata' => [
+                        $this->metadataOrderIdFieldName => '',
+                    ],
+                    'status' => 'requires_payment_method'
+                ],
+            ],
+            'type' => 'payment_intent.created',
+        ];
+        $expectedEvent = \Stripe\Event::constructFrom($data);
+
+        $this
+            ->stripeProxy
+            ->expects($this->once())
+            ->method('webhookConstructEvent')
+            ->with($payload, $signature)
+            ->willReturn($expectedEvent);
+
+        $response = $this->controller->handleStripeWebhook($request);
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $this->assertEquals("{$this->metadataOrderIdFieldName} is empty in metadata webhook event", $response->getContent());
+    }
+
     public function testHandleStripeWebhookWithBadStatus()
     {
         $payload = 'validPayload';
@@ -552,35 +625,65 @@ class StripeWebhookEndpointTest extends TestCase
         $this->assertEquals("Payment created", $response->getContent());
     }
 
-    protected function setUp(): void
+    public function testHandleStripeWebhookChargeWithPI()
     {
-        $this->metadataOrderIdFieldName = 'mirakl_order_id';
-        $this->bus = $this->getMockBuilder(MessageBusInterface::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['dispatch'])
-            ->getMock();
-
-        $this->stripeProxy = $this->createMock(StripeProxy::class);
-
-        $this->miraklStripeMappingRepository = $this->getMockBuilder(MiraklStripeMappingRepository::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['findOneByStripeAccountId', 'persistAndFlush'])
-            ->getMock();
-
-        $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['findOneByStripePaymentId', 'persistAndFlush'])
-            ->getMock();
-
-        $logger = new NullLogger();
-
-        $this->controller = new StripeWebhookEndpoint(
-            $this->bus,
-            $this->stripeProxy,
-            $this->miraklStripeMappingRepository,
-            $this->stripePaymentRepository,
-            $this->metadataOrderIdFieldName
+        $payload = 'validPayload';
+        $signature = 'validSignature';
+        $request = Request::create(
+            '/api/public/webhook',
+            'POST',
+            [],
+            [],
+            [],
+            ['HTTP_STRIPE_SIGNATURE' => $signature],
+            $payload
         );
-        $this->controller->setLogger($logger);
+
+        $stripeChargeId = 'ch_valid';
+        $orderId = 12;
+        $data = [
+            'data' => [
+                'object' => [
+                    'id' => $stripeChargeId,
+                    'payment_intent' => 'pi_valid',
+                    'metadata' => [
+                        $this->metadataOrderIdFieldName => $orderId,
+                    ],
+                    'status' => 'succeeded'
+                ],
+            ],
+            'type' => 'charge.updated',
+        ];
+        $expectedEvent = \Stripe\Event::constructFrom($data);
+
+        $this
+            ->stripeProxy
+            ->expects($this->once())
+            ->method('webhookConstructEvent')
+            ->with($payload, $signature)
+            ->willReturn($expectedEvent);
+
+
+        $this
+            ->stripePaymentRepository
+            ->expects($this->once())
+            ->method('findOneByStripePaymentId')
+            ->with('pi_valid')
+            ->willReturn(null);
+
+        $expectedPayment = new StripePayment();
+        $expectedPayment
+            ->setStripePaymentId('pi_valid')
+            ->setMiraklOrderId($orderId);
+
+        $this
+            ->stripePaymentRepository
+            ->expects($this->once())
+            ->method('persistAndFlush')
+            ->with($expectedPayment);
+
+        $response = $this->controller->handleStripeWebhook($request);
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals("Payment created", $response->getContent());
     }
 }
