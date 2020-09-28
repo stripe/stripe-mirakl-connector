@@ -151,7 +151,7 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
 
         // we capture payment
         foreach ($orderCanBeCaptured as $commercialId => $amount) {
-            $this->bus->dispatch(new CapturePendingPaymentMessage($stripePayments[$commercialId], $amount * 100));
+            $this->bus->dispatch(new CapturePendingPaymentMessage($stripePayments[$commercialId], (int)$amount * 100));
         }
     }
 }

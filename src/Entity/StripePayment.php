@@ -79,9 +79,9 @@ class StripePayment
     }
 
     /**
-     * @return string|null
+     * @return string
      */
-    public function getStripePaymentId(): ?string
+    public function getStripePaymentId(): string
     {
         return $this->stripePaymentId;
     }

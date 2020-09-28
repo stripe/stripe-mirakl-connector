@@ -55,7 +55,7 @@ class StripeTransferRepository extends ServiceEntityRepository
         return $lastUpdatedStripeTransfer->getMiraklUpdateTime();
     }
 
-    protected function failTransfersBeforeQueryBuilder(\DateTime $before): QueryBuilder
+    protected function failTransfersBeforeQueryBuilder(\DateTimeInterface $before): QueryBuilder
     {
         return  $this->createQueryBuilder('t')
             ->where("t.miraklUpdateTime < :before")
@@ -64,7 +64,7 @@ class StripeTransferRepository extends ServiceEntityRepository
             ->setParameter("status", StripeTransfer::TRANSFER_FAILED);
     }
 
-    public function getFailTransfersBefore(\DateTime $before): array
+    public function getFailTransfersBefore(\DateTimeInterface $before): array
     {
         $failTransfersQuery = $this->failTransfersBeforeQueryBuilder($before)->getQuery();
 

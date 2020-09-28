@@ -42,6 +42,10 @@ class MiraklClient implements LoggerAwareInterface
 
     private function getAllOrders(?array $filters)
     {
+        if (!$filters) {
+            $filters = [];
+        }
+
         $this->logger->info('[Mirakl API] Call to OR11 - fetch orders');
         $response = $this->client->request('GET', '/api/orders', $filters);
 
