@@ -19,6 +19,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                 case '/orders?customer_debited=true':
                     return new MockResponse($this->getJsonMiraklOrders());
                 case '/orders?customer_debited=true&start_update_date=2019-01-01T00%3A00%3A00%2B0000':
+                case '/orders?customer_debited=true&start_update_date=2019-01-01T00%3A00%3A00%2B0100':
                     return new MockResponse($this->getJsonMiraklOrders());
                 case '/orders?customer_debited=true&order_ids=order_5%2Corder_6':
                     return new MockResponse($this->getJsonSpecifiedMiraklOrders());
@@ -48,6 +49,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                 case '/invoices':
                     return new MockResponse($this->getJsonMiraklInvoices());
                 case '/invoices?start_date=2019-01-01T00%3A00%3A00%2B0000':
+                case '/invoices?start_date=2019-01-01T00%3A00%3A00%2B0100':
                     return new MockResponse($this->getJsonMiraklInvoices());
                 case '/invoices?shop=1':
                     return new MockResponse($this->getSpecifiedJsonMiraklInvoices());

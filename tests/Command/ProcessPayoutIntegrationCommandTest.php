@@ -49,8 +49,8 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
         $this->assertCount(1, $this->payoutsReceiver->getSent());
         $this->assertCount(3, $this->transfersReceiver->getSent());
 
-        $this->assertEquals(4, count($stripePayoutsPending));
-        $this->assertEquals(6, count($stripeTransfersPending));
+        $this->assertCount(4, $stripePayoutsPending);
+        $this->assertCount(6, $stripeTransfersPending);
 
         $stripePayout = $this->getPayoutByInvoiceId(4);
         $this->assertEquals(1234, $stripePayout->getAmount());
@@ -87,8 +87,8 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
         $this->assertCount(1, $this->payoutsReceiver->getSent());
         $this->assertCount(3, $this->transfersReceiver->getSent());
 
-        $this->assertEquals(4, count($stripePayoutsPending));
-        $this->assertEquals(6, count($stripeTransfersPending));
+        $this->assertCount(4, $stripePayoutsPending);
+        $this->assertCount(6, $stripeTransfersPending);
     }
 
     public function testRetryFailedPayout()
