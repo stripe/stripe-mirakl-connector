@@ -226,7 +226,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
             'status' => StripeTransfer::TRANSFER_FAILED
         ]);
 
-        $this->assertCount(3, $stripeTransfersPending);
+        $this->assertCount(4, $stripeTransfersPending);
 
         $commandTester->execute([
             'command' => $this->command->getName(),
@@ -246,7 +246,7 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
             'status' => StripeTransfer::TRANSFER_FAILED
         ]);
 
-        $this->assertCount(4, $stripeTransfersPending);
+        $this->assertCount(5, $stripeTransfersPending);
     }
 
     public function testTransfertWithPendingPaiment()
