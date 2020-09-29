@@ -18,7 +18,7 @@ class TransferFailedMessage implements NotifiableMessageInterface
 
     public function __construct(StripeTransfer $transfer)
     {
-        $mapping = $transfer->getMiraklStripeMapping();
+        $mapping = $transfer->getAccountMapping();
         $stripeAccountId = $mapping ? $mapping->getStripeAccountId() : null;
         $miraklShopId = $mapping ? $mapping->getMiraklShopId() : null;
 

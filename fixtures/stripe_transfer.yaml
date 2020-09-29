@@ -1,7 +1,7 @@
 App\Entity\StripeTransfer:
     stripe_transfer_1: # Good order
         miraklId: 'order_1'
-        miraklStripeMapping: '@mapping_1'
+        accountMapping: '@mapping_1'
         type: 'TRANSFER_ORDER'
         transactionId: 'ch_transaction_1'
         amount: '24'
@@ -10,7 +10,7 @@ App\Entity\StripeTransfer:
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
     stripe_transfer_2: # Fails due to Stripe API error
         miraklId: 'order_2'
-        miraklStripeMapping: '@mapping_2'
+        accountMapping: '@mapping_2'
         type: 'TRANSFER_ORDER'
         transactionId: 'py_transaction_2'
         amount: '24'

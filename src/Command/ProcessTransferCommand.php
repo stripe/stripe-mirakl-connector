@@ -5,7 +5,7 @@ namespace App\Command;
 use App\Entity\StripePayment;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\AccountMappingRepository;
 use App\Repository\StripePaymentRepository;
 use App\Repository\StripeTransferRepository;
 use App\Utils\MiraklClient;
@@ -52,9 +52,9 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
     private $stripeTransferRepository;
 
     /**
-     * @var MiraklStripeMappingRepository
+     * @var AccountMappingRepository
      */
-    private $miraklStripeMappingRepository;
+    private $accountMappingRepository;
 
     /**
      * @var StripePaymentRepository
@@ -66,14 +66,14 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         bool $enablesAutoTransferCreation,
         MiraklClient $miraklClient,
         StripeTransferRepository $stripeTransferRepository,
-        MiraklStripeMappingRepository $miraklStripeMappingRepository,
+        AccountMappingRepository $accountMappingRepository,
         StripePaymentRepository $stripePaymentRepository
     ) {
         $this->bus = $bus;
         $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
         $this->miraklClient = $miraklClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
-        $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->accountMappingRepository = $accountMappingRepository;
         $this->stripePaymentRepository = $stripePaymentRepository;
         parent::__construct();
     }
@@ -248,7 +248,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
         // Seller ID
         $shopId = $miraklOrder['shop_id'];
-        $mapping = $this->miraklStripeMappingRepository->findOneBy([
+        $mapping = $this->accountMappingRepository->findOneBy([
             'miraklShopId' => $shopId,
         ]);
 
@@ -256,7 +256,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
             $failed = true;
             $failedReason .= ' '.sprintf('Cannot find Stripe account for Seller ID %s', $shopId);
         } else {
-            $transfer->setMiraklStripeMapping($mapping);
+            $transfer->setAccountMapping($mapping);
         }
 
         // Mirakl update time

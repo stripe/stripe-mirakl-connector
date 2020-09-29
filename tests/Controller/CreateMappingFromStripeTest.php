@@ -3,9 +3,9 @@
 namespace App\Tests\Controller;
 
 use App\Controller\CreateMappingFromStripe;
-use App\Entity\MiraklStripeMapping;
+use App\Entity\AccountMapping;
 use App\Entity\OnboardingAccount;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\AccountMappingRepository;
 use App\Repository\OnboardingAccountRepository;
 use App\Repository\StripeAccountRepository;
 use PHPUnit\Framework\TestCase;
@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
 class CreateMappingFromStripeTest extends TestCase
 {
     protected $controller;
-    protected $miraklStripeMappingRepository;
+    protected $accountMappingRepository;
     protected $onboardingAccountRepository;
     protected $stripeAccountRepository;
     protected $redirectOnboarding;
@@ -32,7 +32,7 @@ class CreateMappingFromStripeTest extends TestCase
 
         $this->redirectOnboarding = 'https://shopredirect.com';
         $this->exceptionMessage = 'A Stripe error occurred';
-        $this->miraklStripeMappingRepository = $this->getMockBuilder(MiraklStripeMappingRepository::class)
+        $this->accountMappingRepository = $this->getMockBuilder(AccountMappingRepository::class)
             ->disableOriginalConstructor()
             ->setMethods(['findOneByMiraklShopId', 'persistAndFlush'])
             ->getMock();
@@ -49,7 +49,7 @@ class CreateMappingFromStripeTest extends TestCase
         $this->controller = new CreateMappingFromStripe(
             $this->stripeAccountRepository,
             $this->redirectOnboarding,
-            $this->miraklStripeMappingRepository,
+            $this->accountMappingRepository,
             $this->onboardingAccountRepository
         );
         $this->controller->setLogger($logger);
@@ -140,11 +140,11 @@ class CreateMappingFromStripeTest extends TestCase
             ->method('deleteAndFlush')
             ->with($onboardingAccount);
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('findOneByMiraklShopId')
             ->with(4242)
-            ->willReturn(new MiraklStripeMapping());
+            ->willReturn(new AccountMapping());
 
         $response = $this->controller->linkShop($request);
         $queryParams = \http_build_query([
@@ -183,7 +183,7 @@ class CreateMappingFromStripeTest extends TestCase
             ->method('deleteAndFlush')
             ->with($onboardingAccount);
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('findOneByMiraklShopId')
             ->with(4242)
@@ -223,7 +223,7 @@ class CreateMappingFromStripeTest extends TestCase
         $stripeAccount->requirements = [
             'disabled_reason' => 'check in progress',
         ];
-        $expectedMapping = new MiraklStripeMapping();
+        $expectedMapping = new AccountMapping();
         $expectedMapping
             ->setMiraklShopId(4242)
             ->setStripeAccountId('acct_valid')
@@ -243,13 +243,13 @@ class CreateMappingFromStripeTest extends TestCase
             ->method('deleteAndFlush')
             ->with($onboardingAccount);
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('findOneByMiraklShopId')
             ->with(4242)
             ->willReturn(null);
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedMapping);

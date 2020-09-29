@@ -3,10 +3,10 @@
 namespace App\Tests\Controller;
 
 use App\Controller\StripeWebhookEndpoint;
-use App\Entity\MiraklStripeMapping;
+use App\Entity\AccountMapping;
 use App\Entity\StripePayment;
 use App\Message\AccountUpdateMessage;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\AccountMappingRepository;
 use App\Repository\StripePaymentRepository;
 use App\Utils\StripeProxy;
 use PHPUnit\Framework\TestCase;
@@ -31,7 +31,7 @@ class StripeWebhookEndpointTest extends TestCase
     /**
      * @var \PHPUnit\Framework\MockObject\MockObject
      */
-    protected $miraklStripeMappingRepository;
+    protected $accountMappingRepository;
 
     /**
      * @var \PHPUnit\Framework\MockObject\MockObject
@@ -58,7 +58,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $this->stripeProxy = $this->createMock(StripeProxy::class);
 
-        $this->miraklStripeMappingRepository = $this->getMockBuilder(MiraklStripeMappingRepository::class)
+        $this->accountMappingRepository = $this->getMockBuilder(AccountMappingRepository::class)
             ->disableOriginalConstructor()
             ->setMethods(['findOneByStripeAccountId', 'persistAndFlush'])
             ->getMock();
@@ -73,7 +73,7 @@ class StripeWebhookEndpointTest extends TestCase
         $this->controller = new StripeWebhookEndpoint(
             $this->bus,
             $this->stripeProxy,
-            $this->miraklStripeMappingRepository,
+            $this->accountMappingRepository,
             $this->stripePaymentRepository,
             $this->metadataOrderIdFieldName
         );
@@ -205,7 +205,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->willReturn($expectedEvent);
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('findOneByStripeAccountId')
             ->with($stripeAccountId)
@@ -229,7 +229,7 @@ class StripeWebhookEndpointTest extends TestCase
             $payload
         );
 
-        $expectedMapping = new MiraklStripeMapping();
+        $expectedMapping = new AccountMapping();
         $stripeAccountId = 'acct_valid';
         $miraklShopId = 1;
         $data = [
@@ -257,13 +257,13 @@ class StripeWebhookEndpointTest extends TestCase
             ->setPayoutEnabled(false)
             ->setPayinEnabled(false);
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('findOneByStripeAccountId')
             ->with($stripeAccountId)
             ->willReturn($expectedMapping);
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedMapping);

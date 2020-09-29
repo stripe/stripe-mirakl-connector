@@ -3,10 +3,10 @@
 namespace App\Tests\Controller;
 
 use App\Controller\CreateMiraklStripeAccountMapping;
-use App\DTO\MiraklStripeMappingDTO;
-use App\Entity\MiraklStripeMapping;
-use App\Factory\MiraklStripeMappingFactory;
-use App\Repository\MiraklStripeMappingRepository;
+use App\DTO\AccountMappingDTO;
+use App\Entity\AccountMapping;
+use App\Factory\AccountMappingFactory;
+use App\Repository\AccountMappingRepository;
 use App\Repository\StripeAccountRepository;
 use App\Tests\StripeWebTestCase;
 use Psr\Log\NullLogger;
@@ -20,8 +20,8 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
 {
     protected $controller;
-    protected $miraklStripeMappingRepository;
-    protected $miraklStripeMappingFactory;
+    protected $accountMappingRepository;
+    protected $accountMappingFactory;
     protected $stripeAccountRepository;
     protected $serializer;
     protected $validator;
@@ -34,12 +34,12 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
             ->setMethods(['setManualPayout'])
             ->getMock();
 
-        $this->miraklStripeMappingRepository = $this->getMockBuilder(MiraklStripeMappingRepository::class)
+        $this->accountMappingRepository = $this->getMockBuilder(AccountMappingRepository::class)
             ->disableOriginalConstructor()
             ->setMethods(['findOneByMiraklShopId', 'persistAndFlush'])
             ->getMock();
 
-        $this->miraklStripeMappingFactory = $this->createMock(MiraklStripeMappingFactory::class);
+        $this->accountMappingFactory = $this->createMock(AccountMappingFactory::class);
 
         $this->serializer = $this->createMock(SerializerInterface::class);
         $this->validator = $this->createMock(ValidatorInterface::class);
@@ -48,10 +48,10 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
 
         $this->controller = new CreateMiraklStripeAccountMapping(
             $this->stripeAccountRepository,
-            $this->miraklStripeMappingRepository,
+            $this->accountMappingRepository,
             $this->serializer,
             $this->validator,
-            $this->miraklStripeMappingFactory
+            $this->accountMappingFactory
         );
         $this->controller->setLogger($logger);
     }
@@ -75,7 +75,7 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
             'disabled_reason' => 'check in progress',
         ];
 
-        $expectedMappingDto = new MiraklStripeMappingDTO();
+        $expectedMappingDto = new AccountMappingDTO();
         $expectedMappingDto
             ->setMiraklShopId($miraklShopId)
             ->setStripeUserId($stripeUserId);
@@ -121,11 +121,11 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
             'disabled_reason' => 'check in progress',
         ];
 
-        $expectedMappingDto = new MiraklStripeMappingDTO();
+        $expectedMappingDto = new AccountMappingDTO();
         $expectedMappingDto
             ->setMiraklShopId($miraklShopId)
             ->setStripeUserId($stripeUserId);
-        $expectedMapping = new MiraklStripeMapping();
+        $expectedMapping = new AccountMapping();
         $expectedMapping
             ->setMiraklShopId($miraklShopId)
             ->setStripeAccountId($stripeUserId)
@@ -145,7 +145,7 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
             ->with($stripeUserId)
             ->willReturn($stripeAccount);
         $this
-            ->miraklStripeMappingFactory
+            ->accountMappingFactory
             ->expects($this->once())
             ->method('createMappingFromDTO')
             ->with($expectedMappingDto)
@@ -157,7 +157,7 @@ class CreateMiraklStripeAccountMappingTest extends StripeWebTestCase
             ->willReturn([]);
 
         $this
-            ->miraklStripeMappingRepository
+            ->accountMappingRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedMapping);
