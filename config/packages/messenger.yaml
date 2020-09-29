@@ -55,14 +55,14 @@ framework:
                     max_retries: 0
 
             validate_mirakl_order:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                dsn: '%env(SMC_MESSENGER)%'
                 options:
                     queue_name: validate_mirakl_order
                 retry_strategy:
                     max_retries: 0
 
             capture_pending_payment:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                dsn: '%env(SMC_MESSENGER)%'
                 options:
                     queue_name: capture_pending_payment
                 retry_strategy:
