@@ -37,7 +37,7 @@ parameters:
   router.request_context.scheme: 'https'
   app.endpoint_down.mail_notification: "%env(bool:SMC_WEBHOOK_ENABLE_ALERTS)%"
   app.endpoint_down.mail_notification_throttle: "%env(int:SMC_WEBHOOK_ALERTS_DELAY)%"
-  app.mirakl.metadata_order_id_field_name: "%env(MIRAKL_METADATA_ORDER_ID)%"
+  app.mirakl.smc_payins_capture_key: "%env(SMC_PAYINS_CAPTURE_KEY)%"
 
 services:
   # default configuration for services in *this* file
@@ -58,7 +58,7 @@ services:
       $enablesAutoRefundCreation: "%app.stripe.enables_auto_refund_creation%"
       $redirectOnboarding: "%app.redirect.onboarding%"
       $operatorNotificationUrl: "%app.operator.notification_url%"
-      $metadataOrderIdFieldName: "%app.mirakl.metadata_order_id_field_name%"
+      $smcPayinsCaptureKey: "%app.mirakl.smc_payins_capture_key%"
 
       $endpointDownMailNotification: "%app.endpoint_down.mail_notification%"
       $endpointDownMailNotificationThrottleDelay: "%app.endpoint_down.mail_notification_throttle%"

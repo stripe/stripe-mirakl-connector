@@ -46,11 +46,11 @@ class StripeWebhookEndpointTest extends TestCase
     /**
      * @var string
      */
-    protected $metadataOrderIdFieldName;
+    protected $smcPayinsCaptureKey;
 
     protected function setUp(): void
     {
-        $this->metadataOrderIdFieldName = 'mirakl_order_id';
+        $this->smcPayinsCaptureKey = 'mirakl_order_id';
         $this->bus = $this->getMockBuilder(MessageBusInterface::class)
             ->disableOriginalConstructor()
             ->setMethods(['dispatch'])
@@ -75,7 +75,7 @@ class StripeWebhookEndpointTest extends TestCase
             $this->stripeProxy,
             $this->miraklStripeMappingRepository,
             $this->stripePaymentRepository,
-            $this->metadataOrderIdFieldName
+            $this->smcPayinsCaptureKey
         );
         $this->controller->setLogger($logger);
     }
@@ -316,7 +316,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $response = $this->controller->handleStripeWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        $this->assertEquals("{$this->metadataOrderIdFieldName} not found in metadata webhook event", $response->getContent());
+        $this->assertEquals("{$this->smcPayinsCaptureKey} not found in metadata webhook event", $response->getContent());
     }
 
     public function testHandleStripeWebhookWithBadMetadata()
@@ -339,7 +339,7 @@ class StripeWebhookEndpointTest extends TestCase
                 'object' => [
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName . "notGod" => 42,
+                        $this->smcPayinsCaptureKey . "notGod" => 42,
                     ],
                     'status' => StripePayment::TO_CAPTURE
                 ],
@@ -357,7 +357,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $response = $this->controller->handleStripeWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        $this->assertEquals("{$this->metadataOrderIdFieldName} not found in metadata webhook event", $response->getContent());
+        $this->assertEquals("{$this->smcPayinsCaptureKey} not found in metadata webhook event", $response->getContent());
     }
 
     public function testHandleStripeWebhookWithEmptyMetadata()
@@ -380,7 +380,7 @@ class StripeWebhookEndpointTest extends TestCase
                 'object' => [
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => '',
+                        $this->smcPayinsCaptureKey => '',
                     ],
                     'status' => 'requires_payment_method'
                 ],
@@ -398,7 +398,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $response = $this->controller->handleStripeWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        $this->assertEquals("{$this->metadataOrderIdFieldName} is empty in metadata webhook event", $response->getContent());
+        $this->assertEquals("{$this->smcPayinsCaptureKey} is empty in metadata webhook event", $response->getContent());
     }
 
     public function testHandleStripeWebhookWithBadStatus()
@@ -421,7 +421,7 @@ class StripeWebhookEndpointTest extends TestCase
                 'object' => [
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => 42,
+                        $this->smcPayinsCaptureKey => 42,
                     ],
                     'status' => 'requires_payment_method'
                 ],
@@ -463,7 +463,7 @@ class StripeWebhookEndpointTest extends TestCase
                 'object' => [
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId,
+                        $this->smcPayinsCaptureKey => $orderId,
                     ],
                     'status' => 'requires_capture'
                 ],
@@ -524,7 +524,7 @@ class StripeWebhookEndpointTest extends TestCase
                 'object' => [
                     'id' => $stripeChargeId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId,
+                        $this->smcPayinsCaptureKey => $orderId,
                     ],
                     'status' => 'succeeded'
                 ],
@@ -585,7 +585,7 @@ class StripeWebhookEndpointTest extends TestCase
                 'object' => [
                     'id' => $stripeChargeId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId,
+                        $this->smcPayinsCaptureKey => $orderId,
                     ],
                     'status' => 'succeeded'
                 ],
@@ -647,7 +647,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'id' => $stripeChargeId,
                     'payment_intent' => 'pi_valid',
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId,
+                        $this->smcPayinsCaptureKey => $orderId,
                     ],
                     'status' => 'succeeded'
                 ],
