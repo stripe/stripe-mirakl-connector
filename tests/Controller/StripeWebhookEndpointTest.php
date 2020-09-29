@@ -315,7 +315,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->willReturn($expectedEvent);
 
         $response = $this->controller->handleStripeWebhook($request);
-        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("{$this->smcPayinsCaptureKey} not found in metadata webhook event", $response->getContent());
     }
 
@@ -356,7 +356,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->willReturn($expectedEvent);
 
         $response = $this->controller->handleStripeWebhook($request);
-        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("{$this->smcPayinsCaptureKey} not found in metadata webhook event", $response->getContent());
     }
 
@@ -438,8 +438,8 @@ class StripeWebhookEndpointTest extends TestCase
             ->willReturn($expectedEvent);
 
         $response = $this->controller->handleStripeWebhook($request);
-        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        $this->assertEquals("Status has not a valid value", $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals("Status has not a valid value to be catch", $response->getContent());
     }
 
     public function testHandleStripeWebhookPICreatedWithtMetadata()

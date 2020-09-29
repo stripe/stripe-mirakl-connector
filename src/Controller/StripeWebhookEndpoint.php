@@ -7,6 +7,8 @@ use App\Message\AccountUpdateMessage;
 use App\Repository\MiraklStripeMappingRepository;
 use App\Repository\StripePaymentRepository;
 use App\Utils\StripeProxy;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\ORM\ORMException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Event;
@@ -209,7 +211,11 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         $stripePayment->setMiraklOrderId($miraklOrderId);
 
-        $this->stripePaymentRepository->persistAndFlush($stripePayment);
+        try {
+            $this->stripePaymentRepository->persistAndFlush($stripePayment);
+        } catch (UniqueConstraintViolationException $e) {
+            // in case of concurrency
+        }
 
         return 'Payment created';
     }
@@ -225,7 +231,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             $message = sprintf('%s not found in metadata webhook event', $this->smcPayinsCaptureKey);
             $this->logger->error($message);
 
-            throw new \Exception($message, Response::HTTP_BAD_REQUEST);
+            throw new \Exception($message, Response::HTTP_OK);
         }
 
         if ('' === $stripeObject['metadata'][$this->smcPayinsCaptureKey]) {
@@ -247,7 +253,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $status = $stripeObject['status'] ?? '';
 
         if (!in_array($status, self::STRIPE_PAYMENT_LISTEN_STATUS, true)) {
-            throw new \Exception('Status has not a valid value', Response::HTTP_BAD_REQUEST);
+            throw new \Exception('Status has not a valid value to be catch', Response::HTTP_OK);
         }
     }
 }
