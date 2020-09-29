@@ -5,10 +5,10 @@ namespace App\Tests\Command;
 use App\Command\NotifyFailedOperationsCommand;
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
-use App\Entity\MiraklRefund;
+use App\Entity\StripeRefund;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
-use App\Repository\MiraklRefundRepository;
+use App\Repository\StripeRefundRepository;
 use Psr\Log\NullLogger;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
@@ -25,7 +25,7 @@ class NotifyFailedOperationsCommandTest extends TestCase
         $this->mailer = $this->createMock(MailerInterface::class);
         $this->transferRepository = $this->createMock(StripeTransferRepository::class);
         $this->payoutRepository = $this->createMock(StripePayoutRepository::class);
-        $this->refundRepository = $this->createMock(MiraklRefundRepository::class);
+        $this->refundRepository = $this->createMock(StripeRefundRepository::class);
 
         $this->input = $this->createMock(InputInterface::class);
         $this->output = $this->createMock(OutputInterface::class);
@@ -63,7 +63,7 @@ class NotifyFailedOperationsCommandTest extends TestCase
     {
         $failedTransfers = $this->createMock(StripeTransfer::class);
         $failedPayouts = $this->createMock(StripePayout::class);
-        $failedRefunds = $this->createMock(MiraklRefund::class);
+        $failedRefunds = $this->createMock(StripeRefund::class);
         $this->transferRepository
             ->expects($this->once())
             ->method('findBy')

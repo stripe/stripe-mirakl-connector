@@ -3,12 +3,12 @@
 namespace App\Tests\MessageHandler;
 
 use App\Entity\StripeTransfer;
-use App\Entity\MiraklRefund;
+use App\Entity\StripeRefund;
 use App\Handler\ProcessRefundHandler;
 use App\Message\ProcessRefundMessage;
 use App\Message\RefundFailedMessage;
 use App\Repository\StripeTransferRepository;
-use App\Repository\MiraklRefundRepository;
+use App\Repository\StripeRefundRepository;
 use App\Utils\MiraklClient;
 use App\Utils\StripeProxy;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
@@ -41,9 +41,9 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
     private $stripeTransferRepository;
 
     /**
-     * @var MiraklRefundRepository
+     * @var StripeRefundRepository
      */
-    private $miraklRefundRepository;
+    private $stripeRefundRepository;
 
     /**
      * @var MessageBusInterface
@@ -61,7 +61,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $this->miraklClient = $container->get('App\Utils\MiraklClient');
         $this->stripeProxy = $container->get('App\Utils\StripeProxy');
         $this->stripeTransferRepository = $container->get('doctrine')->getRepository(StripeTransfer::class);
-        $this->miraklRefundRepository = $container->get('doctrine')->getRepository(MiraklRefund::class);
+        $this->stripeRefundRepository = $container->get('doctrine')->getRepository(StripeRefund::class);
         $this->messageBus = self::$container->get(MessageBusInterface::class);
         $this->httpNotificationReceiver = self::$container->get('messenger.transport.operator_http_notification');
 
@@ -69,7 +69,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             $this->miraklClient,
             $this->stripeProxy,
             $this->stripeTransferRepository,
-            $this->miraklRefundRepository,
+            $this->stripeRefundRepository,
             $this->messageBus
         );
 
@@ -87,18 +87,18 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsCreated = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_CREATED,
+        $stripeRefundsCreated = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_CREATED,
         ]);
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(2, count($miraklRefundsCreated));
-        $this->assertEquals('order_refunded_4', $miraklRefundsCreated[0]->getMiraklOrderId());
-        $this->assertEquals('refund_4', $miraklRefundsCreated[0]->getStripeRefundId());
-        $this->assertEquals('trr_4', $miraklRefundsCreated[0]->getStripeReversalId());
-        $this->assertNotNull($miraklRefundsCreated[0]->getMiraklValidationTime());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(2, count($stripeRefundsCreated));
+        $this->assertEquals('order_refunded_4', $stripeRefundsCreated[0]->getMiraklOrderId());
+        $this->assertEquals('refund_4', $stripeRefundsCreated[0]->getStripeRefundId());
+        $this->assertEquals('trr_4', $stripeRefundsCreated[0]->getStripeReversalId());
+        $this->assertNotNull($stripeRefundsCreated[0]->getMiraklValidationTime());
     }
 
     public function testProcessRefundHandlerWithRefundCreated()
@@ -110,17 +110,17 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsCreated = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_CREATED,
+        $stripeRefundsCreated = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_CREATED,
         ]);
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $this->assertEquals(8, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsCreated));
-        $this->assertEquals('order_refunded_3', $miraklRefundsCreated[0]->getMiraklOrderId());
-        $this->assertEquals('refund_3', $miraklRefundsCreated[0]->getStripeRefundId());
-        $this->assertEquals('trr_3', $miraklRefundsCreated[0]->getStripeReversalId());
+        $this->assertEquals(8, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsCreated));
+        $this->assertEquals('order_refunded_3', $stripeRefundsCreated[0]->getMiraklOrderId());
+        $this->assertEquals('refund_3', $stripeRefundsCreated[0]->getStripeRefundId());
+        $this->assertEquals('trr_3', $stripeRefundsCreated[0]->getStripeReversalId());
     }
 
     public function testProcessRefundHandlerWithRefundStripeApiError()
@@ -132,16 +132,16 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsFailed));
-        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
             RefundFailedMessage::class,
@@ -171,16 +171,16 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsFailed));
-        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
             RefundFailedMessage::class,
@@ -210,16 +210,16 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsFailed));
-        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
             RefundFailedMessage::class,
@@ -249,16 +249,16 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsFailed));
-        $this->assertEquals('order_2', $miraklRefundsFailed[0]->getMiraklOrderId());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertEquals('order_2', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
             RefundFailedMessage::class,
@@ -288,16 +288,16 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsFailed));
-        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
             RefundFailedMessage::class,
@@ -327,16 +327,16 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsFailed));
-        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
             RefundFailedMessage::class,
@@ -366,15 +366,15 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(8, count($miraklRefundsPending));
-        $this->assertEquals(0, count($miraklRefundsFailed));
+        $this->assertEquals(8, count($stripeRefundsPending));
+        $this->assertEquals(0, count($stripeRefundsFailed));
     }
 
     public function testProcessRefundHandlerWithUnexistingMiraklValidationTime()
@@ -386,16 +386,16 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $handler = $this->handler;
         $handler($message);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $miraklRefundsFailed = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_FAILED,
+        $stripeRefundsFailed = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($miraklRefundsPending));
-        $this->assertEquals(1, count($miraklRefundsFailed));
-        $this->assertEquals('order_refunded_5', $miraklRefundsFailed[0]->getMiraklOrderId());
+        $this->assertEquals(7, count($stripeRefundsPending));
+        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
             RefundFailedMessage::class,

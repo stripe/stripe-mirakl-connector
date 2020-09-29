@@ -4,7 +4,7 @@ namespace App\EventListener;
 
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
-use App\Entity\MiraklRefund;
+use App\Entity\StripeRefund;
 use App\Message\PayoutFailedMessage;
 use App\Message\TransferFailedMessage;
 use App\Message\RefundFailedMessage;
@@ -48,7 +48,7 @@ class SendFailedOperationToAlertingQueue
 
             return;
         }
-        if ($entity instanceof MiraklRefund && in_array($entity->getStatus(), MiraklRefund::getInvalidStatus())) {
+        if ($entity instanceof StripeRefund && in_array($entity->getStatus(), StripeRefund::getInvalidStatus())) {
             $message = new RefundFailedMessage($entity);
             $this->bus->dispatch($message);
 
