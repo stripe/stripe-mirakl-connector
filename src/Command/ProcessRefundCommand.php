@@ -71,6 +71,20 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
             return;
         }
 
+        // get orders for "total_commission" field not in PA12
+        $ordersId = [];
+        foreach ($miraklOrders as $miraklOrder) {
+            $ordersId[] = $miraklOrder['order_id'];
+        }
+        $orders = $this->miraklClient->listOrdersById($ordersId);
+
+        $totalUnitaryCommissions = [];
+        foreach ($orders as $order) {
+            foreach ($order['order_lines'] as $orderLine) {
+                $totalUnitaryCommissions[$orderLine['order_line_id']] = $orderLine['total_commission'] / $orderLine['total_price'];
+            }
+        }
+
         foreach ($miraklOrders as $miraklOrder) {
             $currency = $miraklOrder['currency_iso_code'];
             foreach ($miraklOrder['order_lines']['order_line'] as $orderLine) {
@@ -80,8 +94,9 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
                     ]);
 
                     if (is_null($miraklRefund)) {
+                        $commission = (int) ($totalUnitaryCommissions[$orderLine['order_line_id']] * $refund['amount'] * 100);
                         $newlyCreatedMiraklRefund = $this->createMiraklRefund($refund, $currency, $miraklOrder);
-                        $message = new ProcessRefundMessage($newlyCreatedMiraklRefund->getMiraklRefundId());
+                        $message = new ProcessRefundMessage($newlyCreatedMiraklRefund->getMiraklRefundId(), $commission);
                         $this->bus->dispatch($message);
                     }
                 }

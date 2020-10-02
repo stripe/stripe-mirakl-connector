@@ -70,7 +70,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             $this->stripeProxy,
             $this->stripeTransferRepository,
             $this->miraklRefundRepository,
-            $this->messageBus,
+            $this->messageBus
         );
 
         $logger = new NullLogger();

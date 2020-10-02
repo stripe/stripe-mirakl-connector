@@ -20,7 +20,12 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
     /**
      * @var MiraklRefundRepository
      */
+
     private $miraklRefundRepository;
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    private $doctrineReceiver;
 
     protected function setUp(): void
     {
@@ -48,6 +53,18 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
         // PA12 returns 2 new refunds
         $this->assertEquals(0, $commandTester->getStatusCode());
         $this->assertCount(2, $this->doctrineReceiver->getSent());
-        $this->assertEquals(10, count($miraklRefundsPending));
+        $this->assertCount(10, $miraklRefundsPending);
+
+        // test commission for reversal
+        $message = $this->doctrineReceiver->getSent()[0]->getMessage();
+
+        $this->assertEquals('6666', $message->geMiraklRefundId());
+        $this->assertEquals(500, $message->getCommission());
+
+        $message = $this->doctrineReceiver->getSent()[1]->getMessage();
+
+        $this->assertEquals('1199', $message->geMiraklRefundId());
+        $this->assertEquals(100, $message->getCommission());
+
     }
 }
