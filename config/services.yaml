@@ -18,6 +18,7 @@ parameters:
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
   env(OPERATOR_NOTIFICATION_URL): ""
+  env(MIRAKL_METADATA_ORDER_ID): "mirakl_order_id"
 
   app.base_host: "%env(BASE_HOST)%"
   app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
