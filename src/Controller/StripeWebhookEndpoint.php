@@ -60,20 +60,20 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     /**
      * @var string
      */
-    private $smcPayinsCaptureKey;
+    private $metadataOrderIdFieldName;
 
     public function __construct(
         MessageBusInterface $bus,
         StripeProxy $stripeProxy,
         MiraklStripeMappingRepository $miraklStripeMappingRepository,
         StripePaymentRepository $stripePaymentRepository,
-        string $smcPayinsCaptureKey
+        string $metadataOrderIdFieldName
     ) {
         $this->bus = $bus;
         $this->stripeProxy = $stripeProxy;
         $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
         $this->stripePaymentRepository = $stripePaymentRepository;
-        $this->smcPayinsCaptureKey = $smcPayinsCaptureKey;
+        $this->metadataOrderIdFieldName = $metadataOrderIdFieldName;
     }
 
     /**
@@ -227,21 +227,21 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private function checkAndReturnMetadataOrderId($stripeObject): string
     {
-        if (!isset($stripeObject['metadata'][$this->smcPayinsCaptureKey])) {
-            $message = sprintf('%s not found in metadata webhook event', $this->smcPayinsCaptureKey);
+        if (!isset($stripeObject['metadata'][$this->metadataOrderIdFieldName])) {
+            $message = sprintf('%s not found in metadata webhook event', $this->metadataOrderIdFieldName);
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_OK);
         }
 
-        if ('' === $stripeObject['metadata'][$this->smcPayinsCaptureKey]) {
-            $message = sprintf('%s is empty in metadata webhook event', $this->smcPayinsCaptureKey);
+        if ('' === $stripeObject['metadata'][$this->metadataOrderIdFieldName]) {
+            $message = sprintf('%s is empty in metadata webhook event', $this->metadataOrderIdFieldName);
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_BAD_REQUEST);
         }
 
-        return $stripeObject['metadata'][$this->smcPayinsCaptureKey];
+        return $stripeObject['metadata'][$this->metadataOrderIdFieldName];
     }
 
     /**

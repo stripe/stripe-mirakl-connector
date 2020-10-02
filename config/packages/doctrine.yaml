@@ -8,7 +8,7 @@ doctrine:
             charset: utf8
             collate: utf8_unicode_ci
 
-        url: '%env(resolve:SMC_DATABASE)%'
+        url: '%env(resolve:DATABASE_URL)%'
         schema_filter: '~^(?!messenger_messages)~'
     orm:
         auto_generate_proxy_classes: true
@@ -21,3 +21,4 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+                
