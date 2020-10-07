@@ -31,9 +31,9 @@ class StripePayout
     private $id;
 
     /**
-     * @ORM\ManyToOne(targetEntity="MiraklStripeMapping")
+     * @ORM\ManyToOne(targetEntity="AccountMapping")
      */
-    private $miraklStripeMapping;
+    private $accountMapping;
 
     /**
      * @ORM\Column(type="integer")
@@ -103,14 +103,14 @@ class StripePayout
         return $this->id;
     }
 
-    public function getMiraklStripeMapping(): ?MiraklStripeMapping
+    public function getAccountMapping(): ?AccountMapping
     {
-        return $this->miraklStripeMapping;
+        return $this->accountMapping;
     }
 
-    public function setMiraklStripeMapping(MiraklStripeMapping $miraklStripeMapping): self
+    public function setAccountMapping(AccountMapping $accountMapping): self
     {
-        $this->miraklStripeMapping = $miraklStripeMapping;
+        $this->accountMapping = $accountMapping;
 
         return $this;
     }

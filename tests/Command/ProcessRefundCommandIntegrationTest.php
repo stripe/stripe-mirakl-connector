@@ -2,7 +2,8 @@
 
 namespace App\Tests\Command;
 
-use App\Entity\MiraklRefund;
+use App\Entity\StripeRefund;
+use App\Repository\StripeRefundRepository;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -18,10 +19,15 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
     protected $command;
 
     /**
-     * @var MiraklRefundRepository
+     * @var StripeRefundRepository
      */
+    private $stripeRefundRepository;
 
-    private $miraklRefundRepository;
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    private $doctrineReceiver;
+
     /**
      * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
      */
@@ -36,7 +42,7 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
 
         $this->doctrineReceiver = self::$container->get('messenger.transport.process_refunds');
 
-        $this->miraklRefundRepository = self::$container->get('doctrine')->getRepository(MiraklRefund::class);
+        $this->stripeRefundRepository = self::$container->get('doctrine')->getRepository(StripeRefund::class);
     }
 
     public function testNominalExecute()
@@ -46,14 +52,14 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
             'command' => $this->command->getName(),
         ]);
 
-        $miraklRefundsPending = $this->miraklRefundRepository->findBy([
-            'status' => MiraklRefund::REFUND_PENDING,
+        $stripeRefundsPending = $this->stripeRefundRepository->findBy([
+            'status' => StripeRefund::REFUND_PENDING,
         ]);
 
         // PA12 returns 2 new refunds
         $this->assertEquals(0, $commandTester->getStatusCode());
         $this->assertCount(2, $this->doctrineReceiver->getSent());
-        $this->assertCount(10, $miraklRefundsPending);
+        $this->assertCount(10, $stripeRefundsPending);
 
         // test commission for reversal
         $message = $this->doctrineReceiver->getSent()[0]->getMessage();
@@ -65,6 +71,5 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
 
         $this->assertEquals('1199', $message->geMiraklRefundId());
         $this->assertEquals(100, $message->getCommission());
-
     }
 }

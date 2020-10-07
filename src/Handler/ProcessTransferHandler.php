@@ -59,9 +59,9 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
         $currency = $stripeTransfer->getCurrency();
         $amount = $stripeTransfer->getAmount();
 
-        $miraklStripeMapping = $stripeTransfer->getMiraklStripeMapping();
+        $accountMapping = $stripeTransfer->getAccountMapping();
         $stripeTransferId = $stripeTransfer->getId();
-        if (!$miraklStripeMapping) {
+        if (!$accountMapping) {
             $failedReason = sprintf('Stripe transfer %s has no associated Mirakl-Stripe mapping', $stripeTransferId);
             $this->logger->error($failedReason, [
                 'Stripe transfer Id' => $stripeTransferId,
@@ -74,8 +74,8 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
             return;
         }
 
-        $stripeAccountId = $miraklStripeMapping->getStripeAccountId();
-        $miraklShopId = $miraklStripeMapping->getMiraklShopId();
+        $stripeAccountId = $accountMapping->getStripeAccountId();
+        $miraklShopId = $accountMapping->getMiraklShopId();
         try {
             $metadata = [
                 'miraklShopId' => $miraklShopId,

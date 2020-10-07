@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\StripeTransfer;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -52,6 +53,34 @@ class StripeTransferRepository extends ServiceEntityRepository
         }
 
         return $lastUpdatedStripeTransfer->getMiraklUpdateTime();
+    }
+
+    protected function failTransfersBeforeQueryBuilder(\DateTimeInterface $before): QueryBuilder
+    {
+        return  $this->createQueryBuilder('t')
+            ->where("t.miraklUpdateTime < :before")
+            ->andWhere("t.status like :status")
+            ->setParameter("before", $before)
+            ->setParameter("status", StripeTransfer::TRANSFER_FAILED);
+    }
+
+    public function getFailTransfersBefore(\DateTimeInterface $before): array
+    {
+        $failTransfersQuery = $this->failTransfersBeforeQueryBuilder($before)->getQuery();
+
+        return $failTransfersQuery->execute();
+    }
+
+    public function getMiraklOrderIdFailTransfersBefore(\DateTimeInterface $before)
+    {
+        $failTransfers = $this->getFailTransfersBefore($before);
+
+        $miraklOrderId = [];
+        foreach ($failTransfers as $transfer) {
+            $miraklOrderId[] = $transfer->getMiraklId();
+        }
+
+        return $miraklOrderId;
     }
 
     public function findExistingTransfersByOrderIds($idsToCheck)

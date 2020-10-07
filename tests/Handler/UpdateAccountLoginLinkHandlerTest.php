@@ -44,7 +44,7 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
         $this->handler = new UpdateAccountLoginLinkHandler(
             $this->miraklClient,
             $this->stripeProxy,
-            $this->patchFactory,
+            $this->patchFactory
         );
 
         $logger = new NullLogger();

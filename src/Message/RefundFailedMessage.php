@@ -2,7 +2,7 @@
 
 namespace App\Message;
 
-use App\Entity\MiraklRefund;
+use App\Entity\StripeRefund;
 
 class RefundFailedMessage implements NotifiableMessageInterface
 {
@@ -16,7 +16,7 @@ class RefundFailedMessage implements NotifiableMessageInterface
         return 'refund.failed';
     }
 
-    public function __construct(MiraklRefund $refund)
+    public function __construct(StripeRefund $refund)
     {
         $this->content = [
             'type' => self::getType(),

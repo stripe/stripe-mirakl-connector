@@ -16,9 +16,9 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "delete"={"path"="/mappings/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
- * @ORM\Entity(repositoryClass="App\Repository\MiraklStripeMappingRepository")
+ * @ORM\Entity(repositoryClass="App\Repository\AccountMappingRepository")
  */
-class MiraklStripeMapping
+class AccountMapping
 {
     /**
      * @ORM\Id()

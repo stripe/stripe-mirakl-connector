@@ -59,9 +59,9 @@ class StripeTransfer
     private $type;
 
     /**
-     * @ORM\ManyToOne(targetEntity="MiraklStripeMapping")
+     * @ORM\ManyToOne(targetEntity="AccountMapping")
      */
-    private $miraklStripeMapping;
+    private $accountMapping;
 
     /**
      * @ORM\Column(type="string", nullable=true)
@@ -170,14 +170,14 @@ class StripeTransfer
         return $this;
     }
 
-    public function getMiraklStripeMapping(): ?MiraklStripeMapping
+    public function getAccountMapping(): ?AccountMapping
     {
-        return $this->miraklStripeMapping;
+        return $this->accountMapping;
     }
 
-    public function setMiraklStripeMapping(MiraklStripeMapping $miraklStripeMapping): self
+    public function setAccountMapping(AccountMapping $accountMapping): self
     {
-        $this->miraklStripeMapping = $miraklStripeMapping;
+        $this->accountMapping = $accountMapping;
 
         return $this;
     }

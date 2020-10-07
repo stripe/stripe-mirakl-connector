@@ -34,7 +34,7 @@ class CreateOnboardingAccountTest extends TestCase
         $this->controller = new CreateOnboardingAccount(
             $this->onboardingAccountFactory,
             $this->serializer,
-            $this->validator,
+            $this->validator
         );
         $this->controller->setLogger($logger);
     }

@@ -15,9 +15,9 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "get"={"path"="/refunds/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
- * @ORM\Entity(repositoryClass="App\Repository\MiraklRefundRepository")
+ * @ORM\Entity(repositoryClass="App\Repository\StripeRefundRepository")
  */
-class MiraklRefund
+class StripeRefund
 {
     public const REFUND_PENDING = 'REFUND_PENDING';
     public const REFUND_CREATED = 'REFUND_CREATED';

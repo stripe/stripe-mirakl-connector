@@ -4,3 +4,4 @@ vendor
 .phpunit.result.cache
 bin/.phpunit/
 .env
+.idea/*

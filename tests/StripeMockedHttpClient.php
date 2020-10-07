@@ -2,10 +2,13 @@
 
 namespace App\Tests;
 
+use Stripe\Exception\ApiConnectionException;
 use Stripe\HttpClient\ClientInterface;
 
 class StripeMockedHttpClient implements ClientInterface
 {
+    protected $errorMessage;
+
     public function __construct()
     {
         $this->errorMessage = json_encode([
@@ -59,6 +62,14 @@ class StripeMockedHttpClient implements ClientInterface
                 // no break
             case 'https://api.stripe.com/v1/transfers/transfer_4/reversals':
                 return [$this->getJsonStripeReversal('trr_4'), 200, []];
+            case 'https://api.stripe.com/v1/payment_intents/pi_valid/capture':
+                return [$this->getJsonStripeObject('pi_valid'), 200, []];
+            case 'https://api.stripe.com/v1/charges/ch_valid/capture':
+                return [$this->getJsonStripeObject('ch_valid'), 200, []];
+            case 'https://api.stripe.com/v1/payment_intents/pi_invalid/capture':
+                throw new ApiConnectionException("Already captured", 400);
+            case 'https://api.stripe.com/v1/charges/ch_invalid/capture':
+                throw new ApiConnectionException("Already captured", 400);
             default:
                 return [$this->errorMessage, 403, []];
         }
@@ -163,15 +174,18 @@ class StripeMockedHttpClient implements ClientInterface
 
     private function getJsonStripeRefund($refundId)
     {
-        return json_encode([
-            'id' => $refundId,
-        ]);
+        return $this->getJsonStripeObject($refundId);
     }
 
     private function getJsonStripeReversal($reversalId)
     {
+        return $this->getJsonStripeObject($reversalId);
+    }
+
+    private function getJsonStripeObject($id)
+    {
         return json_encode([
-            'id' => $reversalId,
+            'id' => $id,
         ]);
     }
 

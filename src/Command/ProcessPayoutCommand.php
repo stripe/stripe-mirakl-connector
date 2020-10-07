@@ -7,7 +7,7 @@ use App\Entity\StripeTransfer;
 use App\Exception\UndispatchableException;
 use App\Message\ProcessPayoutMessage;
 use App\Message\ProcessTransferMessage;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\AccountMappingRepository;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
 use App\Utils\MiraklClient;
@@ -59,18 +59,18 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
     private $stripeTransferRepository;
 
     /**
-     * @var MiraklStripeMappingRepository
+     * @var AccountMappingRepository
      */
-    private $miraklStripeMappingRepository;
+    private $accountMappingRepository;
 
-    public function __construct(MessageBusInterface $bus, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripePayoutRepository $stripePayoutRepository, StripeTransferRepository $stripeTransferRepository, MiraklStripeMappingRepository $miraklStripeMappingRepository)
+    public function __construct(MessageBusInterface $bus, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripePayoutRepository $stripePayoutRepository, StripeTransferRepository $stripeTransferRepository, AccountMappingRepository $accountMappingRepository)
     {
         $this->bus = $bus;
         $this->miraklClient = $miraklClient;
         $this->stripeProxy = $stripeProxy;
         $this->stripePayoutRepository = $stripePayoutRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
-        $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->accountMappingRepository = $accountMappingRepository;
         parent::__construct();
     }
 
@@ -137,14 +137,16 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
                     // Use existing transfer
                     $transfer = $existingTransfers[$invoiceId][$type];
 
-                    if ($transfer->getStatus() == StripeTransfer::TRANSFER_CREATED) {
+                    if ($transfer->getStatus() === StripeTransfer::TRANSFER_CREATED) {
                         $ignoreReason = sprintf(
                             'Skipping transfer of type %s with existing created transfer',
                             $type
                         );
                         $this->logger->info($ignoreReason, [ 'invoice_id' => $invoiceId ]);
                         continue;
-                    } elseif ($transfer->getTransferId()) {
+                    }
+
+                    if ($transfer->getTransferId()) {
                         // Should not happen but in case it does let's clean it up
                         $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
                         $ignoreReason = sprintf(
@@ -204,7 +206,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
 
         // Seller ID
         $shopId = $miraklInvoice['shop_id'];
-        $mapping = $this->miraklStripeMappingRepository->findOneBy([
+        $mapping = $this->accountMappingRepository->findOneBy([
             'miraklShopId' => $shopId,
         ]);
 
@@ -215,7 +217,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
             ));
         }
 
-        $transfer->setMiraklStripeMapping($mapping);
+        $transfer->setAccountMapping($mapping);
 
         // Mirakl update time
         $miraklUpdateTime = \DateTime::createFromFormat(
@@ -224,6 +226,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
         );
 
         if (!$miraklUpdateTime) {
+            $transfer->setMiraklUpdateTime(new \DateTime('2000-01-01')); // can't be null
             return $this->failTransfer($transfer, sprintf(
                 'Cannot parse last_updated_date %s',
                 $miraklInvoice['end_time']
@@ -303,9 +306,25 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
         $payout->setAmount($amount);
         $payout->setCurrency($miraklInvoice['currency_iso_code']);
 
+        // Mirakl update time
+        $miraklUpdateTime = \DateTime::createFromFormat(
+            MiraklClient::DATE_FORMAT,
+            $miraklInvoice['end_time']
+        );
+
+        if (!$miraklUpdateTime) {
+            $payout->setMiraklUpdateTime(new \DateTime('2000-01-01')); // can't be null
+            return $this->failPayout($payout, sprintf(
+                'Cannot parse last_updated_date %s',
+                $miraklInvoice['end_time']
+            ));
+        }
+
+        $payout->setMiraklUpdateTime($miraklUpdateTime);
+
         // Seller ID
         $shopId = $miraklInvoice['shop_id'];
-        $mapping = $this->miraklStripeMappingRepository->findOneBy([
+        $mapping = $this->accountMappingRepository->findOneBy([
             'miraklShopId' => $shopId,
         ]);
 
@@ -316,22 +335,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
             ));
         }
 
-        $payout->setMiraklStripeMapping($mapping);
-
-        // Mirakl update time
-        $miraklUpdateTime = \DateTime::createFromFormat(
-            MiraklClient::DATE_FORMAT,
-            $miraklInvoice['end_time']
-        );
-
-        if (!$miraklUpdateTime) {
-            return $this->failPayout($payout, sprintf(
-                'Cannot parse last_updated_date %s',
-                $miraklInvoice['end_time']
-            ));
-        }
-
-        $payout->setMiraklUpdateTime($miraklUpdateTime);
+        $payout->setAccountMapping($mapping);
 
         return $payout;
     }

@@ -3,7 +3,7 @@
 namespace App\Factory;
 
 use App\Exception\InvalidArgumentException;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\AccountMappingRepository;
 use App\Repository\OnboardingAccountRepository;
 use App\Utils\MiraklClient;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -14,7 +14,7 @@ class OnboardingAccountFactory
     public const STRIPE_EXPRESS_BASE_URI = 'https://connect.stripe.com/express/oauth/authorize';
 
     /**
-     * @var MiraklStripeMappingRepository
+     * @var AccountMappingRepository
      */
     private $mappingRepository;
 
@@ -44,7 +44,7 @@ class OnboardingAccountFactory
     private $stripePrefillOnboarding;
 
     public function __construct(
-        MiraklStripeMappingRepository $mappingRepository,
+        AccountMappingRepository $mappingRepository,
         OnboardingAccountRepository $onboardingAccountRepository,
         RouterInterface $router,
         MiraklClient $miraklClient,

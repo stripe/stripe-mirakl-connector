@@ -53,11 +53,11 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
             return;
         }
 
-        $miraklStripeMapping = $stripePayout->getMiraklStripeMapping();
+        $accountMapping = $stripePayout->getAccountMapping();
         if (
-            null === $miraklStripeMapping ||
-            null === $miraklStripeMapping->getStripeAccountId() ||
-            !$miraklStripeMapping->getPayoutEnabled()
+            null === $accountMapping ||
+            null === $accountMapping->getStripeAccountId() ||
+            !$accountMapping->getPayoutEnabled()
         ) {
             $stripePayout
                 ->setFailedReason('Unknown account, or payout is not enabled on this Stripe account')
@@ -69,12 +69,12 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
 
         $amount = $stripePayout->getAmount();
         $currency = $stripePayout->getCurrency();
-        $stripeAccountId = $miraklStripeMapping->getStripeAccountId();
+        $stripeAccountId = $accountMapping->getStripeAccountId();
         $invoiceId = $stripePayout->getMiraklInvoiceId();
 
         try {
             $response = $this->stripeProxy->createPayout($currency, $amount, $stripeAccountId, [
-                'miraklShopId' => $miraklStripeMapping->getMiraklShopId(),
+                'miraklShopId' => $accountMapping->getMiraklShopId(),
                 'invoiceId' => $invoiceId,
             ]);
             $payoutId = $response->id;
@@ -83,7 +83,7 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
                 ->setStripePayoutId($payoutId);
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not create Stripe Payout: %s.', $e->getMessage()), [
-                'miraklShopId' => $miraklStripeMapping->getMiraklShopId(),
+                'miraklShopId' => $accountMapping->getMiraklShopId(),
                 'stripePayoutId' => $invoiceId,
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);

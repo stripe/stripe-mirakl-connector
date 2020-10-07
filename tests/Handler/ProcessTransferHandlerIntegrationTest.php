@@ -61,7 +61,7 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
             $this->miraklClient,
             $this->stripeProxy,
             $this->stripeTransferRepository,
-            $this->messageBus,
+            $this->messageBus
         );
 
         $this->handler->setLogger(new NullLogger());

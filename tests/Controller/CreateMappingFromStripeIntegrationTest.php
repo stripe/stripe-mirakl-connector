@@ -24,7 +24,7 @@ class CreateMappingFromStripeIntegrationTest extends StripeWebTestCase
 
         $client->request(
             'GET',
-            '/api/public/onboarding/create_mapping?state=state_11&code=validCode',
+            '/api/public/onboarding/create_mapping?state=state_11&code=validCode'
         );
 
         $response = $client->getResponse();

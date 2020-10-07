@@ -4,6 +4,8 @@ namespace App\Tests\Command;
 
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
+use App\Repository\StripePayoutRepository;
+use App\Repository\StripeTransferRepository;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -16,7 +18,30 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
 {
     use RecreateDatabaseTrait;
 
+    /**
+     * @var \Symfony\Component\Console\Command\Command
+     */
     protected $command;
+
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    protected $payoutsReceiver;
+
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    protected $transfersReceiver;
+
+    /**
+     * @var StripeTransferRepository
+     */
+    protected $stripeTransferRepository;
+
+    /**
+     * @var StripePayoutRepository
+     */
+    protected $stripePayoutRepository;
 
     protected function setUp(): void
     {
@@ -49,8 +74,8 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
         $this->assertCount(1, $this->payoutsReceiver->getSent());
         $this->assertCount(3, $this->transfersReceiver->getSent());
 
-        $this->assertEquals(4, count($stripePayoutsPending));
-        $this->assertEquals(6, count($stripeTransfersPending));
+        $this->assertCount(4, $stripePayoutsPending);
+        $this->assertCount(6, $stripeTransfersPending);
 
         $stripePayout = $this->getPayoutByInvoiceId(4);
         $this->assertEquals(1234, $stripePayout->getAmount());
@@ -87,8 +112,8 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
         $this->assertCount(1, $this->payoutsReceiver->getSent());
         $this->assertCount(3, $this->transfersReceiver->getSent());
 
-        $this->assertEquals(4, count($stripePayoutsPending));
-        $this->assertEquals(6, count($stripeTransfersPending));
+        $this->assertCount(4, $stripePayoutsPending);
+        $this->assertCount(6, $stripeTransfersPending);
     }
 
     public function testRetryFailedPayout()
@@ -159,6 +184,83 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
 
         // 6 transfer messages should be sent
         $this->assertCount(6, $this->transfersReceiver->getSent());
+    }
+
+    public function testAlreadyCreatedPayout2()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_shop_id' => '5',
+        ]);
+
+        $stripeTransfert = $this->getTransfersByInvoiceId(12);
+        $this->assertCount(3, $stripeTransfert);
+
+        $stripeTransfert = $this->getTransfersByInvoiceId(13);
+        $this->assertCount(3, $stripeTransfert);
+
+        $this->assertCount(2, $this->payoutsReceiver->getSent());
+
+        $this->assertCount(4, $this->transfersReceiver->getSent());
+    }
+
+
+    public function testNolastMiraklUpdateTime()
+    {
+        // Suppress all transfert
+        $this->stripePayoutRepository
+            ->createQueryBuilder('pa')
+            ->delete(StripePayout::class, 'p')
+            ->where('p.miraklUpdateTime is not null')
+            ->getQuery()
+            ->execute()
+        ;
+
+        $stripePayoutPending = $this->stripePayoutRepository->findBy([
+            'status' => StripePayout::PAYOUT_PENDING
+        ]);
+
+        $this->assertCount(0, $stripePayoutPending);
+
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $stripePayoutPending = $this->stripePayoutRepository->findBy([
+            'status' => StripePayout::PAYOUT_PENDING
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
+        $this->assertCount(1, $this->payoutsReceiver->getSent());
+        $this->assertCount(1, $stripePayoutPending);
+    }
+
+    public function testExecuteFailedCreateTransfer()
+    {
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+            'mirakl_shop_id' => '6',
+        ]);
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_PENDING
+        ]);
+
+        $stripePayoutsPending = $this->stripePayoutRepository->findBy([
+            'status' => StripePayout::PAYOUT_PENDING
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
+
+        $this->assertCount(2, $this->payoutsReceiver->getSent());
+        $this->assertCount(6, $this->transfersReceiver->getSent());
+
+        $this->assertCount(3, $stripePayoutsPending);
+        $this->assertCount(3, $stripeTransfersPending);
     }
 
     private function getPayoutByInvoiceId($invoiceId): StripePayout
