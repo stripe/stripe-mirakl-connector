@@ -89,7 +89,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             $this->validateRefundInMirakl($refund);
 
             // Create the reversal
-            $this->processReversalInStripe($refund, $transfer);
+            $this->processReversalInStripe($refund, $transfer, $message->getCommission());
 
             // Check that the 3 steps are successful
             $this->moveRefundInStatusCreated($refund);
@@ -130,7 +130,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         }
     }
 
-    private function processReversalInStripe(StripeRefund $refund, StripeTransfer $transfer)
+    private function processReversalInStripe(StripeRefund $refund, StripeTransfer $transfer, int $commission)
     {
         if (!is_null($refund->getStripeReversalId())) {
             // We got stripe reversal id
@@ -151,7 +151,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         // Make the reverse transfer in stripe
         try {
             $metadata = ['miraklRefundId' => $refund->getMiraklRefundId()];
-            $response = $this->stripeProxy->reverseTransfer($refund->getAmount(), $transfer->getTransferId(), $metadata);
+            $response = $this->stripeProxy->reverseTransfer($refund->getAmount() - $commission, $transfer->getTransferId(), $metadata);
             $refund->setStripeReversalId($response->id);
         } catch (ApiErrorException $e) {
             throw new \App\Exception\RefundProcessException(sprintf('Could not create reversal in stripe: %s', $e->getMessage()));

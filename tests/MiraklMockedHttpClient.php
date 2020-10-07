@@ -33,6 +33,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonAlreadyExistingMiraklOrders());
                 case '/orders?customer_debited=true&order_ids=order_8':
                     return new MockResponse($this->getJsonInvalidAmountMiraklOrders());
+                case '/orders?customer_debited=true&order_ids=Order_Amount_Breakdown_0002-A%2COrder_Amount_Breakdown_0002-A':
+                    return new MockResponse($this->getJsonForRefundOrders());
                 case '/orders?customer_debited=true&order_ids=order_11':
                     return new MockResponse($this->getJsonOrderWithNegativeAmount('order_11'));
                 case '/orders?customer_debited=true&order_ids=Order_66':
@@ -537,6 +539,58 @@ class MiraklMockedHttpClient extends MockHttpClient
             ],
             'total_count' => 2,
           ]);
+    }
+
+    private function getJsonForRefundOrders()
+    {
+        return json_encode([
+            'orders' => [
+                    [
+                        'amount' => 100,
+                        'currency_iso_code' => 'USD',
+                        'customer_id' => 'Customer_id_001',
+                        'order_commercial_id' => 'Order_Amount_Breakdown_0002',
+                        'order_id' => 'Order_Amount_Breakdown_0002-A',
+                        'order_lines' => [
+                            [
+                                'offer_id' => '2130',
+                                'total_price' => 20,
+                                'total_commission' => 10,
+                                'order_line_id' => 'Order_Amount_Breakdown_0002-A-1',
+                                'order_line_quantity' => 10,
+                            ],
+                            [
+                                'offer_id' => '2130',
+                                'total_price' => 80,
+                                'total_commission' => 10,
+                                'order_line_id' => 'Order_Amount_Breakdown_0002-A-2',
+                                'order_line_quantity' => 10,
+                            ],
+                        ],
+                        'payment_workflow' => 'PAY_ON_ACCEPTANCE',
+                        'shop_id' => '2000',
+                    ],
+                    [
+                        'amount' => 100,
+                        'currency_iso_code' => 'EUR',
+                        'customer_id' => 'Customer_id_001',
+                        'order_commercial_id' => 'Order_Amount_Breakdown_0003',
+                        'order_id' => 'Order_Amount_Breakdown_0002-A',
+                        'order_lines' => [
+                            [
+                                'offer_id' => '1599',
+                                'total_price' => 100,
+                                'total_commission' => 10,
+                                'order_line_id' => 'Order_Amount_Breakdown_0003-A-1',
+                                'order_line_quantity' => 1,
+                            ],
+                        ],
+                        'payment_workflow' => 'PAY_ON_ACCEPTANCE',
+                        'shop_id' => '2002',
+                    ],
+            ],
+            'total_count' => 2,
+        ]);
     }
 
     private function getPendingPayment()

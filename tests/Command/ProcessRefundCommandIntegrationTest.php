@@ -28,11 +28,6 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
      */
     private $doctrineReceiver;
 
-    /**
-     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
-     */
-    private $doctrineReceiver;
-
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
@@ -60,5 +55,16 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
         $this->assertEquals(0, $commandTester->getStatusCode());
         $this->assertCount(2, $this->doctrineReceiver->getSent());
         $this->assertCount(10, $stripeRefundsPending);
+
+        // test commission for reversal
+        $message = $this->doctrineReceiver->getSent()[0]->getMessage();
+
+        $this->assertEquals('6666', $message->geMiraklRefundId());
+        $this->assertEquals(500, $message->getCommission());
+
+        $message = $this->doctrineReceiver->getSent()[1]->getMessage();
+
+        $this->assertEquals('1199', $message->geMiraklRefundId());
+        $this->assertEquals(100, $message->getCommission());
     }
 }
