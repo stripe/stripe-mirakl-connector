@@ -62,16 +62,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private $metadataOrderIdFieldName;
 
-    /**
-     * @var StripePaymentRepository
-     */
-    private $stripePaymentRepository;
-
-    /**
-     * @var string
-     */
-    private $metadataOrderIdFieldName;
-
     public function __construct(
         MessageBusInterface $bus,
         StripeProxy $stripeProxy,
