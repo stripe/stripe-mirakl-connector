@@ -1,11 +1,11 @@
 App\Entity\StripeRefund:
-    mirakl_refund_4: # Good refund
+    refund_4: # Good refund
         miraklRefundId: '1104'
         miraklOrderId: 'order_refunded_4'
         amount: '6'
         currency: 'EUR'
         status: 'REFUND_PENDING'
-    mirakl_refund_3: # Nothing to do already created in stripe
+    refund_3: # Nothing to do already created in stripe
         miraklRefundId: '1103'
         miraklOrderId: 'order_refunded_3'
         amount: '6'
@@ -14,13 +14,13 @@ App\Entity\StripeRefund:
         stripeReversalId: 'trr_3'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
         status: 'REFUND_CREATED'
-    mirakl_refund_2: # Failed no transfer in status CREATED
+    refund_2: # Failed no transfer in status CREATED
         miraklRefundId: '1102'
         miraklOrderId: 'order_2'
         amount: '6'
         currency: 'EUR'
         status: 'REFUND_PENDING'
-    mirakl_refund_5: # Failed no stripe refund id
+    refund_5: # Failed no stripe refund id
         miraklRefundId: '1105'
         miraklOrderId: 'order_refunded_5'
         amount: '6'
@@ -28,7 +28,7 @@ App\Entity\StripeRefund:
         status: 'REFUND_PENDING'
         stripeReversalId: 'trr_5'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
-    mirakl_refund_6: # Failed no stripe reversal id
+    refund_6: # Failed no stripe reversal id
         miraklRefundId: '1106'
         miraklOrderId: 'order_refunded_5'
         amount: '6'
@@ -36,7 +36,7 @@ App\Entity\StripeRefund:
         status: 'REFUND_PENDING'
         stripeRefundId: 'refund_6'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
-    mirakl_refund_7: # Failed no mirakl validation time
+    refund_7: # Failed no mirakl validation time
         miraklRefundId: '1107'
         miraklOrderId: 'order_refunded_5'
         amount: '6'
@@ -44,7 +44,7 @@ App\Entity\StripeRefund:
         status: 'REFUND_PENDING'
         stripeRefundId: 'refund_7'
         stripeReversalId: 'trr_7'
-    mirakl_refund_8: # Failed stripe refund api error
+    refund_8: # Failed stripe refund api error
         miraklRefundId: '1108'
         miraklOrderId: 'order_refunded_5'
         amount: '6'
@@ -52,7 +52,7 @@ App\Entity\StripeRefund:
         status: 'REFUND_PENDING'
         stripeReversalId: 'trr_8'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
-    mirakl_refund_9: # Failed stripe reversal api error
+    refund_9: # Failed stripe reversal api error
         miraklRefundId: '1109'
         miraklOrderId: 'order_refunded_5'
         amount: '6'
@@ -60,7 +60,7 @@ App\Entity\StripeRefund:
         status: 'REFUND_PENDING'
         stripeRefundId: 'refund_9'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
-    mirakl_refund_10: # Failed mirakl validation api error
+    refund_10: # Failed mirakl validation api error
         miraklRefundId: '1110'
         miraklOrderId: 'order_refunded_5'
         amount: '6'
@@ -68,4 +68,3 @@ App\Entity\StripeRefund:
         status: 'REFUND_PENDING'
         stripeReversalId: 'trr_10'
         stripeRefundId: 'refund_10'
-    
