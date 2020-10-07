@@ -6,9 +6,11 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Shivas\VersioningBundle\Service\VersionManager;
 use Stripe\Account;
+use Stripe\Charge;
 use Stripe\Event;
 use Stripe\HttpClient\ClientInterface;
 use Stripe\LoginLink;
+use Stripe\PaymentIntent;
 use Stripe\Stripe;
 use Stripe\StripeObject;
 
@@ -185,5 +187,37 @@ class StripeProxy implements LoggerAwareInterface
     public function listReversals(?string $transfer_id)
     {
         return \Stripe\Transfer::retrieve(['id' => $transfer_id])->reversals;
+    }
+
+    /**
+     * @param string $paymentId
+     * @param int $amount
+     * @return Charge|PaymentIntent
+     * @throws \Stripe\Exception\ApiErrorException
+     */
+    public function capture(string $paymentId, int $amount)
+    {
+        $params = [];
+
+        $prefix = substr($paymentId, 0, 2);
+
+        if ('pi' === $prefix) {
+            $obj = PaymentIntent::constructFrom(['id' => $paymentId]);
+            $params['amount_to_capture'] = $amount;
+            $message = '[Stripe API] Call to PaymentIntent/Capture';
+        } elseif ('ch' === $prefix || 'py' === $prefix) {
+            $obj = Charge::constructFrom(['id' => $paymentId]);
+            $params['amount'] = $amount;
+            $message = '[Stripe API] Call to Charge/Capture';
+        } else {
+            throw new \Exception('payment not yet managed');
+        }
+
+        $this->logger->info($message, [
+            'stripeId' => $paymentId,
+            'amount' => $amount,
+        ]);
+
+        return $obj->capture($params);
     }
 }

@@ -2,9 +2,11 @@
 
 namespace App\Command;
 
+use App\Entity\StripePayment;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
 use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\StripePaymentRepository;
 use App\Repository\StripeTransferRepository;
 use App\Utils\MiraklClient;
 use App\Utils\StripeProxy;
@@ -45,11 +47,6 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
     private $miraklClient;
 
     /**
-     * @var StripeProxy
-     */
-    private $stripeProxy;
-
-    /**
      * @var StripeTransferRepository
      */
     private $stripeTransferRepository;
@@ -59,14 +56,25 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
      */
     private $miraklStripeMappingRepository;
 
-    public function __construct(MessageBusInterface $bus, bool $enablesAutoTransferCreation, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripeTransferRepository $stripeTransferRepository, MiraklStripeMappingRepository $miraklStripeMappingRepository)
-    {
+    /**
+     * @var StripePaymentRepository
+     */
+    private $stripePaymentRepository;
+
+    public function __construct(
+        MessageBusInterface $bus,
+        bool $enablesAutoTransferCreation,
+        MiraklClient $miraklClient,
+        StripeTransferRepository $stripeTransferRepository,
+        MiraklStripeMappingRepository $miraklStripeMappingRepository,
+        StripePaymentRepository $stripePaymentRepository
+    ) {
         $this->bus = $bus;
         $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->stripePaymentRepository = $stripePaymentRepository;
         parent::__construct();
     }
 
@@ -103,6 +111,11 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                     [ 'since' => $lastMiraklUpdateTime->format(MiraklClient::DATE_FORMAT) ]
                 );
                 $miraklOrders = $this->miraklClient->listOrdersByDate($lastMiraklUpdateTime);
+
+                // add failed mirakl orders older than $lastMiraklUpdateTime
+                $failedOrderIds = $this->stripeTransferRepository->getMiraklOrderIdFailTransfersBefore($lastMiraklUpdateTime);
+                $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderIds);
+                $miraklOrders = array_merge($miraklOrders, $miraklFailedTransferOrders);
             } else {
                 $this->logger->info('Executing for all orders');
                 $miraklOrders = $this->miraklClient->listOrders();
@@ -123,11 +136,22 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         $existingTransfers = $this->stripeTransferRepository
             ->findExistingTransfersByOrderIds(array_column($miraklOrders, 'order_id'));
 
+        $stripePaymentToCapture = $this->stripePaymentRepository->findPendingPayments();
+
         $transfers = [];
         foreach ($miraklOrders as $miraklOrder) {
             $orderId = $miraklOrder['order_id'];
 
-            if (in_array($miraklOrder['order_state'], self::$ignoredOrderStatuses)) {
+            if (isset($stripePaymentToCapture[$miraklOrder['commercial_id']])) {
+                $ignoreReason = sprintf(
+                    'Skipping order with pending payment %s',
+                    $stripePaymentToCapture[$miraklOrder['commercial_id']]->getStripePaymentId()
+                );
+                $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
+                continue;
+            }
+
+            if (in_array($miraklOrder['order_state'], self::$ignoredOrderStatuses, true)) {
                 $ignoreReason = sprintf(
                     'Skipping order in state %s',
                     $miraklOrder['order_state']
@@ -140,11 +164,13 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 // Use existing transfer
                 $transfer = $existingTransfers[$orderId];
 
-                if ($transfer->getStatus() == StripeTransfer::TRANSFER_CREATED) {
+                if ($transfer->getStatus() === StripeTransfer::TRANSFER_CREATED) {
                     $ignoreReason = 'Skipping order transfer with existing created transfer';
                     $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
                     continue;
-                } elseif ($transfer->getTransferId()) {
+                }
+
+                if ($transfer->getTransferId()) {
                     // Should not happen but in case it does let's clean it up
                     $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
                     $ignoreReason = 'Cleaning order transfer with existing Stripe transfer';
@@ -161,10 +187,12 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
                 $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
                 $transfer->setMiraklId($orderId);
 
-                // Setting payment ID
-                $transactionId = $miraklOrder['transaction_number'];
-                if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_')) {
-                    $transfer->setTransactionId($transactionId);
+                if (isset($miraklOrder['transaction_number'])) {
+                    // Setting payment ID
+                    $transactionId = $miraklOrder['transaction_number'];
+                    if (0 === strpos($transactionId, 'ch_') || 0 === strpos($transactionId, 'py_') || 0 === strpos($transactionId, 'pi_')) {
+                        $transfer->setTransactionId($transactionId);
+                    }
                 }
 
                 // Create new transfer
@@ -186,11 +214,15 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
     private function prepareTransfer(array $miraklOrder, StripeTransfer $transfer)
     {
+        $failed = false;
+        $failedReason = '';
+        $transfer->setCurrency($miraklOrder['currency_iso_code']);
+
         // Transfer amount
         $amount = $miraklOrder['total_price'] - $miraklOrder['total_commission'];
         if (isset($miraklOrder['order_lines'])) {
             foreach ($miraklOrder['order_lines'] as $orderLine) {
-                if (in_array($orderLine['order_line_state'], self::$ignoredOrderStatuses)) {
+                if (in_array($orderLine['order_line_state'], self::$ignoredOrderStatuses, true)) {
                     continue;
                 }
 
@@ -207,14 +239,12 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount < 0) {
-            return $this->failTransfer($transfer, sprintf(
-                'Cannot transfer negative amount, %s provided',
-                (string) $amount
-            ));
+            $failed = true;
+            $failedReason = sprintf('Cannot transfer negative amount, %s provided', (string) $amount);
+            $transfer->setAmount(0); // can't be null
+        } else {
+            $transfer->setAmount($amount);
         }
-
-        $transfer->setAmount($amount);
-        $transfer->setCurrency($miraklOrder['currency_iso_code']);
 
         // Seller ID
         $shopId = $miraklOrder['shop_id'];
@@ -223,13 +253,11 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         ]);
 
         if (!$mapping) {
-            return $this->failTransfer($transfer, sprintf(
-                'Cannot find Stripe account for Seller ID %s',
-                $shopId
-            ));
+            $failed = true;
+            $failedReason .= ' '.sprintf('Cannot find Stripe account for Seller ID %s', $shopId);
+        } else {
+            $transfer->setMiraklStripeMapping($mapping);
         }
-
-        $transfer->setMiraklStripeMapping($mapping);
 
         // Mirakl update time
         $miraklUpdateTime = \DateTime::createFromFormat(
@@ -238,18 +266,21 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         );
 
         if (!$miraklUpdateTime) {
-            return $this->failTransfer($transfer, sprintf(
-                'Cannot parse last_updated_date %s',
-                $miraklOrder['last_updated_date']
-            ));
+            $failed = true;
+            $failedReason .= ' '.sprintf('Cannot parse last_updated_date %s', $miraklOrder['last_updated_date']);
+            $transfer->setMiraklUpdateTime(new \DateTime('2000-01-01')); // can't be null
+        } else {
+            $transfer->setMiraklUpdateTime($miraklUpdateTime);
         }
 
-        $transfer->setMiraklUpdateTime($miraklUpdateTime);
-
-        return $transfer;
+        if ($failed) {
+            return $this->failTransfer($transfer, $failedReason);
+        } else {
+            return $transfer;
+        }
     }
 
-    private function failTransfer($transfer, $reason): StripeTransfer
+    private function failTransfer(StripeTransfer $transfer, $reason): StripeTransfer
     {
         $this->logger->error($reason, ['order_id' => $transfer->getMiraklId()]);
 

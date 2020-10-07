@@ -18,6 +18,7 @@ parameters:
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
   env(OPERATOR_NOTIFICATION_URL): ""
+  env(MIRAKL_METADATA_ORDER_ID): "mirakl_order_id"
 
   app.base_host: "%env(BASE_HOST)%"
   app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
@@ -37,6 +38,7 @@ parameters:
   router.request_context.scheme: 'https'
   app.endpoint_down.mail_notification: "%env(bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
   app.endpoint_down.mail_notification_throttle: "%env(int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
+  app.mirakl.metadata_order_id_field_name: "%env(MIRAKL_METADATA_ORDER_ID)%"
 
 services:
   # default configuration for services in *this* file
@@ -57,6 +59,7 @@ services:
       $enablesAutoRefundCreation: "%app.stripe.enables_auto_refund_creation%"
       $redirectOnboarding: "%app.redirect.onboarding%"
       $operatorNotificationUrl: "%app.operator.notification_url%"
+      $metadataOrderIdFieldName: "%app.mirakl.metadata_order_id_field_name%"
 
       $endpointDownMailNotification: "%app.endpoint_down.mail_notification%"
       $endpointDownMailNotificationThrottleDelay: "%app.endpoint_down.mail_notification_throttle%"

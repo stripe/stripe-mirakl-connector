@@ -19,6 +19,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                 case '/orders?customer_debited=true':
                     return new MockResponse($this->getJsonMiraklOrders());
                 case '/orders?customer_debited=true&start_update_date=2019-01-01T00%3A00%3A00%2B0000':
+                case '/orders?customer_debited=true&start_update_date=2019-01-01T00%3A00%3A00%2B0100':
                     return new MockResponse($this->getJsonMiraklOrders());
                 case '/orders?customer_debited=true&order_ids=order_5%2Corder_6':
                     return new MockResponse($this->getJsonSpecifiedMiraklOrders());
@@ -32,6 +33,20 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonAlreadyExistingMiraklOrders());
                 case '/orders?customer_debited=true&order_ids=order_8':
                     return new MockResponse($this->getJsonInvalidAmountMiraklOrders());
+                case '/orders?customer_debited=true&order_ids=order_11':
+                    return new MockResponse($this->getJsonOrderWithNegativeAmount('order_11'));
+                case '/orders?customer_debited=true&order_ids=Order_66':
+                    return new MockResponse($this->getJsonOrderForNoTransfer('Order_66'));
+                case '/orders?customer_debited=true&order_ids=Order_51':
+                    return new MockResponse($this->getJsonOrderForNoTransfer('Order_51'));
+                case '/orders?customer_debited=true&order_ids=old_order_failed_transfer':
+                    return new MockResponse(json_encode([
+                        'orders' => [
+                            $this->getMiraklOrder('old_order_failed_transfer'),
+                        ],
+                    ]));
+                case '/orders?commercial_ids=Order_66%2COrder_42':
+                    return new MockResponse($this->getJsonOrdersWithCommercialId());
                 case '/shops':
                     return new MockResponse($this->getReturnJsonShops());
                 case '/shops?paginate=true&shop_ids=1':
@@ -46,6 +61,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                 case '/invoices':
                     return new MockResponse($this->getJsonMiraklInvoices());
                 case '/invoices?start_date=2019-01-01T00%3A00%3A00%2B0000':
+                case '/invoices?start_date=2019-01-01T00%3A00%3A00%2B0100':
                     return new MockResponse($this->getJsonMiraklInvoices());
                 case '/invoices?shop=1':
                     return new MockResponse($this->getSpecifiedJsonMiraklInvoices());
@@ -55,6 +71,19 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonAlreadyExistingMiraklInvoices());
                 case '/invoices?shop=4':
                     return new MockResponse($this->getJsonFailedTransferMiraklInvoices());
+                case '/invoices?shop=5':
+                    return new MockResponse($this->getJsonAlreadyExistingMiraklInvoices2());
+                case '/invoices?shop=6':
+                    return new MockResponse($this->getJsonCreateFailedTransfert());
+                case '/payment/debit':
+                    switch ($method) {
+                        case 'GET':
+                            return new MockResponse($this->getPendingPayment());
+                        case 'PUT':
+                            return $this->mockPendingValidation($options);
+                    }
+                    return new MockResponse($this->getEmptyJson());
+                    break;
                 case '/payment/refund':
                     switch ($method) {
                         case 'GET':
@@ -84,11 +113,24 @@ class MiraklMockedHttpClient extends MockHttpClient
         }
     }
 
+    private function mockPendingValidation($options)
+    {
+        $body = json_decode($options['body'], true);
+        $orderToValidate = $body['orders'][0]['order_id'];
+
+        if ($orderToValidate === 'Order_00007-A') {
+            return new MockResponse(['message' => "Cannot update the order with id 'Order_00007-A' to status 'SHIPPING'. The order does not have the expected status 'WAITING_DEBIT_PAYMENT'."], ['http_code' => 400]);
+        }
+
+        return new MockResponse(json_encode([]), ['http_code' => 204]);
+    }
+
     private function getMiraklOrder($orderId)
     {
         return [
             'id' => 1,
             'order_id' => $orderId,
+            'commercial_id' => $orderId,
             'shop_id' => '1',
             'total_price' => 24,
             'order_state' => 'RECEIVED',
@@ -298,6 +340,54 @@ class MiraklMockedHttpClient extends MockHttpClient
         ];
     }
 
+    private function getMiraklInvoiceZeroAmount($shopId, $invoiceId)
+    {
+        return [
+            'invoice_id' => $invoiceId,
+            'shop_id' => $shopId,
+            'summary' => [
+                'amount_transferred' => 0,
+                'total_subscription_incl_tax' => 0,
+                'total_other_credits_incl_tax' => 0,
+                'total_other_invoices_incl_tax' => 0,
+            ],
+            'currency_iso_code' => 'eur',
+            'end_time' => '2019-09-24T14:00:40Z',
+        ];
+    }
+
+    private function getMiraklInvoiceBadEndtime($shopId, $invoiceId)
+    {
+        return [
+            'invoice_id' => $invoiceId,
+            'shop_id' => $shopId,
+            'summary' => [
+                'amount_transferred' => 12.34,
+                'total_subscription_incl_tax' => 9.99,
+                'total_other_credits_incl_tax' => 56.78,
+                'total_other_invoices_incl_tax' => 98.76,
+            ],
+            'currency_iso_code' => 'eur',
+            'end_time' => '09-2019-24T14:00:40Z',
+        ];
+    }
+
+    private function getMiraklInvoiceBadShopId($shopId, $invoiceId)
+    {
+        return [
+            'invoice_id' => $invoiceId,
+            'shop_id' => $shopId.'-42.123',
+            'summary' => [
+                'amount_transferred' => 12.34,
+                'total_subscription_incl_tax' => 9.99,
+                'total_other_credits_incl_tax' => 56.78,
+                'total_other_invoices_incl_tax' => 98.76,
+            ],
+            'currency_iso_code' => 'eur',
+            'end_time' => '09-2019-24T14:00:40Z',
+        ];
+    }
+
     private function getJsonMiraklInvoices()
     {
         return json_encode([
@@ -342,6 +432,27 @@ class MiraklMockedHttpClient extends MockHttpClient
             'invoices' => [
                 $this->getMiraklInvoice(3, 10),
                 $this->getMiraklInvoice(3, 11),
+            ],
+        ]);
+    }
+
+    private function getJsonAlreadyExistingMiraklInvoices2()
+    {
+        return json_encode([
+            'invoices' => [
+                $this->getMiraklInvoice(3, 12),
+                $this->getMiraklInvoice(3, 13),
+            ],
+        ]);
+    }
+
+    private function getJsonCreateFailedTransfert()
+    {
+        return json_encode([
+            'invoices' => [
+                $this->getMiraklInvoiceZeroAmount(3, 14),
+                $this->getMiraklInvoiceBadEndtime(3, 15),
+                $this->getMiraklInvoiceBadShopId(3, 16),
             ],
         ]);
     }
@@ -427,5 +538,311 @@ class MiraklMockedHttpClient extends MockHttpClient
             ],
             'total_count' => 2,
           ]);
+    }
+
+    private function getPendingPayment()
+    {
+        return json_encode([
+            'orders' => [
+                'order' => [
+                    [
+                        'order_state' => 'SHIPPING',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_66",
+                        "commercial_id" => "Order_66",
+                        "order_id" => "Order_66-A",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2015",
+                                    "order_line_amount" => 173.00,
+                                    "order_line_id" => "Order_66-A-1",
+                                    "order_line_quantity" => 3,
+                                    'order_line_state' => 'REFUSED',
+                                ],
+                                [
+                                    "offer_id" => "2017",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-A-2",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2015"
+                    ],
+                    [
+                        'order_state' => 'RECEIVED',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_66",
+                        "order_id" => "Order_66-B",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-b-2",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2016"
+                    ],
+                    [
+                        'order_state' => 'NOT_VALID',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_42",
+                        "order_id" => "Order_42-A",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_42-a-1",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2016"
+                    ],
+                    [
+                        'order_state' => 'SHIPPING',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "order_commercial_id" => "Order_42",
+                        "order_id" => "Order_42-B",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_42-a-1",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2016"
+                    ],
+                ],
+            ],
+            'total_count' => 1,
+        ]);
+    }
+
+    private function getJsonOrdersWithCommercialId()
+    {
+        return json_encode([
+            'orders' => [
+                    [
+                        'order_state' => 'SHIPPING',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "commercial_id" => "Order_66",
+                        "order_id" => "Order_66-A",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2015",
+                                    "order_line_amount" => 173.00,
+                                    "order_line_id" => "Order_66-A-1",
+                                    "order_line_quantity" => 3,
+                                    'order_line_state' => 'REFUSED',
+                                ],
+                                [
+                                    "offer_id" => "2017",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-A-2",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2015"
+                    ],
+                    [
+                        'order_state' => 'RECEIVED',
+                        "total_price" => 330.00,
+                        "amount" => 330.00,
+                        "currency_iso_code" => "EUR",
+                        "customer_id" => "Customer_id_001",
+                        "commercial_id" => "Order_66",
+                        "order_id" => "Order_66-B",
+                        "order_lines" => [
+                            "order_line" => [
+                                [
+                                    "offer_id" => "2016",
+                                    "order_line_amount" => 330.00,
+                                    "order_line_id" => "Order_66-b-2",
+                                    "order_line_quantity" => 5,
+                                    'order_line_state' => 'SHIPPING',
+                                ]
+                            ]
+                        ],
+                        "shop_id" => "2016"
+                    ],
+                [
+                    'order_state' => 'NOT_VALID',
+                    "total_price" => 330.00,
+                    "amount" => 330.00,
+                    "currency_iso_code" => "EUR",
+                    "customer_id" => "Customer_id_001",
+                    "commercial_id" => "Order_42",
+                    "order_id" => "Order_42-A",
+                    "order_lines" => [
+                        "order_line" => [
+                            [
+                                "offer_id" => "2016",
+                                "order_line_amount" => 330.00,
+                                "order_line_id" => "Order_42-a-1",
+                                "order_line_quantity" => 5,
+                                'order_line_state' => 'SHIPPING',
+                            ]
+                        ]
+                    ],
+                    "shop_id" => "2016"
+                ],
+                [
+                    'order_state' => 'SHIPPING',
+                    "total_price" => 330.00,
+                    "amount" => 330.00,
+                    "currency_iso_code" => "EUR",
+                    "customer_id" => "Customer_id_001",
+                    "commercial_id" => "Order_42",
+                    "order_id" => "Order_42-B",
+                    "order_lines" => [
+                        "order_line" => [
+                            [
+                                "offer_id" => "2016",
+                                "order_line_amount" => 330.00,
+                                "order_line_id" => "Order_42-a-1",
+                                "order_line_quantity" => 5,
+                                'order_line_state' => 'SHIPPING',
+                            ]
+                        ]
+                    ],
+                    "shop_id" => "2016"
+                ],
+            ],
+        ]);
+    }
+
+    private function getJsonOrderWithNegativeAmount($orderId)
+    {
+        return json_encode([
+            'orders' => [
+                [
+                    'order_state' => 'SHIPPING',
+                    "total_price" => 330.00,
+                    "amount" => 330.00,
+                    'total_commission' => 1500,
+                    "currency_iso_code" => "EUR",
+                    "customer_id" => "Customer_id_001",
+                    "commercial_id" => $orderId,
+                    "order_id" => $orderId."-A",
+                    'last_updated_date' => '01-2010-30',
+                    "order_lines" => [
+                        [
+                            "offer_id" => "2015",
+                            "order_line_amount" => 173.00,
+                            'shipping_taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            'taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            "order_line_id" => $orderId."-A-1",
+                            "order_line_quantity" => 3,
+                            'order_line_state' => 'REFUSED',
+                        ],
+                        [
+                            "offer_id" => "2017",
+                            "order_line_amount" => 330.00,
+                            'shipping_taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            'taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            "order_line_id" => $orderId."-A-2",
+                            "order_line_quantity" => 5,
+                            'order_line_state' => 'SHIPPING',
+                        ]
+                    ],
+                    "shop_id" => "42"
+                ],
+            ],
+        ]);
+    }
+
+    private function getJsonOrderForNoTransfer($orderId)
+    {
+        return json_encode([
+            'orders' => [
+                [
+                    'order_state' => 'WAITING_DEBIT',
+                    "total_price" => 330.00,
+                    "amount" => 330.00,
+                    'total_commission' => 1500,
+                    "currency_iso_code" => "EUR",
+                    "customer_id" => "Customer_id_001",
+                    "commercial_id" => $orderId,
+                    "order_id" => $orderId."-A",
+                    'last_updated_date' => '01-2010-30',
+                    "order_lines" => [
+                        [
+                            "offer_id" => "2015",
+                            "order_line_amount" => 173.00,
+                            'shipping_taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            'taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            "order_line_id" => $orderId."-A-1",
+                            "order_line_quantity" => 3,
+                            'order_line_state' => 'REFUSED',
+                        ],
+                        [
+                            "offer_id" => "2017",
+                            "order_line_amount" => 330.00,
+                            'shipping_taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            'taxes' => [
+                                [ 'amount' => 1, 'code' => 'ECO_TAX' ],
+                                [ 'amount' => 2, 'code' => 'EXP_TAX' ]
+                            ],
+                            "order_line_id" => $orderId."-A-2",
+                            "order_line_quantity" => 5,
+                            'order_line_state' => 'SHIPPING',
+                        ]
+                    ],
+                    "shop_id" => "42"
+                ],
+            ],
+        ]);
     }
 }

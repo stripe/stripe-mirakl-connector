@@ -54,6 +54,20 @@ framework:
                 retry_strategy:
                     max_retries: 0
 
+            validate_mirakl_order:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: validate_mirakl_order
+                retry_strategy:
+                    max_retries: 0
+
+            capture_pending_payment:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: capture_pending_payment
+                retry_strategy:
+                    max_retries: 0
+
             failed:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
@@ -66,4 +80,6 @@ framework:
             'App\Message\TransferFailedMessage': operator_http_notification
             'App\Message\RefundFailedMessage': operator_http_notification
             'App\Message\PayoutFailedMessage': operator_http_notification
+            'App\Message\ValidateMiraklOrderMessage': validate_mirakl_order
+            'App\Message\CapturePendingPaymentMessage': capture_pending_payment
 
