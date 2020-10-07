@@ -93,7 +93,7 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
                         'miraklRefundId' => $refund['id'],
                     ]);
 
-                    if (is_null($miraklRefund)) {
+                    if (is_null($stripeRefund)) {
                         $commission = (int) ($totalUnitaryCommissions[$orderLine['order_line_id']] * $refund['amount'] * 100);
                         $newlyCreatedMiraklRefund = $this->createMiraklRefund($refund, $currency, $miraklOrder);
                         $message = new ProcessRefundMessage($newlyCreatedMiraklRefund->getMiraklRefundId(), $commission);
