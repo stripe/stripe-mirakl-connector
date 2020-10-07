@@ -26,7 +26,7 @@ Some examples of tasks required to complete the configuration for production:
 
 ## Start jobs manually
 
-1. Find the command you wish to run manually in [examples/docker](app/config/crontab).
+1. Find the command you wish to run manually in [app/config/crontab](app/config/crontab).
 2. Run the command through docker, e.g. `docker-compose run --rm app php bin/console connector:dispatch:process-transfer`
 
 ## Read logs
