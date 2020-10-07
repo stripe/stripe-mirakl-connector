@@ -83,7 +83,6 @@ class MiraklMockedHttpClient extends MockHttpClient
                             return $this->mockPendingValidation($options);
                     }
                     return new MockResponse($this->getEmptyJson());
-                    break;
                 case '/payment/refund':
                     switch ($method) {
                         case 'GET':

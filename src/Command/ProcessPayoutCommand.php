@@ -7,7 +7,7 @@ use App\Entity\StripeTransfer;
 use App\Exception\UndispatchableException;
 use App\Message\ProcessPayoutMessage;
 use App\Message\ProcessTransferMessage;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\AccountMappingRepository;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
 use App\Utils\MiraklClient;
@@ -59,18 +59,18 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
     private $stripeTransferRepository;
 
     /**
-     * @var MiraklStripeMappingRepository
+     * @var AccountMappingRepository
      */
-    private $miraklStripeMappingRepository;
+    private $accountMappingRepository;
 
-    public function __construct(MessageBusInterface $bus, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripePayoutRepository $stripePayoutRepository, StripeTransferRepository $stripeTransferRepository, MiraklStripeMappingRepository $miraklStripeMappingRepository)
+    public function __construct(MessageBusInterface $bus, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripePayoutRepository $stripePayoutRepository, StripeTransferRepository $stripeTransferRepository, AccountMappingRepository $accountMappingRepository)
     {
         $this->bus = $bus;
         $this->miraklClient = $miraklClient;
         $this->stripeProxy = $stripeProxy;
         $this->stripePayoutRepository = $stripePayoutRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
-        $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->accountMappingRepository = $accountMappingRepository;
         parent::__construct();
     }
 
@@ -206,7 +206,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
 
         // Seller ID
         $shopId = $miraklInvoice['shop_id'];
-        $mapping = $this->miraklStripeMappingRepository->findOneBy([
+        $mapping = $this->accountMappingRepository->findOneBy([
             'miraklShopId' => $shopId,
         ]);
 
@@ -217,7 +217,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
             ));
         }
 
-        $transfer->setMiraklStripeMapping($mapping);
+        $transfer->setAccountMapping($mapping);
 
         // Mirakl update time
         $miraklUpdateTime = \DateTime::createFromFormat(
@@ -324,7 +324,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
 
         // Seller ID
         $shopId = $miraklInvoice['shop_id'];
-        $mapping = $this->miraklStripeMappingRepository->findOneBy([
+        $mapping = $this->accountMappingRepository->findOneBy([
             'miraklShopId' => $shopId,
         ]);
 
@@ -335,7 +335,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
             ));
         }
 
-        $payout->setMiraklStripeMapping($mapping);
+        $payout->setAccountMapping($mapping);
 
         return $payout;
     }

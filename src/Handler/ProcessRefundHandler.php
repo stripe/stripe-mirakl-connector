@@ -2,12 +2,12 @@
 
 namespace App\Handler;
 
-use App\Entity\MiraklRefund;
+use App\Entity\StripeRefund;
 use App\Entity\StripeTransfer;
 use App\Exception\RefundProcessException;
 use App\Message\ProcessRefundMessage;
 use App\Repository\StripeTransferRepository;
-use App\Repository\MiraklRefundRepository;
+use App\Repository\StripeRefundRepository;
 use App\Utils\MiraklClient;
 use App\Utils\StripeProxy;
 use Psr\Log\LoggerAwareInterface;
@@ -36,25 +36,25 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
     private $stripeTransferRepository;
 
     /**
-     * @var MiraklRefundRepository
+     * @var StripeRefundRepository
      */
-    private $miraklRefundRepository;
+    private $stripeRefundRepository;
 
     public function __construct(
         MiraklClient $miraklClient,
         StripeProxy $stripeProxy,
         StripeTransferRepository $stripeTransferRepository,
-        MiraklRefundRepository $miraklRefundRepository
+        StripeRefundRepository $stripeRefundRepository
     ) {
         $this->miraklClient = $miraklClient;
         $this->stripeProxy = $stripeProxy;
         $this->stripeTransferRepository = $stripeTransferRepository;
-        $this->miraklRefundRepository = $miraklRefundRepository;
+        $this->stripeRefundRepository = $stripeRefundRepository;
     }
 
     public function __invoke(ProcessRefundMessage $message)
     {
-        $refund = $this->miraklRefundRepository->findOneBy([
+        $refund = $this->stripeRefundRepository->findOneBy([
             'miraklRefundId' => $message->geMiraklRefundId(),
         ]);
 
@@ -62,7 +62,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             return;
         }
 
-        if (MiraklRefund::REFUND_CREATED == $refund->getStatus()) {
+        if (StripeRefund::REFUND_CREATED == $refund->getStatus()) {
             // Already processed nothing todo
             return;
         }
@@ -76,9 +76,9 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         if (is_null($transfer)) {
             $failedReason = sprintf('Mirakl refund id: %s and orderId: %s has no stripe transfer in connector', $refund->getMiraklRefundId(), $refund->getMiraklOrderId());
             $refund
-                ->setStatus(MiraklRefund::REFUND_FAILED)
+                ->setStatus(StripeRefund::REFUND_FAILED)
                 ->setFailedReason($failedReason);
-            $this->miraklRefundRepository->persistAndFlush($refund);
+            $this->stripeRefundRepository->persistAndFlush($refund);
 
             return;
         }
@@ -99,14 +99,14 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 'miraklOrderId' => $refund->getMiraklOrderId(),
             ]);
             $refund
-                ->setStatus(MiraklRefund::REFUND_FAILED)
+                ->setStatus(StripeRefund::REFUND_FAILED)
                 ->setFailedReason(substr($e->getMessage(), 0, 1024));
         }
 
-        $this->miraklRefundRepository->persistAndFlush($refund);
+        $this->stripeRefundRepository->persistAndFlush($refund);
     }
 
-    private function processRefundInStripe(MiraklRefund $refund, StripeTransfer $transfer)
+    private function processRefundInStripe(StripeRefund $refund, StripeTransfer $transfer)
     {
         if (!is_null($refund->getStripeRefundId())) {
             // We got stripe refund id
@@ -130,7 +130,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         }
     }
 
-    private function processReversalInStripe(MiraklRefund $refund, StripeTransfer $transfer)
+    private function processReversalInStripe(StripeRefund $refund, StripeTransfer $transfer)
     {
         if (!is_null($refund->getStripeReversalId())) {
             // We got stripe reversal id
@@ -184,7 +184,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         return in_array($miraklRefundId, $miraklRefundIds);
     }
 
-    private function validateRefundInMirakl(MiraklRefund $refund)
+    private function validateRefundInMirakl(StripeRefund $refund)
     {
         if (!is_null($refund->getMiraklValidationTime())) {
             // Refund has been confirmed in our system
@@ -221,7 +221,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         $refund->setMiraklValidationTime($now);
     }
 
-    private function moveRefundInStatusCreated(MiraklRefund $refund)
+    private function moveRefundInStatusCreated(StripeRefund $refund)
     {
         // We need the 3 api calls to be successful to declare the refund CREATED
         if (is_null($refund->getMiraklValidationTime())) {
@@ -236,6 +236,6 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             throw new \App\Exception\RefundProcessException(sprintf('Mirakl refund id: %s and orderId: %s has no stripe reversal id in connector', $refund->getMiraklRefundId(), $refund->getMiraklOrderId()));
         }
 
-        $refund->setStatus(MiraklRefund::REFUND_CREATED);
+        $refund->setStatus(StripeRefund::REFUND_CREATED);
     }
 }

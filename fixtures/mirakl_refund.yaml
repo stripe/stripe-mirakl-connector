@@ -1,4 +1,4 @@
-App\Entity\MiraklRefund:
+App\Entity\StripeRefund:
     mirakl_refund_4: # Good refund
         miraklRefundId: '1104'
         miraklOrderId: 'order_refunded_4'

@@ -18,7 +18,7 @@ class PayoutFailedMessage implements NotifiableMessageInterface
 
     public function __construct(StripePayout $payout)
     {
-        $mapping = $payout->getMiraklStripeMapping();
+        $mapping = $payout->getAccountMapping();
         $stripeAccountId = $mapping ? $mapping->getStripeAccountId() : null;
         $miraklShopId = $mapping ? $mapping->getMiraklShopId() : null;
 

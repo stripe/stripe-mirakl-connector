@@ -2,8 +2,8 @@
 
 namespace App\Controller;
 
-use App\Entity\MiraklStripeMapping;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Entity\AccountMapping;
+use App\Repository\AccountMappingRepository;
 use App\Repository\OnboardingAccountRepository;
 use App\Repository\StripeAccountRepository;
 use Psr\Log\LoggerAwareInterface;
@@ -48,9 +48,9 @@ class CreateMappingFromStripe extends AbstractController implements LoggerAwareI
     private $redirectOnboarding;
 
     /**
-     * @var MiraklStripeMappingRepository
+     * @var AccountMappingRepository
      */
-    private $miraklStripeMappingRepository;
+    private $accountMappingRepository;
 
     /**
      * @var OnboardingAccountRepository
@@ -60,12 +60,12 @@ class CreateMappingFromStripe extends AbstractController implements LoggerAwareI
     public function __construct(
         StripeAccountRepository $stripeAccountRepository,
         string $redirectOnboarding,
-        MiraklStripeMappingRepository $miraklStripeMappingRepository,
+        AccountMappingRepository $accountMappingRepository,
         OnboardingAccountRepository $onboardingAccountRepository
     ) {
         $this->stripeAccountRepository = $stripeAccountRepository;
         $this->redirectOnboarding = $redirectOnboarding;
-        $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->accountMappingRepository = $accountMappingRepository;
         $this->onboardingAccountRepository = $onboardingAccountRepository;
     }
 
@@ -141,7 +141,7 @@ class CreateMappingFromStripe extends AbstractController implements LoggerAwareI
         assert(null !== $miraklShopId);
 
         $this->onboardingAccountRepository->deleteAndFlush($onboardingAccount);
-        $existingShop = $this->miraklStripeMappingRepository->findOneByMiraklShopId($miraklShopId);
+        $existingShop = $this->accountMappingRepository->findOneByMiraklShopId($miraklShopId);
         if ($existingShop) {
             return $this->getRedirectResponse(self::ERROR_ALREADY_EXISTING_SHOP);
         }
@@ -157,14 +157,14 @@ class CreateMappingFromStripe extends AbstractController implements LoggerAwareI
             ]);
         }
 
-        $newMapping = new MiraklStripeMapping();
+        $newMapping = new AccountMapping();
         $newMapping
             ->setMiraklShopId($miraklShopId)
             ->setStripeAccountId($stripeUserId)
             ->setPayoutEnabled($stripeAccount->payouts_enabled)
             ->setDisabledReason($stripeAccount->requirements->disabled_reason)
             ->setPayinEnabled($stripeAccount->charges_enabled);
-        $this->miraklStripeMappingRepository->persistAndFlush($newMapping);
+        $this->accountMappingRepository->persistAndFlush($newMapping);
 
         $queryParams = \http_build_query([
             'success' => 'true',

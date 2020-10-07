@@ -2,9 +2,9 @@
 
 namespace App\Controller;
 
-use App\DTO\MiraklStripeMappingDTO;
-use App\Factory\MiraklStripeMappingFactory;
-use App\Repository\MiraklStripeMappingRepository;
+use App\DTO\AccountMappingDTO;
+use App\Factory\AccountMappingFactory;
+use App\Repository\AccountMappingRepository;
 use App\Repository\StripeAccountRepository;
 use Nelmio\ApiDocBundle\Annotation\Security;
 use Psr\Log\LoggerAwareInterface;
@@ -28,9 +28,9 @@ class CreateMiraklStripeAccountMapping extends AbstractController implements Log
     private $stripeAccountRepository;
 
     /**
-     * @var MiraklStripeMappingRepository
+     * @var AccountMappingRepository
      */
-    private $miraklStripeMappingRepository;
+    private $accountMappingRepository;
 
     /**
      * @var SerializerInterface
@@ -43,22 +43,22 @@ class CreateMiraklStripeAccountMapping extends AbstractController implements Log
     private $validator;
 
     /**
-     * @var MiraklStripeMappingFactory
+     * @var AccountMappingFactory
      */
-    private $miraklStripeMappingFactory;
+    private $accountMappingFactory;
 
     public function __construct(
         StripeAccountRepository $stripeAccountRepository,
-        MiraklStripeMappingRepository $miraklStripeMappingRepository,
+        AccountMappingRepository $accountMappingRepository,
         SerializerInterface $serializer,
         ValidatorInterface $validator,
-        MiraklStripeMappingFactory $miraklStripeMappingFactory
+        AccountMappingFactory $accountMappingFactory
     ) {
         $this->stripeAccountRepository = $stripeAccountRepository;
-        $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->accountMappingRepository = $accountMappingRepository;
         $this->serializer = $serializer;
         $this->validator = $validator;
-        $this->miraklStripeMappingFactory = $miraklStripeMappingFactory;
+        $this->accountMappingFactory = $accountMappingFactory;
     }
 
     /**
@@ -94,7 +94,7 @@ class CreateMiraklStripeAccountMapping extends AbstractController implements Log
      *     response=409,
      *     description="The provided Mirakl Shop ID or Stripe User Id is already mapped",
      * )
-     * @SWG\Tag(name="MiraklStripeMapping")
+     * @SWG\Tag(name="AccountMapping")
      * @Security(name="Bearer")
      * @Route("/api/mappings", methods={"POST"}, name="create_mapping_manually")
      */
@@ -102,7 +102,7 @@ class CreateMiraklStripeAccountMapping extends AbstractController implements Log
     {
         $data = $request->getContent();
 
-        $mappingDTO = $this->serializer->deserialize($data, MiraklStripeMappingDTO::class, JsonEncoder::FORMAT);
+        $mappingDTO = $this->serializer->deserialize($data, AccountMappingDTO::class, JsonEncoder::FORMAT);
         $stripeUserId = $mappingDTO->getStripeUserId();
         $stripeAccount = $this->stripeAccountRepository->setManualPayout($stripeUserId);
 
@@ -110,13 +110,13 @@ class CreateMiraklStripeAccountMapping extends AbstractController implements Log
         if (count($errors) > 0) {
             return new Response('Invalid Mirakl shop Id format', Response::HTTP_BAD_REQUEST);
         }
-        $mapping = $this->miraklStripeMappingFactory->createMappingFromDTO($mappingDTO);
+        $mapping = $this->accountMappingFactory->createMappingFromDTO($mappingDTO);
         $mapping
             ->setPayinEnabled($stripeAccount->payouts_enabled)
             ->setPayoutEnabled($stripeAccount->charges_enabled)
             ->setDisabledReason($stripeAccount->requirements['disabled_reason']);
 
-        $this->miraklStripeMappingRepository->persistAndFlush($mapping);
+        $this->accountMappingRepository->persistAndFlush($mapping);
 
         return new Response('Mirakl - Stripe mapping created', Response::HTTP_CREATED);
     }

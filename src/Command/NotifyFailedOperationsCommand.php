@@ -2,12 +2,12 @@
 
 namespace App\Command;
 
-use App\Entity\MiraklRefund;
+use App\Entity\StripeRefund;
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
-use App\Repository\MiraklRefundRepository;
+use App\Repository\StripeRefundRepository;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -39,9 +39,9 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
     private $stripePayoutRepository;
 
     /**
-     * @var MiraklRefundRepository
+     * @var StripeRefundRepository
      */
-    private $miraklRefundRepository;
+    private $stripeRefundRepository;
 
     /**
      * @var string
@@ -53,12 +53,12 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
      */
     private $technicalEmail;
 
-    public function __construct(MailerInterface $mailer, StripeTransferRepository $stripeTransferRepository, StripePayoutRepository $stripePayoutRepository, MiraklRefundRepository $miraklRefundRepository, string $technicalEmailFrom, string $technicalEmail)
+    public function __construct(MailerInterface $mailer, StripeTransferRepository $stripeTransferRepository, StripePayoutRepository $stripePayoutRepository, StripeRefundRepository $stripeRefundRepository, string $technicalEmailFrom, string $technicalEmail)
     {
         $this->mailer = $mailer;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->stripePayoutRepository = $stripePayoutRepository;
-        $this->miraklRefundRepository = $miraklRefundRepository;
+        $this->stripeRefundRepository = $stripeRefundRepository;
         $this->technicalEmailFrom = $technicalEmailFrom;
         $this->technicalEmail = $technicalEmail;
         parent::__construct();
@@ -74,7 +74,7 @@ class NotifyFailedOperationsCommand extends Command implements LoggerAwareInterf
         $failedPayouts = $this->stripePayoutRepository->findBy(['status' => StripePayout::getInvalidStatus()]);
         $output->writeln(sprintf('Found %d payout(s) which failed transfering', count($failedPayouts)));
 
-        $failedRefunds = $this->miraklRefundRepository->findBy(['status' => MiraklRefund::getInvalidStatus()]);
+        $failedRefunds = $this->stripeRefundRepository->findBy(['status' => StripeRefund::getInvalidStatus()]);
         $output->writeln(sprintf('Found %d refund(s) which failed transfering', count($failedRefunds)));
 
         if (0 === count($failedTransfers) && 0 === count($failedPayouts) && 0 === count($failedRefunds)) {

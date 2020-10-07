@@ -1,4 +1,4 @@
-App\Entity\MiraklStripeMapping:
+App\Entity\AccountMapping:
     mapping_1:
         mirakl_shop_id: 1
         stripe_account_id: 'acct_1'

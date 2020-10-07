@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\Entity\StripePayment;
 use App\Message\AccountUpdateMessage;
-use App\Repository\MiraklStripeMappingRepository;
+use App\Repository\AccountMappingRepository;
 use App\Repository\StripePaymentRepository;
 use App\Utils\StripeProxy;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -48,9 +48,19 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private $stripeProxy;
 
     /**
-     * @var MiraklStripeMappingRepository
+     * @var AccountMappingRepository
      */
-    private $miraklStripeMappingRepository;
+    private $accountMappingRepository;
+
+    /**
+     * @var StripePaymentRepository
+     */
+    private $stripePaymentRepository;
+
+    /**
+     * @var string
+     */
+    private $metadataOrderIdFieldName;
 
     /**
      * @var StripePaymentRepository
@@ -65,13 +75,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     public function __construct(
         MessageBusInterface $bus,
         StripeProxy $stripeProxy,
-        MiraklStripeMappingRepository $miraklStripeMappingRepository,
+        AccountMappingRepository $accountMappingRepository,
         StripePaymentRepository $stripePaymentRepository,
         string $metadataOrderIdFieldName
     ) {
         $this->bus = $bus;
         $this->stripeProxy = $stripeProxy;
-        $this->miraklStripeMappingRepository = $miraklStripeMappingRepository;
+        $this->accountMappingRepository = $accountMappingRepository;
         $this->stripePaymentRepository = $stripePaymentRepository;
         $this->metadataOrderIdFieldName = $metadataOrderIdFieldName;
     }
@@ -164,21 +174,21 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     {
         $stripeAccount = $event->data->object;
 
-        $miraklStripeMapping = $this->miraklStripeMappingRepository->findOneByStripeAccountId($stripeAccount['id']);
-        if (!$miraklStripeMapping) {
+        $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccount['id']);
+        if (!$accountMapping) {
             $this->logger->error(sprintf('This Stripe Account does not exist %s', $stripeAccount['id']));
 
             throw new \Exception('This Stripe Account does not exist', Response::HTTP_BAD_REQUEST);
         }
 
-        $miraklStripeMapping
+        $accountMapping
             ->setPayoutEnabled($stripeAccount['payouts_enabled'])
             ->setPayinEnabled($stripeAccount['charges_enabled'])
             ->setDisabledReason($stripeAccount['disabled_reason']);
 
-        $this->miraklStripeMappingRepository->persistAndFlush($miraklStripeMapping);
+        $this->accountMappingRepository->persistAndFlush($accountMapping);
 
-        $this->bus->dispatch(new AccountUpdateMessage($miraklStripeMapping->getMiraklShopId(), $stripeAccount['id']));
+        $this->bus->dispatch(new AccountUpdateMessage($accountMapping->getMiraklShopId(), $stripeAccount['id']));
 
         return 'Account updated';
     }
