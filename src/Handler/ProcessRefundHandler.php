@@ -130,7 +130,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         }
     }
 
-    private function processReversalInStripe(MiraklRefund $refund, StripeTransfer $transfer, int $commission)
+    private function processReversalInStripe(StripeRefund $refund, StripeTransfer $transfer, int $commission)
     {
         if (!is_null($refund->getStripeReversalId())) {
             // We got stripe reversal id
