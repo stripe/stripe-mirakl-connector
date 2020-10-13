@@ -33,7 +33,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonAlreadyExistingMiraklOrders());
                 case '/orders?customer_debited=true&order_ids=order_8':
                     return new MockResponse($this->getJsonInvalidAmountMiraklOrders());
-                case '/orders?customer_debited=true&order_ids=Order_Amount_Breakdown_0002-A%2COrder_Amount_Breakdown_0002-A':
+                case '/orders?customer_debited=true&order_ids=Order_Amount_Breakdown_0002-A%2COrder_Amount_Breakdown_0002-A%2Corder_refunded_6-A':
                     return new MockResponse($this->getJsonForRefundOrders());
                 case '/orders?customer_debited=true&order_ids=order_11':
                     return new MockResponse($this->getJsonOrderWithNegativeAmount('order_11'));
@@ -535,9 +535,36 @@ class MiraklMockedHttpClient extends MockHttpClient
                   'payment_workflow' => 'PAY_ON_ACCEPTANCE',
                   'shop_id' => '2002',
                 ],
+                [
+                  'amount' => 600,
+                  'currency_iso_code' => 'EUR',
+                  'customer_id' => 'Customer_id_001',
+                  'order_commercial_id' => 'order_refunded_6',
+                  'order_id' => 'order_refunded_6-A',
+                  'order_lines' => [
+                      'order_line' => [
+                          [
+                              'offer_id' => '1599',
+                              'order_line_amount' => 600,
+                              'order_line_id' => 'order_refunded_6-A-1',
+                              'order_line_quantity' => 1,
+                              'refunds' => [
+                                  'refund' => [
+                                      [
+                                          'amount' => 600,
+                                          'id' => '1111',
+                                      ],
+                                  ],
+                              ],
+                          ],
+                      ],
+                  ],
+                  'payment_workflow' => 'PAY_ON_ACCEPTANCE',
+                  'shop_id' => '2002',
+                ],
               ],
             ],
-            'total_count' => 2,
+            'total_count' => 3,
           ]);
     }
 
@@ -588,8 +615,26 @@ class MiraklMockedHttpClient extends MockHttpClient
                         'payment_workflow' => 'PAY_ON_ACCEPTANCE',
                         'shop_id' => '2002',
                     ],
+                [
+                    'amount' => 600,
+                    'currency_iso_code' => 'EUR',
+                    'customer_id' => 'Customer_id_001',
+                    'order_commercial_id' => 'order_refunded_6',
+                    'order_id' => 'order_refunded_6-A',
+                    'order_lines' => [
+                        [
+                            'offer_id' => '1599',
+                            'total_price' => 600,
+                            'total_commission' => 10,
+                            'order_line_id' => 'order_refunded_6-A-1',
+                            'order_line_quantity' => 1,
+                        ],
+                    ],
+                    'payment_workflow' => 'PAY_ON_ACCEPTANCE',
+                    'shop_id' => '2002',
+                ],
             ],
-            'total_count' => 2,
+            'total_count' => 3,
         ]);
     }
 
