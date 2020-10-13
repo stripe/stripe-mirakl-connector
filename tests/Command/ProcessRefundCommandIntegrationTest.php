@@ -53,8 +53,8 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
 
         // PA12 returns 2 new refunds
         $this->assertEquals(0, $commandTester->getStatusCode());
-        $this->assertCount(3, $this->doctrineReceiver->getSent());
-        $this->assertCount(11, $stripeRefundsPending);
+        $this->assertCount(4, $this->doctrineReceiver->getSent());
+        $this->assertCount(12, $stripeRefundsPending);
 
         // test commission for reversal
         $message = $this->doctrineReceiver->getSent()[0]->getMessage();
@@ -72,5 +72,17 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
 
         $this->assertEquals('1111', $message->geMiraklRefundId());
         $this->assertEquals(1000, $message->getCommission());
+
+        // test with decimal amount for commission & amount
+        $message = $this->doctrineReceiver->getSent()[3]->getMessage();
+
+        $this->assertEquals('4242', $message->geMiraklRefundId());
+        $this->assertEquals(199, $message->getCommission());
+
+        $stripeRefundsDecimal = $this->stripeRefundRepository->findOneBy([
+            'miraklRefundId' => '4242',
+        ]);
+
+        $this->assertEquals(1999, $stripeRefundsDecimal->getAmount());
     }
 }

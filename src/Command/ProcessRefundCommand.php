@@ -97,7 +97,7 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
                         continue;
                     }
 
-                    $commission = (int) ($totalUnitaryCommissions[$orderLine['order_line_id']] * $refund['amount'] * 100);
+                    $commission = gmp_intval((string) ($totalUnitaryCommissions[$orderLine['order_line_id']] * $refund['amount'] * 100));
 
                     if (is_null($stripeRefund)) {
                         // create a new refund
@@ -120,8 +120,9 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
     {
         $newlyCreatedStripeRefund = new StripeRefund();
         try {
+            $amount = gmp_intval((string) ($refund['amount'] * 100));
             $newlyCreatedStripeRefund
-                ->setAmount($refund['amount'] * 100)
+                ->setAmount($amount)
                 ->setCurrency($currency)
                 ->setMiraklRefundId($refund['id'])
                 ->setMiraklOrderId($miraklOrder['order_id'])
