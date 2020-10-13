@@ -72,6 +72,7 @@ App\Entity\StripeRefund:
         miraklRefundId: '1111'
         miraklOrderId: 'order_refunded_6'
         amount: '6'
+        commission: '1000'
         currency: 'EUR'
         status: 'REFUND_FAILED'
         stripeReversalId: 'trr_11'

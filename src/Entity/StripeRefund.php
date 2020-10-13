@@ -36,6 +36,11 @@ class StripeRefund
     private $amount;
 
     /**
+     * @ORM\Column(type="integer")
+     */
+    private $commission = 0;
+
+    /**
      * @ORM\Column(type="string")
      */
     private $currency;
@@ -239,6 +244,25 @@ class StripeRefund
     public function setModificationDatetime(\DateTimeInterface $modificationDatetime): self
     {
         $this->modificationDatetime = $modificationDatetime;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCommission() : int
+    {
+        return $this->commission;
+    }
+
+    /**
+     * @param mixed $commission
+     * @return StripeRefund
+     */
+    public function setCommission($commission): self
+    {
+        $this->commission = $commission;
 
         return $this;
     }
