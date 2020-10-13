@@ -60,29 +60,44 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
         $message = $this->doctrineReceiver->getSent()[0]->getMessage();
 
         $this->assertEquals('6666', $message->geMiraklRefundId());
-        $this->assertEquals(500, $message->getCommission());
+
+        $stripeRefund = $this->stripeRefundRepository->findOneBy([
+            'miraklRefundId' => '6666',
+        ]);
+
+        $this->assertEquals(500, $stripeRefund->getCommission());
 
         $message = $this->doctrineReceiver->getSent()[1]->getMessage();
 
         $this->assertEquals('1199', $message->geMiraklRefundId());
-        $this->assertEquals(100, $message->getCommission());
 
-        // test retry on failed refund
-        $message = $this->doctrineReceiver->getSent()[2]->getMessage();
+        $stripeRefund = $this->stripeRefundRepository->findOneBy([
+            'miraklRefundId' => '1199',
+        ]);
 
-        $this->assertEquals('1111', $message->geMiraklRefundId());
-        $this->assertEquals(1000, $message->getCommission());
+        $this->assertEquals(100, $stripeRefund->getCommission());
 
         // test with decimal amount for commission & amount
-        $message = $this->doctrineReceiver->getSent()[3]->getMessage();
+        $message = $this->doctrineReceiver->getSent()[2]->getMessage();
 
         $this->assertEquals('4242', $message->geMiraklRefundId());
-        $this->assertEquals(199, $message->getCommission());
 
         $stripeRefundsDecimal = $this->stripeRefundRepository->findOneBy([
             'miraklRefundId' => '4242',
         ]);
 
+        $this->assertEquals(199, $stripeRefundsDecimal->getCommission());
         $this->assertEquals(1999, $stripeRefundsDecimal->getAmount());
+
+        // test retry on failed refund
+        $message = $this->doctrineReceiver->getSent()[3]->getMessage();
+
+        $this->assertEquals('1111', $message->geMiraklRefundId());
+
+        $stripeRefund = $this->stripeRefundRepository->findOneBy([
+            'miraklRefundId' => '1111',
+        ]);
+
+        $this->assertEquals(1000, $stripeRefund->getCommission());
     }
 }

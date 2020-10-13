@@ -62,6 +62,10 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
         $miraklOrders = $this->miraklClient->listPendingRefunds();
         $this->processRefunds($miraklOrders);
 
+        // retry failed refund
+        $failedRefunds = $this->stripeRefundRepository->findBy(['status' => StripeRefund::REFUND_FAILED]);
+        $this->processFailedRefunds($failedRefunds);
+
         return 0;
     }
 
@@ -93,36 +97,28 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
                         'miraklRefundId' => $refund['id'],
                     ]);
 
-                    if (!is_null($stripeRefund) && $stripeRefund->getStatus() !== StripeRefund::REFUND_FAILED) {
+                    if (!is_null($stripeRefund)) {
                         continue;
                     }
 
-                    $commission = gmp_intval((string) ($totalUnitaryCommissions[$orderLine['order_line_id']] * $refund['amount'] * 100));
-
-                    if (is_null($stripeRefund)) {
-                        // create a new refund
-                        $stripeRefund = $this->createStripeRefund($refund, $currency, $miraklOrder);
-                    } else {
-                        // retry a failed refund
-                        $stripeRefund->setStatus(StripeRefund::REFUND_PENDING);
-                        $stripeRefund->setFailedReason("Last failed: {$stripeRefund->getFailedReason()}");
-                        $this->stripeRefundRepository->persistAndFlush($stripeRefund);
-                    }
-
-                    $message = new ProcessRefundMessage($stripeRefund->getMiraklRefundId(), $commission);
+                    $stripeRefund = $this->createStripeRefund($refund, $currency, $miraklOrder, $totalUnitaryCommissions[$orderLine['order_line_id']]);
+                    assert(null !== $stripeRefund->getMiraklRefundId());
+                    $message = new ProcessRefundMessage($stripeRefund->getMiraklRefundId());
                     $this->bus->dispatch($message);
                 }
             }
         }
     }
 
-    private function createStripeRefund(array $refund, string $currency, array $miraklOrder)
+    private function createStripeRefund(array $refund, string $currency, array $miraklOrder, float $unitaryCommission): StripeRefund
     {
         $newlyCreatedStripeRefund = new StripeRefund();
         try {
+            $commission = gmp_intval((string) ($unitaryCommission * $refund['amount'] * 100));
             $amount = gmp_intval((string) ($refund['amount'] * 100));
             $newlyCreatedStripeRefund
                 ->setAmount($amount)
+                ->setCommission($commission)
                 ->setCurrency($currency)
                 ->setMiraklRefundId($refund['id'])
                 ->setMiraklOrderId($miraklOrder['order_id'])
@@ -137,5 +133,17 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
         assert(null !== $newlyCreatedStripeRefund->getId());
 
         return $newlyCreatedStripeRefund;
+    }
+
+    private function processFailedRefunds(array $failedRefunds): void
+    {
+        foreach ($failedRefunds as $failedRefund) {
+            $failedRefund->setStatus(StripeRefund::REFUND_PENDING);
+            $failedRefund->setFailedReason("Last failed: {$failedRefund->getFailedReason()}");
+            $this->stripeRefundRepository->persistAndFlush($failedRefund);
+
+            $message = new ProcessRefundMessage($failedRefund->getMiraklRefundId());
+            $this->bus->dispatch($message);
+        }
     }
 }
