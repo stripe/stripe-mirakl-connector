@@ -93,12 +93,24 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
                         'miraklRefundId' => $refund['id'],
                     ]);
 
-                    if (is_null($stripeRefund)) {
-                        $commission = (int) ($totalUnitaryCommissions[$orderLine['order_line_id']] * $refund['amount'] * 100);
-                        $newlyCreatedStripeRefund = $this->createStripeRefund($refund, $currency, $miraklOrder);
-                        $message = new ProcessRefundMessage($newlyCreatedStripeRefund->getMiraklRefundId(), $commission);
-                        $this->bus->dispatch($message);
+                    if (!is_null($stripeRefund) && $stripeRefund->getStatus() !== StripeRefund::REFUND_FAILED) {
+                        continue;
                     }
+
+                    $commission = gmp_intval((string) ($totalUnitaryCommissions[$orderLine['order_line_id']] * $refund['amount'] * 100));
+
+                    if (is_null($stripeRefund)) {
+                        // create a new refund
+                        $stripeRefund = $this->createStripeRefund($refund, $currency, $miraklOrder);
+                    } else {
+                        // retry a failed refund
+                        $stripeRefund->setStatus(StripeRefund::REFUND_PENDING);
+                        $stripeRefund->setFailedReason("Last failed: {$stripeRefund->getFailedReason()}");
+                        $this->stripeRefundRepository->persistAndFlush($stripeRefund);
+                    }
+
+                    $message = new ProcessRefundMessage($stripeRefund->getMiraklRefundId(), $commission);
+                    $this->bus->dispatch($message);
                 }
             }
         }
@@ -108,8 +120,9 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
     {
         $newlyCreatedStripeRefund = new StripeRefund();
         try {
+            $amount = gmp_intval((string) ($refund['amount'] * 100));
             $newlyCreatedStripeRefund
-                ->setAmount($refund['amount'] * 100)
+                ->setAmount($amount)
                 ->setCurrency($currency)
                 ->setMiraklRefundId($refund['id'])
                 ->setMiraklOrderId($miraklOrder['order_id'])

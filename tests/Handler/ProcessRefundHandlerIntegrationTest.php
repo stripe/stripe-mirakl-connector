@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\MessageHandler;
+namespace App\Tests\Handler;
 
 use App\Entity\StripeTransfer;
 use App\Entity\StripeRefund;
@@ -93,8 +93,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $stripeRefundsPending = $this->stripeRefundRepository->findBy([
             'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(2, count($stripeRefundsCreated));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsCreated);
         $this->assertEquals('order_refunded_4', $stripeRefundsCreated[0]->getMiraklOrderId());
         $this->assertEquals('refund_4', $stripeRefundsCreated[0]->getStripeRefundId());
         $this->assertEquals('trr_4', $stripeRefundsCreated[0]->getStripeReversalId());
@@ -116,8 +116,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $stripeRefundsPending = $this->stripeRefundRepository->findBy([
             'status' => StripeRefund::REFUND_PENDING,
         ]);
-        $this->assertEquals(8, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsCreated));
+        $this->assertCount(8, $stripeRefundsPending);
+        $this->assertCount(1, $stripeRefundsCreated);
         $this->assertEquals('order_refunded_3', $stripeRefundsCreated[0]->getMiraklOrderId());
         $this->assertEquals('refund_3', $stripeRefundsCreated[0]->getStripeRefundId());
         $this->assertEquals('trr_3', $stripeRefundsCreated[0]->getStripeReversalId());
@@ -139,8 +139,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsFailed);
         $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
@@ -178,8 +178,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsFailed);
         $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
@@ -217,8 +217,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsFailed);
         $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
@@ -256,8 +256,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsFailed);
         $this->assertEquals('order_2', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
@@ -295,8 +295,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsFailed);
         $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
@@ -334,8 +334,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsFailed);
         $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
@@ -373,8 +373,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(8, count($stripeRefundsPending));
-        $this->assertEquals(0, count($stripeRefundsFailed));
+        $this->assertCount(8, $stripeRefundsPending);
+        $this->assertCount(1, $stripeRefundsFailed);
     }
 
     public function testProcessRefundHandlerWithUnexistingMiraklValidationTime()
@@ -393,8 +393,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
             'status' => StripeRefund::REFUND_FAILED,
         ]);
 
-        $this->assertEquals(7, count($stripeRefundsPending));
-        $this->assertEquals(1, count($stripeRefundsFailed));
+        $this->assertCount(7, $stripeRefundsPending);
+        $this->assertCount(2, $stripeRefundsFailed);
         $this->assertEquals('order_refunded_5', $stripeRefundsFailed[0]->getMiraklOrderId());
 
         $this->assertTrue($this->hasNotification(
@@ -416,7 +416,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         ));
     }
 
-    private function hasNotification($class, $content) {
+    private function hasNotification($class, $content)
+    {
         foreach ($this->httpNotificationReceiver->get() as $messageEnvelope) {
             $message = $messageEnvelope->getMessage();
             if ($message instanceof $class && $message->getContent() == $content) {
