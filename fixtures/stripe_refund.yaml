@@ -2,9 +2,10 @@ App\Entity\StripeRefund:
     refund_4: # Good refund
         miraklRefundId: '1104'
         miraklOrderId: 'order_refunded_4'
-        amount: '6'
+        amount: '10000'
         currency: 'EUR'
         status: 'REFUND_PENDING'
+        miraklOrderLineId: 'order_refunded_4-A-2'
     refund_3: # Nothing to do already created in stripe
         miraklRefundId: '1103'
         miraklOrderId: 'order_refunded_3'
@@ -27,6 +28,7 @@ App\Entity\StripeRefund:
         currency: 'EUR'
         status: 'REFUND_PENDING'
         stripeReversalId: 'trr_5'
+        miraklOrderLineId: 'order_refunded_5-A-1'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
     refund_6: # Failed no stripe reversal id
         miraklRefundId: '1106'
@@ -35,6 +37,7 @@ App\Entity\StripeRefund:
         currency: 'EUR'
         status: 'REFUND_PENDING'
         stripeRefundId: 'refund_6'
+        miraklOrderLineId: 'order_refunded_5-A-2'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
     refund_7: # Failed no mirakl validation time
         miraklRefundId: '1107'
@@ -44,6 +47,7 @@ App\Entity\StripeRefund:
         status: 'REFUND_PENDING'
         stripeRefundId: 'refund_7'
         stripeReversalId: 'trr_7'
+        miraklOrderLineId: 'order_refunded_5-A-3'
     refund_8: # Failed stripe refund api error
         miraklRefundId: '1108'
         miraklOrderId: 'order_refunded_5'
@@ -51,6 +55,7 @@ App\Entity\StripeRefund:
         currency: 'EUR'
         status: 'REFUND_PENDING'
         stripeReversalId: 'trr_8'
+        miraklOrderLineId: 'order_refunded_5-A-2'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
     refund_9: # Failed stripe reversal api error
         miraklRefundId: '1109'
@@ -59,10 +64,12 @@ App\Entity\StripeRefund:
         currency: 'EUR'
         status: 'REFUND_PENDING'
         stripeRefundId: 'refund_9'
+        miraklOrderLineId: 'order_refunded_5-A-1'
         miraklValidationTime:  '<(new DateTime("2019-01-01"))>'
     refund_10: # Failed mirakl validation api error
         miraklRefundId: '1110'
         miraklOrderId: 'order_refunded_5'
+        miraklOrderLineId: 'order_refunded_5-A-3'
         amount: '6'
         currency: 'EUR'
         status: 'REFUND_PENDING'
@@ -71,6 +78,7 @@ App\Entity\StripeRefund:
     refund_11:
         miraklRefundId: '1111'
         miraklOrderId: 'order_refunded_6'
+        miraklOrderLineId: 'order_refunded_6-A-1'
         amount: '6'
         commission: '1000'
         currency: 'EUR'

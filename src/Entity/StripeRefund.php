@@ -58,6 +58,11 @@ class StripeRefund
     /**
      * @ORM\Column(type="string", nullable=true)
      */
+    private $miraklOrderLineId;
+
+    /**
+     * @ORM\Column(type="string", nullable=true)
+     */
     private $stripeRefundId;
 
     /**
@@ -264,6 +269,24 @@ class StripeRefund
     {
         $this->commission = $commission;
 
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getMiraklOrderLineId()
+    {
+        return $this->miraklOrderLineId;
+    }
+
+    /**
+     * @param mixed $miraklOrderLineId
+     * @return StripeRefund
+     */
+    public function setMiraklOrderLineId($miraklOrderLineId)
+    {
+        $this->miraklOrderLineId = $miraklOrderLineId;
         return $this;
     }
 }

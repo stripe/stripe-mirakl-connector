@@ -65,17 +65,12 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
             'miraklRefundId' => '6666',
         ]);
 
-        $this->assertEquals(500, $stripeRefund->getCommission());
+        $this->assertEquals('Order_Amount_Breakdown_0002-A-1', $stripeRefund->getMiraklOrderLineId());
+        $this->assertEquals(StripeRefund::REFUND_PENDING, $stripeRefund->getStatus());
 
         $message = $this->doctrineReceiver->getSent()[1]->getMessage();
 
         $this->assertEquals('1199', $message->geMiraklRefundId());
-
-        $stripeRefund = $this->stripeRefundRepository->findOneBy([
-            'miraklRefundId' => '1199',
-        ]);
-
-        $this->assertEquals(100, $stripeRefund->getCommission());
 
         // test with decimal amount for commission & amount
         $message = $this->doctrineReceiver->getSent()[2]->getMessage();
@@ -86,7 +81,6 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
             'miraklRefundId' => '4242',
         ]);
 
-        $this->assertEquals(199, $stripeRefundsDecimal->getCommission());
         $this->assertEquals(1999, $stripeRefundsDecimal->getAmount());
 
         // test retry on failed refund
@@ -98,6 +92,6 @@ class ProcessRefundCommandIntegrationTest extends KernelTestCase
             'miraklRefundId' => '1111',
         ]);
 
-        $this->assertEquals(1000, $stripeRefund->getCommission());
+        $this->assertEquals(StripeRefund::REFUND_PENDING, $stripeRefund->getStatus());
     }
 }

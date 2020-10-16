@@ -88,6 +88,9 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             $this->processRefundInStripe($refund, $transfer);
             $this->validateRefundInMirakl($refund);
 
+            // update commission
+            $this->updateCommission($refund);
+
             // Create the reversal
             $this->processReversalInStripe($refund, $transfer);
 
@@ -237,5 +240,29 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         }
 
         $refund->setStatus(StripeRefund::REFUND_CREATED);
+    }
+
+    /**
+     * @param StripeRefund $refund
+     */
+    private function updateCommission(StripeRefund $refund): void
+    {
+        $orders = $this->miraklClient->listOrdersById([$refund->getMiraklOrderId()]);
+
+        foreach ($orders as $order) {
+            foreach ($order['order_lines'] as $orderLine) {
+                // is_null($refund->getMiraklOrderLineId()) is for backward compatibility
+                if ($refund->getMiraklOrderLineId() === $orderLine['order_line_id'] || is_null($refund->getMiraklOrderLineId())) {
+                    foreach ($orderLine['refunds'] as $orderLineRefund) {
+                        if ($refund->getMiraklRefundId() === $orderLineRefund['id']) {
+                            $commission = gmp_intval((string) ($orderLineRefund['commission_total_amount'] * 100));
+                            $refund->setCommission($commission);
+                            $this->stripeRefundRepository->persistAndFlush($refund);
+                            break 3;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
