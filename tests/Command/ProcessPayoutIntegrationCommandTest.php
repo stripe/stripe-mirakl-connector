@@ -71,10 +71,10 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
         ]);
         $this->assertEquals(0, $commandTester->getStatusCode());
 
-        $this->assertCount(1, $this->payoutsReceiver->getSent());
-        $this->assertCount(3, $this->transfersReceiver->getSent());
+        $this->assertCount(2, $this->payoutsReceiver->getSent());
+        $this->assertCount(4, $this->transfersReceiver->getSent());
 
-        $this->assertCount(4, $stripePayoutsPending);
+        $this->assertCount(5, $stripePayoutsPending);
         $this->assertCount(6, $stripeTransfersPending);
 
         $stripePayout = $this->getPayoutByInvoiceId(4);
