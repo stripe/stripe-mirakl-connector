@@ -95,10 +95,14 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         ]);
         $this->assertCount(7, $stripeRefundsPending);
         $this->assertCount(2, $stripeRefundsCreated);
-        $this->assertEquals('order_refunded_4', $stripeRefundsCreated[0]->getMiraklOrderId());
-        $this->assertEquals('refund_4', $stripeRefundsCreated[0]->getStripeRefundId());
-        $this->assertEquals('trr_4', $stripeRefundsCreated[0]->getStripeReversalId());
-        $this->assertNotNull($stripeRefundsCreated[0]->getMiraklValidationTime());
+
+        $stripeRefund = $stripeRefundsCreated[0];
+
+        $this->assertEquals('order_refunded_4', $stripeRefund->getMiraklOrderId());
+        $this->assertEquals('refund_4', $stripeRefund->getStripeRefundId());
+        $this->assertEquals('trr_4', $stripeRefund->getStripeReversalId());
+        $this->assertNotNull($stripeRefund->getMiraklValidationTime());
+        $this->assertEquals(199, $stripeRefund->getCommission());
     }
 
     public function testProcessRefundHandlerWithRefundCreated()

@@ -41,6 +41,10 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonOrderForNoTransfer('Order_66'));
                 case '/orders?customer_debited=true&order_ids=Order_51':
                     return new MockResponse($this->getJsonOrderForNoTransfer('Order_51'));
+                case '/orders?customer_debited=true&order_ids=order_refunded_4':
+                    return new MockResponse($this->getJsonForOrderWithRefund());
+                case '/orders?customer_debited=true&order_ids=order_refunded_5':
+                    return new MockResponse($this->getJsonForOrderWithMultiRefund());
                 case '/orders?customer_debited=true&order_ids=old_order_failed_transfer':
                     return new MockResponse(json_encode([
                         'orders' => [
@@ -691,6 +695,141 @@ class MiraklMockedHttpClient extends MockHttpClient
                 ],
             ],
             'total_count' => 3,
+        ]);
+    }
+
+    private function getJsonForOrderWithRefund()
+    {
+        return json_encode([
+            'orders' => [
+                [
+                    'amount' => 100,
+                    'currency_iso_code' => 'USD',
+                    'customer_id' => 'Customer_id_001',
+                    'order_commercial_id' => 'order_refunded_4',
+                    'order_id' => 'order_refunded_4',
+                    'order_lines' => [
+                        [
+                            'offer_id' => '2130',
+                            'total_price' => 50,
+                            'total_commission' => 10,
+                            'order_line_id' => 'order_refunded_4-A-1',
+                            'order_line_quantity' => 10,
+                            'refunds' => [
+                                [
+                                    'amount' => 7.99,
+                                    'id' => '12',
+                                    'commission_total_amount' => 3.99,
+                                ],
+                            ],
+                        ],
+                        [
+                            'offer_id' => '2130',
+                            'total_price' => 50,
+                            'total_commission' => 10,
+                            'order_line_id' => 'order_refunded_4-A-2',
+                            'order_line_quantity' => 10,
+                            'refunds' => [
+                                [
+                                    'amount' => 7.99,
+                                    'id' => '32',
+                                    'commission_total_amount' => 3.99,
+                                ],
+                                [
+                                    'amount' => 3.99,
+                                    'id' => '1104',
+                                    'commission_total_amount' => 1.99,
+                                ],
+                                [
+                                    'amount' => 4.99,
+                                    'id' => '42',
+                                    'commission_total_amount' => 2.99,
+                                ],
+                            ],
+                        ],
+                    ],
+                    'payment_workflow' => 'PAY_ON_ACCEPTANCE',
+                    'shop_id' => '2000',
+                ],
+            ],
+            'total_count' => 1,
+        ]);
+    }
+
+    private function getJsonForOrderWithMultiRefund()
+    {
+        return json_encode([
+            'orders' => [
+                [
+                    'amount' => 100,
+                    'currency_iso_code' => 'USD',
+                    'customer_id' => 'Customer_id_001',
+                    'order_commercial_id' => 'order_refunded_5',
+                    'order_id' => 'order_refunded_5',
+                    'order_lines' => [
+                        [
+                            'offer_id' => '2130',
+                            'total_price' => 50,
+                            'total_commission' => 10,
+                            'order_line_id' => 'order_refunded_5-A-1',
+                            'order_line_quantity' => 10,
+                            'refunds' => [
+                                [
+                                    'amount' => 7.99,
+                                    'id' => '1105',
+                                    'commission_total_amount' => 3.99,
+                                ],
+                                [
+                                    'amount' => 3.99,
+                                    'id' => '1109',
+                                    'commission_total_amount' => 0.99,
+                                ],
+                            ],
+                        ],
+                        [
+                            'offer_id' => '2130',
+                            'total_price' => 50,
+                            'total_commission' => 10,
+                            'order_line_id' => 'order_refunded_5-A-2',
+                            'order_line_quantity' => 10,
+                            'refunds' => [
+                                [
+                                    'amount' => 7.99,
+                                    'id' => '1106',
+                                    'commission_total_amount' => 3.99,
+                                ],
+                                [
+                                    'amount' => 3.99,
+                                    'id' => '1107',
+                                    'commission_total_amount' => 1.99,
+                                ],
+                                [
+                                    'amount' => 4.99,
+                                    'id' => '1108',
+                                    'commission_total_amount' => 2.99,
+                                ],
+                            ],
+                        ],
+                        [
+                            'offer_id' => '2130',
+                            'total_price' => 50,
+                            'total_commission' => 10,
+                            'order_line_id' => 'order_refunded_5-A-3',
+                            'order_line_quantity' => 10,
+                            'refunds' => [
+                                [
+                                    'amount' => 11.99,
+                                    'id' => '1110',
+                                    'commission_total_amount' => 1.01,
+                                ],
+                            ],
+                        ],
+                    ],
+                    'payment_workflow' => 'PAY_ON_ACCEPTANCE',
+                    'shop_id' => '2000',
+                ],
+            ],
+            'total_count' => 1,
         ]);
     }
 

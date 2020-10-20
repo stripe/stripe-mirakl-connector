@@ -75,20 +75,6 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
             return;
         }
 
-        // get orders for "total_commission" field not in PA12
-        $ordersId = [];
-        foreach ($miraklOrders as $miraklOrder) {
-            $ordersId[] = $miraklOrder['order_id'];
-        }
-        $orders = $this->miraklClient->listOrdersById($ordersId);
-
-        $totalUnitaryCommissions = [];
-        foreach ($orders as $order) {
-            foreach ($order['order_lines'] as $orderLine) {
-                $totalUnitaryCommissions[$orderLine['order_line_id']] = $orderLine['total_commission'] / $orderLine['total_price'];
-            }
-        }
-
         foreach ($miraklOrders as $miraklOrder) {
             $currency = $miraklOrder['currency_iso_code'];
             foreach ($miraklOrder['order_lines']['order_line'] as $orderLine) {
@@ -101,7 +87,7 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
                         continue;
                     }
 
-                    $stripeRefund = $this->createStripeRefund($refund, $currency, $miraklOrder, $totalUnitaryCommissions[$orderLine['order_line_id']]);
+                    $stripeRefund = $this->createStripeRefund($refund, $currency, $miraklOrder, $orderLine);
                     assert(null !== $stripeRefund->getMiraklRefundId());
                     $message = new ProcessRefundMessage($stripeRefund->getMiraklRefundId());
                     $this->bus->dispatch($message);
@@ -110,18 +96,17 @@ class ProcessRefundCommand extends Command implements LoggerAwareInterface
         }
     }
 
-    private function createStripeRefund(array $refund, string $currency, array $miraklOrder, float $unitaryCommission): StripeRefund
+    private function createStripeRefund(array $refund, string $currency, array $miraklOrder, array $orderLine): StripeRefund
     {
         $newlyCreatedStripeRefund = new StripeRefund();
         try {
-            $commission = gmp_intval((string) ($unitaryCommission * $refund['amount'] * 100));
             $amount = gmp_intval((string) ($refund['amount'] * 100));
             $newlyCreatedStripeRefund
                 ->setAmount($amount)
-                ->setCommission($commission)
                 ->setCurrency($currency)
                 ->setMiraklRefundId($refund['id'])
                 ->setMiraklOrderId($miraklOrder['order_id'])
+                ->setMiraklOrderLineId($orderLine['order_line_id'])
                 ->setStatus(StripeRefund::REFUND_PENDING);
             $this->stripeRefundRepository->persistAndFlush($newlyCreatedStripeRefund);
         } catch (UniqueConstraintViolationException $e) {
