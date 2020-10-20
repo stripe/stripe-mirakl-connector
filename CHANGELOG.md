@@ -1,5 +1,13 @@
 # Changelog
 
+- Version 1.2.0
+    - Added filter by orderId for transfers API (thanks @daniL16)
+    - Added payment validation (PA01) workflow
+    - Fixed commission handling in refunds workflow
+    - Improved retry logic for refunds workflow
+    - Improved retry logic for payouts workflow
+    - Fixed transfers workflow for new users (thanks @eBusEntwHOFM)
+
 - Version 1.1.6
     - Bump symfony/http-kernel from 4.4.7 to 4.4.13
 
