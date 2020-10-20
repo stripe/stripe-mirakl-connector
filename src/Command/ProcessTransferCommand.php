@@ -114,8 +114,10 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
 
                 // add failed mirakl orders older than $lastMiraklUpdateTime
                 $failedOrderIds = $this->stripeTransferRepository->getMiraklOrderIdFailTransfersBefore($lastMiraklUpdateTime);
-                $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderIds);
-                $miraklOrders = array_merge($miraklOrders, $miraklFailedTransferOrders);
+                if (! empty($failedOrderIds)) {
+                    $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderIds);
+                    $miraklOrders = array_merge($miraklOrders, $miraklFailedTransferOrders);
+                }
             } else {
                 $this->logger->info('Executing for all orders');
                 $miraklOrders = $this->miraklClient->listOrders();
