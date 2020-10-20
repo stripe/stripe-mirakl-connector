@@ -38,7 +38,7 @@ class StripePayout
     /**
      * @ORM\Column(type="integer")
      */
-    private $amount;
+    private $amount = 0;
 
     /**
      * @ORM\Column(type="string")
