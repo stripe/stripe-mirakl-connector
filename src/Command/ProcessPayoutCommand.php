@@ -107,10 +107,10 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
                 $miraklInvoices = $this->miraklClient->listInvoicesByDate($lastMiraklUpdateTime);
 
                 // get invoices ID for failed transfers & payouts
-                $fakeMiraklInvoices = $this->getFakeInvoicesForFailed();
+                $toBeRetriedInvoices = $this->getToBeRetriedInvoices();
 
                 // add failed transfer & payout
-                array_push($miraklInvoices, ...$fakeMiraklInvoices);
+                array_push($miraklInvoices, ...$toBeRetriedInvoices);
             } else {
                 $this->logger->info('Executing for all invoices');
                 $miraklInvoices = $this->miraklClient->listInvoices();
@@ -399,47 +399,47 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
         }
     }
 
-    private function getFakeInvoicesForFailed(): array
+    private function getToBeRetriedInvoices(): array
     {
-        $fakeInvoices = $this->getFakeInvoicesForFailedTransfers();
+        $invoices = $this->getInvoicesForFailedTransfers();
 
-        $fakeInvoices += $this->getFakeInvoicesForFailedPayout();
+        $invoices += $this->getInvoicesForFailedPayout();
 
-        return $fakeInvoices;
+        return $invoices;
     }
 
-    private function getFakeInvoicesForFailedTransfers(): array
+    private function getInvoicesForFailedTransfers(): array
     {
         $failedTransfers = $this->stripeTransferRepository->findBy([
             'status' => StripeTransfer::TRANSFER_FAILED,
             'type' => array_keys(self::$typeToAmountKey),
         ]);
 
-        $fakeInvoices = [];
+        $invoices = [];
 
         foreach ($failedTransfers as $failedTransfer) {
             $id = (int) $failedTransfer->getMiraklId();
-            $fakeInvoices[$id] = [
+            $invoices[$id] = [
                 'invoice_id' => $id,
             ];
         }
 
-        return  $fakeInvoices;
+        return  $invoices;
     }
 
-    private function getFakeInvoicesForFailedPayout(): array
+    private function getInvoicesForFailedPayout(): array
     {
         $failedPayouts = $this->stripePayoutRepository->findBy(['status' => StripePayout::PAYOUT_FAILED]);
 
-        $fakeInvoices = [];
+        $invoices = [];
 
         foreach ($failedPayouts as $failedPayout) {
             $id = $failedPayout->getMiraklInvoiceId();
-            $fakeInvoices[$id] = [
+            $invoices[$id] = [
                 'invoice_id' => $id,
             ];
         }
 
-        return  $fakeInvoices;
+        return  $invoices;
     }
 }
