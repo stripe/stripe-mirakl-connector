@@ -194,7 +194,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
 
     private function prepareTransfer(array $miraklInvoice, StripeTransfer $transfer): ?StripeTransfer
     {
-        if (!$transfer->getAmount()) {
+        if (0 == $transfer->getAmount()) {
             // Transfer amount
             $amountKey = self::$typeToAmountKey[$transfer->getType()];
             $rawAmount = $miraklInvoice['summary'][$amountKey] ?? 0;
@@ -403,7 +403,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
     {
         $fakeInvoices = $this->getFakeInvoicesForFailedTransfers();
 
-        $fakeInvoices = array_merge($fakeInvoices, $this->getFakeInvoicesForFailedPayout());
+        $fakeInvoices += $this->getFakeInvoicesForFailedPayout();
 
         return $fakeInvoices;
     }
@@ -418,7 +418,7 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
         $fakeInvoices = [];
 
         foreach ($failedTransfers as $failedTransfer) {
-            $id = $failedTransfer->getMiraklId();
+            $id = (int) $failedTransfer->getMiraklId();
             $fakeInvoices[$id] = [
                 'invoice_id' => $id,
             ];
