@@ -47,6 +47,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                             $this->getMiraklOrder('old_order_failed_transfer'),
                         ],
                     ]));
+                case '/orders?customer_debited=true&order_ids=':
+                    return new MockResponse($this->getJsonMiraklOrders());
                 case '/orders?commercial_ids=Order_66%2COrder_42':
                     return new MockResponse($this->getJsonOrdersWithCommercialId());
                 case '/shops':
@@ -215,6 +217,15 @@ class MiraklMockedHttpClient extends MockHttpClient
     }
 
     private function getJsonMiraklOrders()
+    {
+        return json_encode([
+            'orders' => [
+                $this->getMiraklOrder('order_4'),
+            ],
+        ]);
+    }
+
+    private function getJsonMiraklAllOrders()
     {
         return json_encode([
             'orders' => [

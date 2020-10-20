@@ -274,4 +274,22 @@ class ProcessTransferCommandIntegrationTest extends KernelTestCase
         $this->assertEquals(0, $commandTester->getStatusCode());
         $this->assertCount(0, $this->doctrineReceiver->getSent());
     }
+
+    public function testTransferWithNoFailedTransfer()
+    {
+        $commandTester = new CommandTester($this->command);
+
+        $commandTester->execute([
+            'command' => $this->command->getName()
+        ]);
+
+        $stripeTransfersPending = $this->stripeTransferRepository->findBy([
+            'status' => StripeTransfer::TRANSFER_PENDING,
+            'miraklId' => 'order_4'
+        ]);
+
+        $this->assertEquals(0, $commandTester->getStatusCode());
+        $this->assertCount(1, $this->doctrineReceiver->getSent());
+        $this->assertCount(1, $stripeTransfersPending);
+    }
 }
