@@ -13,6 +13,7 @@ cache:
     - $HOME/.composer/cache/files
 
 before_install:
+  - composer self-update --1
   # Install various build dependencies. We use `travis_retry` because Composer
   # will occasionally fail intermittently.
   - travis_retry make vendor
