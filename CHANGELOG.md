@@ -1,5 +1,8 @@
 # Changelog
 
+- Version 1.2.1
+    - Updated docker example to force Composer 1.10 (#27)
+
 - Version 1.2.0
     - Added filter by orderId for transfers API (thanks @daniL16)
     - Added payment validation (PA01) workflow
