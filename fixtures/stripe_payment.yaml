@@ -5,3 +5,9 @@ App\Entity\StripePayment:
     stripe_payment_2:
         miraklOrderId: 'Order_42'
         stripePaymentId: 'pi_valid2'
+    stripe_payment_3:
+        miraklOrderId: 'Order_11'
+        stripePaymentId: 'ch_transaction_4'
+    stripe_payment_4:
+        miraklOrderId: 'Order_33'
+        stripePaymentId: 'ch_not_found'
