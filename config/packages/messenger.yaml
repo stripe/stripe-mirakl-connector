@@ -68,6 +68,13 @@ framework:
                 retry_strategy:
                     max_retries: 0
 
+            cancel_pending_payment:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: cancel_pending_payment
+                retry_strategy:
+                    max_retries: 0
+
             failed:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
@@ -82,4 +89,5 @@ framework:
             'App\Message\PayoutFailedMessage': operator_http_notification
             'App\Message\ValidateMiraklOrderMessage': validate_mirakl_order
             'App\Message\CapturePendingPaymentMessage': capture_pending_payment
+            'App\Message\CancelPendingPaymentMessage': cancel_pending_payment
 

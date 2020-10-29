@@ -12,10 +12,12 @@ class StripePayment
 {
     public const TO_CAPTURE = 'to_capture';
     public const CAPTURED = 'captured';
+    public const CANCELED = 'canceled';
 
     public const ALLOWED_STATUS = [
         self::TO_CAPTURE,
         self::CAPTURED,
+        self::CANCELED,
     ];
 
     /**
@@ -53,9 +55,9 @@ class StripePayment
     private $modificationDatetime;
 
     /**
-     * @return int|null
+     * @return int
      */
-    public function getId(): ?int
+    public function getId(): int
     {
         return $this->id;
     }
@@ -124,6 +126,14 @@ class StripePayment
     public function capture()
     {
         return $this->setStatus(self::CAPTURED);
+    }
+
+    /**
+     * @return self
+     */
+    public function cancel()
+    {
+        return $this->setStatus(self::CANCELED);
     }
 
     /**
