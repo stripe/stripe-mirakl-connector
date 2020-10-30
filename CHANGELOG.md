@@ -2,6 +2,8 @@
 
 - Version 1.2.2
     - Added validation and capture consumers to Docker example
+    - Added validation command to Docker example
+    - Updated cron schedule for orders in Docker example
 
 - Version 1.2.1
     - Updated docker example to force Composer 1.10 (#27)

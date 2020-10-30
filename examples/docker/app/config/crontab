@@ -1,6 +1,12 @@
-# min   hour    day month   weekday command
-*/5     *       *   *       *       php /var/www/bin/console connector:dispatch:process-transfer -q 2>&1
-*/5     *       *   *       *       php /var/www/bin/console connector:dispatch:process-refund -q 2>&1
-0       1       *   *       *       php /var/www/bin/console connector:dispatch:process-payout -q 2>&1
-0       8       *   *       *       php /var/www/bin/console connector:notify:failed-operation -q 2>&1
+# Every minute.
 *       *       *   *       *       php /var/www/bin/console connector:sync:onboarding 5 2>&1
+# Every 5 minutes starting from 0. E.g. 10:00.
+0-59/5  *       *   *       *       php /var/www/bin/console connector:validate:pending-debit -q 2>&1
+# Every 5 minutes starting from 1. E.g. 10:01.
+1-59/5  *       *   *       *       php /var/www/bin/console connector:dispatch:process-transfer -q 2>&1
+# Every 5 minutes starting from 2. E.g. 10:02.
+2-59/5  *       *   *       *       php /var/www/bin/console connector:dispatch:process-refund -q 2>&1
+# Every day at 01:03.
+3       1       *   *       *       php /var/www/bin/console connector:dispatch:process-payout -q 2>&1
+# Every day at 08:04.
+4       8       *   *       *       php /var/www/bin/console connector:notify:failed-operation -q 2>&1
