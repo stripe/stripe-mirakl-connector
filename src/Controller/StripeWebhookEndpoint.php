@@ -78,7 +78,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
     /**
      * Update an account status.
-     * Should only be called by Stripe Webhhoks.
+     * Should only be called by Stripe Webhooks.
      *
      * @SWG\Response(
      *     response=200,
@@ -129,7 +129,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                     $message = $this->onPaymentIntentOrChargeCreated($event);
                     break;
                 default:
-                    // should never be trigger
+                    // should never be triggered
                     $message = 'Not managed yet';
                     $status = Response::HTTP_BAD_REQUEST;
                     break;
