@@ -26,7 +26,12 @@ class StripeProxy implements LoggerAwareInterface
     /**
      * @var string
      */
-    private $webhookSecret;
+    private $webhookSellerSecret;
+
+    /**
+     * @var string
+     */
+    private $webhookOperatorSecret;
 
     private const APP_NAME = 'MiraklConnector';
     private const APP_REPO = 'https://github.com/stripe/stripe-mirakl-connector';
@@ -38,7 +43,7 @@ class StripeProxy implements LoggerAwareInterface
      */
     private $version;
 
-    public function __construct(string $stripeClientSecret, string $webhookSecret, VersionManager $versionManager)
+    public function __construct(string $stripeClientSecret, VersionManager $versionManager, string $webhookSellerSecret, string $webhookOperatorSecret)
     {
         $this->version = $versionManager->getVersion();
 
@@ -46,7 +51,8 @@ class StripeProxy implements LoggerAwareInterface
         Stripe::setAppInfo(self::APP_NAME, $this->version, self::APP_REPO, self::APP_PARTNER_ID);
         Stripe::setApiVersion(self::APP_API_VERSION);
 
-        $this->webhookSecret = $webhookSecret;
+        $this->webhookSellerSecret = $webhookSellerSecret;
+        $this->webhookOperatorSecret = $webhookOperatorSecret;
     }
 
     private function getDefaultMetadata(): array
@@ -91,12 +97,14 @@ class StripeProxy implements LoggerAwareInterface
     }
 
     // Signature
-    public function webhookConstructEvent(string $payload, string $signatureHeader): Event
+    public function webhookConstructEvent(string $payload, string $signatureHeader, bool $isOperatorWebhook = false): Event
     {
+        $webhookSecret = $isOperatorWebhook ? $this->webhookOperatorSecret : $this->webhookSellerSecret;
+
         return \Stripe\Webhook::constructEvent(
             $payload,
             $signatureHeader,
-            $this->webhookSecret
+            $webhookSecret
         );
     }
 

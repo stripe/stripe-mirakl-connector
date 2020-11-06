@@ -77,28 +77,83 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     }
 
     /**
-     * Update an account status.
-     * Should only be called by Stripe Webhooks.
+     * Should only be called by Stripe Webhooks (with seller secret).
      *
      * @SWG\Response(
      *     response=200,
-     *     description="Account updated",
+     *     description="Webhook ok",
      * )
      * @SWG\Response(
      *     response=400,
      *     description="Bad request",
      * )
      *
-     * @SWG\Tag(name="Webhook")
-     * @Route("/api/public/webhook", methods={"POST"}, name="handle_stripe_webhook")
+     * @SWG\Tag(name="Sellers Webhook")
+     * @Route("/api/public/webhook/sellers", methods={"POST"}, name="handle_stripe_seller_webhook")
+     * @param Request $request
+     * @return Response
      */
-    public function handleStripeWebhook(Request $request): Response
+    public function handleStripeSellerWebhook(Request $request): Response
     {
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
         $payload = $request->getContent() ?? '';
 
+        return $this->handleStripeWebhook($payload, $signatureHeader, false);
+    }
+
+    /**
+     * Should only be called by Stripe Webhooks (with operator secret).
+     *
+     * @SWG\Response(
+     *     response=200,
+     *     description="Webhook ok",
+     * )
+     * @SWG\Response(
+     *     response=400,
+     *     description="Bad request",
+     * )
+     * @SWG\Tag(name="Operator Webhook")
+     * @Route("/api/public/webhook/operator", methods={"POST"}, name="handle_stripe_operator_webhook")
+     * @param Request $request
+     * @return Response
+     */
+    public function handleStripeOperatorWebhook(Request $request): Response
+    {
+        $signatureHeader = $request->headers->get('stripe-signature') ?? '';
+        $payload = $request->getContent() ?? '';
+
+        return $this->handleStripeWebhook($payload, $signatureHeader, true);
+    }
+
+    /**
+     * Should only be called by Stripe Webhooks.
+     *
+     * @SWG\Response(
+     *     response=200,
+     *     description="Webhook ok",
+     * )
+     * @SWG\Response(
+     *     response=400,
+     *     description="Bad request",
+     * )
+     * @SWG\Post(deprecated=true)
+     * @SWG\Tag(name="Webhook")
+     * @Route("/api/public/webhook", methods={"POST"}, name="handle_stripe_webhook")
+     * @param Request $request
+     * @return Response
+     */
+    public function handleStripeWebhookDeprecated(Request $request): Response
+    {
+        $signatureHeader = $request->headers->get('stripe-signature') ?? '';
+        $payload = $request->getContent() ?? '';
+
+        return $this->handleStripeWebhook($payload, $signatureHeader, false);
+    }
+
+    protected function handleStripeWebhook($payload, string $signatureHeader, bool $isOperatorWebhook): Response
+    {
         try {
-            $event = $this->stripeProxy->webhookConstructEvent($payload, $signatureHeader);
+            $event = $this->stripeProxy->webhookConstructEvent($payload, $signatureHeader, $isOperatorWebhook);
         } catch (\UnexpectedValueException $e) {
             $this->logger->error('Invalid payload');
 

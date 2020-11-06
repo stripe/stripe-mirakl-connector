@@ -19,11 +19,15 @@ parameters:
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
   env(OPERATOR_NOTIFICATION_URL): ""
   env(MIRAKL_METADATA_ORDER_ID): "mirakl_order_id"
+  env(STRIPE_WEBHOOK_SECRET): ""
+
+  DEPRECATED_STRIPE_WEBHOOK_SECRET: "%env(STRIPE_WEBHOOK_SECRET)%"
 
   app.base_host: "%env(BASE_HOST)%"
   app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
   app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"
-  app.stripe.webhook_secret: "%env(STRIPE_WEBHOOK_SECRET)%"
+  app.stripe.webhook_seller_secret: "%env(default:DEPRECATED_STRIPE_WEBHOOK_SECRET:STRIPE_SELLERS_WEBHOOK_SECRET)%"
+  app.stripe.webhook_operator_secret: "%env(default:DEPRECATED_STRIPE_WEBHOOK_SECRET:STRIPE_OPERATOR_WEBHOOK_SECRET)%"
   app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
   app.stripe.enables_auto_transfer_creation: "%env(bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
   app.stripe.enables_auto_refund_creation: "%env(bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
@@ -48,7 +52,8 @@ services:
     bind:
       $stripeClientId: "%app.stripe.client_id%"
       $stripeClientSecret: "%app.stripe.client_secret%"
-      $webhookSecret: "%app.stripe.webhook_secret%"
+      $webhookSellerSecret: "%app.stripe.webhook_seller_secret%"
+      $webhookOperatorSecret: "%app.stripe.webhook_operator_secret%"
       $skipAutoTransferCreation: "%app.stripe.enables_auto_transfer_creation%"
       $stripePrefillOnboarding: "%app.stripe.prefill_onboarding%"
 

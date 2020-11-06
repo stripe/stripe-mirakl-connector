@@ -7,7 +7,8 @@ services:
       autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
       bind:
         $stripeClientSecret: "%app.stripe.client_secret%"
-        $webhookSecret: "%app.stripe.webhook_secret%"
+        $webhookSellerSecret: "%app.stripe.webhook_seller_secret%"
+        $webhookOperatorSecret: "%app.stripe.webhook_operator_secret%"
         $customFieldCode: "%app.mirakl.stripe_custom_field_code%"
 
   App\Tests\StripeMockedHttpClient:

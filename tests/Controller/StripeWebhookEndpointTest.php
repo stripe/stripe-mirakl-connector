@@ -101,7 +101,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->will($this->throwException(new \UnexpectedValueException()));
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         $this->assertEquals('Invalid payload', $response->getContent());
     }
@@ -127,7 +127,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->will($this->throwException(new \Stripe\Exception\SignatureVerificationException()));
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         $this->assertEquals('Invalid signature', $response->getContent());
     }
@@ -166,7 +166,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->willReturn($expectedEvent);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         $this->assertEquals('Unhandled event type', $response->getContent());
     }
@@ -211,7 +211,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($stripeAccountId)
             ->willReturn(null);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         $this->assertEquals('This Stripe Account does not exist', $response->getContent());
     }
@@ -274,7 +274,135 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($dispatchedMessage)
             ->willReturn(new Envelope($dispatchedMessage));
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertTrue($expectedMapping->getPayinEnabled());
+        $this->assertTrue($expectedMapping->getPayoutEnabled());
+    }
+
+    public function testHandleStripeOperatorWebhook()
+    {
+        $payload = 'validPayload';
+        $request = Request::create(
+            '/api/public/webhook',
+            'POST',
+            [],
+            [],
+            [],
+            ['HTTP_STRIPE_SIGNATURE' => 'validSignature'],
+            $payload
+        );
+
+        $expectedMapping = new AccountMapping();
+        $stripeAccountId = 'acct_valid';
+        $miraklShopId = 1;
+        $data = [
+            'data' => [
+                'object' => [
+                    'id' => $stripeAccountId,
+                    'payouts_enabled' => true,
+                    'charges_enabled' => true,
+                ],
+            ],
+            'type' => 'account.updated',
+        ];
+        $expectedEvent = \Stripe\Event::constructFrom($data);
+        $dispatchedMessage = new AccountUpdateMessage($miraklShopId, $stripeAccountId);
+
+        $this
+            ->stripeProxy
+            ->expects($this->once())
+            ->method('webhookConstructEvent')
+            ->with($payload, 'validSignature')
+            ->willReturn($expectedEvent);
+        $expectedMapping
+            ->setStripeAccountId($stripeAccountId)
+            ->setMiraklShopId($miraklShopId)
+            ->setPayoutEnabled(false)
+            ->setPayinEnabled(false);
+        $this
+            ->accountMappingRepository
+            ->expects($this->once())
+            ->method('findOneByStripeAccountId')
+            ->with($stripeAccountId)
+            ->willReturn($expectedMapping);
+        $this
+            ->accountMappingRepository
+            ->expects($this->once())
+            ->method('persistAndFlush')
+            ->with($expectedMapping);
+        $this
+            ->bus
+            ->expects($this->once())
+            ->method('dispatch')
+            ->with($dispatchedMessage)
+            ->willReturn(new Envelope($dispatchedMessage));
+
+        $response = $this->controller->handleStripeOperatorWebhook($request);
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertTrue($expectedMapping->getPayinEnabled());
+        $this->assertTrue($expectedMapping->getPayoutEnabled());
+    }
+
+    public function testHandleStripeDeprecatedWebhook()
+    {
+        $payload = 'validPayload';
+        $request = Request::create(
+            '/api/public/webhook',
+            'POST',
+            [],
+            [],
+            [],
+            ['HTTP_STRIPE_SIGNATURE' => 'validSignature'],
+            $payload
+        );
+
+        $expectedMapping = new AccountMapping();
+        $stripeAccountId = 'acct_valid';
+        $miraklShopId = 1;
+        $data = [
+            'data' => [
+                'object' => [
+                    'id' => $stripeAccountId,
+                    'payouts_enabled' => true,
+                    'charges_enabled' => true,
+                ],
+            ],
+            'type' => 'account.updated',
+        ];
+        $expectedEvent = \Stripe\Event::constructFrom($data);
+        $dispatchedMessage = new AccountUpdateMessage($miraklShopId, $stripeAccountId);
+
+        $this
+            ->stripeProxy
+            ->expects($this->once())
+            ->method('webhookConstructEvent')
+            ->with($payload, 'validSignature')
+            ->willReturn($expectedEvent);
+        $expectedMapping
+            ->setStripeAccountId($stripeAccountId)
+            ->setMiraklShopId($miraklShopId)
+            ->setPayoutEnabled(false)
+            ->setPayinEnabled(false);
+        $this
+            ->accountMappingRepository
+            ->expects($this->once())
+            ->method('findOneByStripeAccountId')
+            ->with($stripeAccountId)
+            ->willReturn($expectedMapping);
+        $this
+            ->accountMappingRepository
+            ->expects($this->once())
+            ->method('persistAndFlush')
+            ->with($expectedMapping);
+        $this
+            ->bus
+            ->expects($this->once())
+            ->method('dispatch')
+            ->with($dispatchedMessage)
+            ->willReturn(new Envelope($dispatchedMessage));
+
+        $response = $this->controller->handleStripeWebhookDeprecated($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertTrue($expectedMapping->getPayinEnabled());
         $this->assertTrue($expectedMapping->getPayoutEnabled());
@@ -314,7 +442,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->willReturn($expectedEvent);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("{$this->metadataOrderIdFieldName} not found in metadata webhook event", $response->getContent());
     }
@@ -355,7 +483,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->willReturn($expectedEvent);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("{$this->metadataOrderIdFieldName} not found in metadata webhook event", $response->getContent());
     }
@@ -396,7 +524,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->willReturn($expectedEvent);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
         $this->assertEquals("{$this->metadataOrderIdFieldName} is empty in metadata webhook event", $response->getContent());
     }
@@ -437,7 +565,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($payload, $signature)
             ->willReturn($expectedEvent);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("Status has not a valid value to be catch", $response->getContent());
     }
@@ -498,7 +626,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->method('persistAndFlush')
             ->with($expectedPayment);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("Payment created", $response->getContent());
     }
@@ -559,7 +687,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->method('persistAndFlush')
             ->with($expectedPayment);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("Payment created", $response->getContent());
     }
@@ -620,7 +748,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->method('persistAndFlush')
             ->with($expectedPayment);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("Payment created", $response->getContent());
     }
@@ -682,7 +810,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->method('persistAndFlush')
             ->with($expectedPayment);
 
-        $response = $this->controller->handleStripeWebhook($request);
+        $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals("Payment created", $response->getContent());
     }
