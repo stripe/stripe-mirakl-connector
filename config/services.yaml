@@ -27,7 +27,7 @@ parameters:
   app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
   app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"
   app.stripe.webhook_seller_secret: "%env(default:DEPRECATED_STRIPE_WEBHOOK_SECRET:STRIPE_SELLERS_WEBHOOK_SECRET)%"
-  app.stripe.webhook_operator_secret: "%env(STRIPE_OPERATOR_WEBHOOK_SECRET)%"
+  app.stripe.webhook_operator_secret: "%env(default:DEPRECATED_STRIPE_WEBHOOK_SECRET:STRIPE_OPERATOR_WEBHOOK_SECRET)%"
   app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
   app.stripe.enables_auto_transfer_creation: "%env(bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
   app.stripe.enables_auto_refund_creation: "%env(bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
