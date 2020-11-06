@@ -2,6 +2,7 @@
 
 namespace App\Handler;
 
+use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
 use App\Repository\StripePaymentRepository;
 use App\Utils\StripeProxy;
@@ -10,7 +11,7 @@ use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 
-class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwareInterface
+class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
@@ -32,7 +33,7 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
         $this->stripePaymentRepository = $stripePaymentRepository;
     }
 
-    public function __invoke(CapturePendingPaymentMessage $message)
+    public function __invoke(CancelPendingPaymentMessage $message)
     {
         $stripePaymentId = $message->getStripePaymentId();
 
@@ -45,11 +46,11 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
         }
 
         try {
-            $this->stripeProxy->capture($stripePayment->getStripePaymentId(), $message->getAmount());
-            $stripePayment->capture();
+            $this->stripeProxy->cancelBeforeCapture($stripePayment->getStripePaymentId(), $message->getAmount());
+            $stripePayment->cancel();
             $this->stripePaymentRepository->persistAndFlush($stripePayment);
         } catch (ApiErrorException $e) {
-            $this->logger->error(sprintf('Could not capture Stripe Payment: %s.', $e->getMessage()), [
+            $this->logger->error(sprintf('Could not cancel Stripe Payment: %s.', $e->getMessage()), [
                 'paymentId' => $stripePayment->getStripePaymentId(),
                 'amount' => $message->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),

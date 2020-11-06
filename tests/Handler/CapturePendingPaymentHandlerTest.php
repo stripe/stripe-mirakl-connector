@@ -9,12 +9,14 @@ use App\Message\CapturePendingPaymentMessage;
 use App\Repository\StripePaymentRepository;
 use App\Tests\StripeWebTestCase;
 use App\Utils\StripeProxy;
+use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Psr\Log\NullLogger;
 use Stripe\Exception\ApiConnectionException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 
 class CapturePendingPaymentHandlerTest extends StripeWebTestCase
 {
+    use RecreateDatabaseTrait;
 
     /**
      * @var StripeProxy|\PHPUnit\Framework\MockObject\MockObject
@@ -22,7 +24,7 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
     private $stripeProxy;
 
     /**
-     * @var \PHPUnit\Framework\MockObject\MockObject
+     * @var StripePaymentRepository
      */
     private $stripePaymentRepository;
 
@@ -38,10 +40,7 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
 
         $this->stripeProxy = $container->get('App\Utils\StripeProxy');
 
-        $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['persistAndFlush', 'findOneBy'])
-            ->getMock();
+        $this->stripePaymentRepository = $container->get('doctrine')->getRepository(StripePayment::class);
 
         $this->handler = new CapturePendingPaymentHandler($this->stripeProxy, $this->stripePaymentRepository);
 
@@ -53,14 +52,15 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
 
     public function testNominalPaymentIntentExecute()
     {
-        $stripePayment = new StripePayment();
-        $stripePayment
-            ->setStripePaymentId('pi_valid')
-            ->setMiraklOrderId('Order_66');
+        $stripePaymentId = 1;
 
-        $message = new CapturePendingPaymentMessage($stripePayment, 33000);
+        $message = new CapturePendingPaymentMessage($stripePaymentId, 33000);
         $handler = $this->handler;
         $handler($message);
+
+        $stripePayment = $this->stripePaymentRepository->findOneBy([
+            'id' => $stripePaymentId,
+        ]);
 
         $this->assertEquals(StripePayment::CAPTURED, $stripePayment->getStatus());
     }
@@ -72,9 +72,15 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
             ->setStripePaymentId('ch_valid')
             ->setMiraklOrderId('Order_66');
 
-        $message = new CapturePendingPaymentMessage($stripePayment, 33000);
+        $this->stripePaymentRepository->persistAndFlush($stripePayment);
+
+        $message = new CapturePendingPaymentMessage($stripePayment->getId(), 33000);
         $handler = $this->handler;
         $handler($message);
+
+        $stripePayment = $this->stripePaymentRepository->findOneBy([
+            'id' => $stripePayment->getId(),
+        ]);
 
         $this->assertEquals(StripePayment::CAPTURED, $stripePayment->getStatus());
     }
@@ -86,9 +92,15 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
             ->setStripePaymentId('pi_invalid')
             ->setMiraklOrderId('Order_66');
 
-        $message = new CapturePendingPaymentMessage($stripePayment, 42000);
+        $this->stripePaymentRepository->persistAndFlush($stripePayment);
+
+        $message = new CapturePendingPaymentMessage($stripePayment->getId(), 42000);
         $handler = $this->handler;
         $handler($message);
+
+        $stripePayment = $this->stripePaymentRepository->findOneBy([
+            'id' => $stripePayment->getId(),
+        ]);
 
         $this->assertEquals(StripePayment::TO_CAPTURE, $stripePayment->getStatus());
     }
@@ -100,9 +112,15 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
             ->setStripePaymentId('ch_invalid')
             ->setMiraklOrderId('Order_66');
 
-        $message = new CapturePendingPaymentMessage($stripePayment, 42000);
+        $this->stripePaymentRepository->persistAndFlush($stripePayment);
+
+        $message = new CapturePendingPaymentMessage($stripePayment->getId(), 42000);
         $handler = $this->handler;
         $handler($message);
+
+        $stripePayment = $this->stripePaymentRepository->findOneBy([
+            'id' => $stripePayment->getId(),
+        ]);
 
         $this->assertEquals(StripePayment::TO_CAPTURE, $stripePayment->getStatus());
     }

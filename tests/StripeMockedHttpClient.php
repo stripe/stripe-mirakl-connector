@@ -70,6 +70,8 @@ class StripeMockedHttpClient implements ClientInterface
                 throw new ApiConnectionException("Already captured", 400);
             case 'https://api.stripe.com/v1/charges/ch_invalid/capture':
                 throw new ApiConnectionException("Already captured", 400);
+            case 'https://api.stripe.com/v1/payment_intents/pi_valid/cancel':
+                return [$this->getJsonStripeCancel('pi_valid'), 200, []];
             default:
                 return [$this->errorMessage, 403, []];
         }
@@ -175,6 +177,11 @@ class StripeMockedHttpClient implements ClientInterface
     private function getJsonStripeRefund($refundId)
     {
         return $this->getJsonStripeObject($refundId);
+    }
+
+    private function getJsonStripeCancel($paymentIntentId)
+    {
+        return $this->getJsonStripeObject($paymentIntentId);
     }
 
     private function getJsonStripeReversal($reversalId)

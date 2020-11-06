@@ -55,6 +55,8 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonMiraklOrders());
                 case '/orders?commercial_ids=Order_66%2COrder_42':
                     return new MockResponse($this->getJsonOrdersWithCommercialId());
+                case '/orders?commercial_ids=Order_66%2COrder_42%2COrder_11%2COrder_33':
+                    return new MockResponse($this->getJsonOrdersForCancel());
                 case '/shops':
                     return new MockResponse($this->getReturnJsonShops());
                 case '/shops?paginate=true&shop_ids=1':
@@ -1136,6 +1138,50 @@ class MiraklMockedHttpClient extends MockHttpClient
                     "shop_id" => "42"
                 ],
             ],
+        ]);
+    }
+
+    public function getJsonOrdersForCancel()
+    {
+        return json_encode([
+            'orders' => [
+                [
+                    'order_state' => 'SHIPPING',
+                    "total_price" => 330.00,
+                    "commercial_id" => "Order_66",
+                    "order_id" => "Order_66-A",
+                ],
+                [
+                    'order_state' => 'REFUSED',
+                    "total_price" => 330.00,
+                    "commercial_id" => "Order_66",
+                    "order_id" => "Order_66-B",
+                ],
+                [
+                    'order_state' => 'REFUSED',
+                    "total_price" => "329.01",
+                    "commercial_id" => "Order_42",
+                    "order_id" => "Order_42-A",
+                ],
+                [
+                    'order_state' => 'REFUSED',
+                    "total_price" => "330.99",
+                    "commercial_id" => "Order_42",
+                    "order_id" => "Order_42-B",
+                ],
+                [
+                    'order_state' => 'SHIPPING',
+                    "total_price" => 330.00,
+                    "commercial_id" => "Order_11",
+                    "order_id" => "Order_11-A",
+                ],
+                [
+                    'order_state' => 'BADSTATE',
+                    "total_price" => 330.00,
+                    "commercial_id" => "Order_01",
+                    "order_id" => "Order_01-A",
+                ],
+            ]
         ]);
     }
 }

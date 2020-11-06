@@ -8,6 +8,7 @@ use Shivas\VersioningBundle\Service\VersionManager;
 use Stripe\Account;
 use Stripe\Charge;
 use Stripe\Event;
+use Stripe\Exception\ApiErrorException;
 use Stripe\HttpClient\ClientInterface;
 use Stripe\LoginLink;
 use Stripe\PaymentIntent;
@@ -227,5 +228,29 @@ class StripeProxy implements LoggerAwareInterface
         ]);
 
         return $obj->capture($params);
+    }
+
+    /**
+     * @param string $paymentId
+     * @param int $amount
+     * @return Charge|PaymentIntent
+     * @throws ApiErrorException
+     */
+    public function cancelBeforeCapture(string $paymentId, int $amount)
+    {
+        $prefix = substr($paymentId, 0, 2);
+
+        if ('pi' === $prefix) {
+            $obj = PaymentIntent::constructFrom(['id' => $paymentId]);
+            $obj->cancel();
+            $message = '[Stripe API] Call to PaymentIntent/Cancel';
+            $this->logger->info($message, ['stripeId' => $paymentId]);
+        } elseif ('ch' === $prefix || 'py' === $prefix) {
+            $obj = $this->createRefund($amount, $paymentId);
+        } else {
+            throw new \Exception('payment not yet managed');
+        }
+
+        return $obj;
     }
 }

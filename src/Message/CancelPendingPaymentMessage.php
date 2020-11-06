@@ -2,7 +2,9 @@
 
 namespace App\Message;
 
-class CapturePendingPaymentMessage
+use App\Entity\StripePayment;
+
+class CancelPendingPaymentMessage
 {
     /**
      * @var int
