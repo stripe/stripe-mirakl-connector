@@ -1,5 +1,9 @@
 # Changelog
 
+- Version 1.2.3
+    - Added distinct webhooks for operator and sellers (#29)
+    - Added payment cancellation for orders refused by all sellers (#30)
+
 - Version 1.2.2
     - Added validation and capture consumers to Docker example
     - Added validation command to Docker example
