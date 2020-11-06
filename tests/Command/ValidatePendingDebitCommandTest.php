@@ -35,6 +35,11 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
      */
     protected $captureDoctrineReceiver;
 
+    /**
+     * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
+     */
+    protected $cancelDoctrineReceiver;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
@@ -44,6 +49,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
 
         $this->validateDoctrineReceiver = self::$container->get('messenger.transport.validate_mirakl_order');
         $this->captureDoctrineReceiver = self::$container->get('messenger.transport.capture_pending_payment');
+        $this->cancelDoctrineReceiver = self::$container->get('messenger.transport.cancel_pending_payment');
 
         $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
             ->disableOriginalConstructor()
@@ -64,7 +70,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $captureMessages = $this->captureDoctrineReceiver->getSent();
 
         $this->assertCount(1, $validateMessages);
-        $this->assertCount(1, $captureMessages);
+        $this->assertCount(2, $captureMessages);
 
         $ordersToValidate = $validateMessages[0]->getMessage()->getOrders();
 
@@ -74,7 +80,21 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $captureMessage = $captureMessages[0]->getMessage();
 
         $this->assertEquals('pi_valid', $captureMessage->getStripePayment()->getStripePaymentId());
-        $this->assertEquals(66000, $captureMessage->getAmount());
+        $this->assertEquals(33000, $captureMessage->getAmount());
+
+        $captureMessage = $captureMessages[1]->getMessage();
+
+        $this->assertEquals('ch_transaction_4', $captureMessage->getStripePayment()->getStripePaymentId());
+        $this->assertEquals(33000, $captureMessage->getAmount());
+
+        $cancelMessages = $this->cancelDoctrineReceiver->getSent();
+
+        $this->assertCount(1, $cancelMessages);
+
+        $cancelMessage = $cancelMessages[0]->getMessage();
+
+        $this->assertEquals(2, $cancelMessage->getStripePaymentId());
+        $this->assertEquals(66000, $cancelMessage->getAmount());
     }
 
 }
