@@ -344,6 +344,70 @@ class StripeWebhookEndpointTest extends TestCase
         $this->assertTrue($expectedMapping->getPayoutEnabled());
     }
 
+    public function testHandleStripeDeprecatedWebhook()
+    {
+        $payload = 'validPayload';
+        $request = Request::create(
+            '/api/public/webhook',
+            'POST',
+            [],
+            [],
+            [],
+            ['HTTP_STRIPE_SIGNATURE' => 'validSignature'],
+            $payload
+        );
+
+        $expectedMapping = new AccountMapping();
+        $stripeAccountId = 'acct_valid';
+        $miraklShopId = 1;
+        $data = [
+            'data' => [
+                'object' => [
+                    'id' => $stripeAccountId,
+                    'payouts_enabled' => true,
+                    'charges_enabled' => true,
+                ],
+            ],
+            'type' => 'account.updated',
+        ];
+        $expectedEvent = \Stripe\Event::constructFrom($data);
+        $dispatchedMessage = new AccountUpdateMessage($miraklShopId, $stripeAccountId);
+
+        $this
+            ->stripeProxy
+            ->expects($this->once())
+            ->method('webhookConstructEvent')
+            ->with($payload, 'validSignature')
+            ->willReturn($expectedEvent);
+        $expectedMapping
+            ->setStripeAccountId($stripeAccountId)
+            ->setMiraklShopId($miraklShopId)
+            ->setPayoutEnabled(false)
+            ->setPayinEnabled(false);
+        $this
+            ->accountMappingRepository
+            ->expects($this->once())
+            ->method('findOneByStripeAccountId')
+            ->with($stripeAccountId)
+            ->willReturn($expectedMapping);
+        $this
+            ->accountMappingRepository
+            ->expects($this->once())
+            ->method('persistAndFlush')
+            ->with($expectedMapping);
+        $this
+            ->bus
+            ->expects($this->once())
+            ->method('dispatch')
+            ->with($dispatchedMessage)
+            ->willReturn(new Envelope($dispatchedMessage));
+
+        $response = $this->controller->handleStripeWebhookDeprecated($request);
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertTrue($expectedMapping->getPayinEnabled());
+        $this->assertTrue($expectedMapping->getPayoutEnabled());
+    }
+
     public function testHandleStripeWebhookWithoutMetadata()
     {
         $payload = 'validPayload';
