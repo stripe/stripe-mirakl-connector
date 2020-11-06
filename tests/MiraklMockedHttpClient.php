@@ -1175,6 +1175,12 @@ class MiraklMockedHttpClient extends MockHttpClient
                     "commercial_id" => "Order_11",
                     "order_id" => "Order_11-A",
                 ],
+                [
+                    'order_state' => 'BADSTATE',
+                    "total_price" => 330.00,
+                    "commercial_id" => "Order_01",
+                    "order_id" => "Order_01-A",
+                ],
             ]
         ]);
     }

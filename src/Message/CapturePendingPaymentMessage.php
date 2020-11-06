@@ -2,32 +2,30 @@
 
 namespace App\Message;
 
-use App\Entity\StripePayment;
-
 class CapturePendingPaymentMessage
 {
     /**
-     * @var StripePayment
+     * @var int
      */
-    private $stripePayment;
+    private $stripePaymentId;
 
     /**
      * @var int
      */
     private $amount;
 
-    public function __construct(StripePayment $stripePayment, int $amount)
+    public function __construct(int $stripePaymentId, int $amount)
     {
-        $this->stripePayment = $stripePayment;
+        $this->stripePaymentId = $stripePaymentId;
         $this->amount = $amount;
     }
 
     /**
-     * @return StripePayment
+     * @return int
      */
-    public function getStripePayment(): StripePayment
+    public function getStripePaymentId(): int
     {
-        return $this->stripePayment;
+        return $this->stripePaymentId;
     }
 
     /**

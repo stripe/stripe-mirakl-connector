@@ -34,7 +34,15 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
 
     public function __invoke(CapturePendingPaymentMessage $message)
     {
-        $stripePayment = $message->getStripePayment();
+        $stripePaymentId = $message->getStripePaymentId();
+
+        $stripePayment = $this->stripePaymentRepository->findOneBy([
+            'id' => $stripePaymentId,
+        ]);
+
+        if (null === $stripePayment) {
+            return;
+        }
 
         try {
             $this->stripeProxy->capture($stripePayment->getStripePaymentId(), $message->getAmount());
