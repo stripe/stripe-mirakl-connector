@@ -1,5 +1,8 @@
 # Changelog
 
+- Version 1.2.4
+    - Fetch shops from SERVICE domain too in onboarding job (#31)
+
 - Version 1.2.3
     - Added distinct webhooks for operator and sellers (#29)
     - Added payment cancellation for orders refused by all sellers (#30)
