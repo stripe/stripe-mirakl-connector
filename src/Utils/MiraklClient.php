@@ -150,6 +150,7 @@ class MiraklClient implements LoggerAwareInterface
     public function fetchShops(?array $shopIds, ?\DateTimeInterface $updatedAfter = null, bool $paginate = true)
     {
         $filters = ['query' => []];
+        $filters['query']['domains'] = 'PRODUCT,SERVICE';
         $filters['query']['paginate'] = $paginate ? 'true' : 'false';
 
         if (null !== $shopIds) {
