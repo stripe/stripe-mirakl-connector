@@ -59,14 +59,14 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonOrdersForCancel());
                 case '/shops':
                     return new MockResponse($this->getReturnJsonShops());
-                case '/shops?paginate=true&shop_ids=1':
-                case '/shops?paginate=true&shop_ids=11':
-                case '/shops?paginate=true&shop_ids=13':
-                case '/shops?paginate=true&shop_ids=123':
-                case '/shops?paginate=true&shop_ids=2000':
+                case '/shops?domains=PRODUCT%2CSERVICE&paginate=true&shop_ids=1':
+                case '/shops?domains=PRODUCT%2CSERVICE&paginate=true&shop_ids=11':
+                case '/shops?domains=PRODUCT%2CSERVICE&paginate=true&shop_ids=13':
+                case '/shops?domains=PRODUCT%2CSERVICE&paginate=true&shop_ids=123':
+                case '/shops?domains=PRODUCT%2CSERVICE&paginate=true&shop_ids=2000':
                     return new MockResponse($this->getJsonShop());
-                case '/shops?paginate=false':
-                case '/shops?paginate=false&updated_since=2019-10-01T00%3A00%3A00%2B0000':
+                case '/shops?domains=PRODUCT%2CSERVICE&paginate=false':
+                case '/shops?domains=PRODUCT%2CSERVICE&paginate=false&updated_since=2019-10-01T00%3A00%3A00%2B0000':
                     return new MockResponse($this->getJsonShops());
                 case '/invoices':
                     return new MockResponse($this->getJsonMiraklInvoices());
