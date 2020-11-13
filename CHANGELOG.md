@@ -1,7 +1,7 @@
 # Changelog
 
 - Version 1.2.4
-    - Fetch shops from SERVICE domain too in onboarding job (#31)
+    - Fetch shops from SERVICE domain too in onboarding job (#31 thanks @fhervieux)
 
 - Version 1.2.3
     - Added distinct webhooks for operator and sellers (#29)
