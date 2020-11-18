@@ -21,8 +21,9 @@ Some examples of tasks required to complete the configuration for production:
 ## Upgrade
 
 1. From the root of your clone, run `git pull` to download changes.
-2. From the [examples/docker](./) folder, run `docker-compose up -d --build app` to rebuild and deploy the new version.
-3. Run `make db-install` to check and apply database updates.
+2. Delete the `var` folder to clean the cache.
+3. From the [examples/docker](./) folder, run `docker-compose up -d --build app` to rebuild and deploy the new version.
+4. Run `make db-install` to check and apply database updates.
 
 ## Start jobs manually
 
