@@ -176,12 +176,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 case 'account.updated':
                     $message = $this->onAccountUpdated($event);
                     break;
-                case 'payment_intent.created':
-                case 'payment_intent.succeeded':
                 case 'charge.succeeded':
                 case 'charge.updated':
-                case 'payment_intent.amount_capturable_updated':
-                    $message = $this->onPaymentIntentOrChargeCreated($event);
+                    $message = $this->onChargeCreated($event);
                     break;
                 default:
                     // should never be triggered
@@ -244,12 +241,12 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
-    private function onPaymentIntentOrChargeCreated(Event $event): string
+    private function onChargeCreated(Event $event): string
     {
         $apiStripePayment = $event->data->object;
 
         $miraklOrderId = $this->checkAndReturnMetadataOrderId($apiStripePayment);
-        $this->checkPaymentIntentOrChargeStatus($apiStripePayment);
+        $this->checkChargeStatus($apiStripePayment);
         $stripePaymentId = $apiStripePayment['id'];
 
         // when a PI is created a linked charge was also created. Prevent duplicate DB entry.
@@ -296,6 +293,8 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             throw new \Exception($message, Response::HTTP_BAD_REQUEST);
         }
 
+        // if orderId is not found in charge object metadata, search in payment intent
+
         return $stripeObject['metadata'][$this->metadataOrderIdFieldName];
     }
 
@@ -303,7 +302,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      * @param mixed $stripeObject
      * @throws \Exception
      */
-    private function checkPaymentIntentOrChargeStatus($stripeObject)
+    private function checkChargeStatus($stripeObject)
     {
         $status = $stripeObject['status'] ?? '';
 
