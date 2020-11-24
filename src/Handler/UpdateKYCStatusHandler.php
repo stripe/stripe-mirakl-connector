@@ -43,7 +43,7 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
     public function __invoke(AccountUpdateMessage $message)
     {
         $messagePayload = $message->getContent()['payload'];
-        $this->logger->info('Received Stripe `acount.updated` webhook. Updating KYC status.', $messagePayload);
+        $this->logger->info('Received Stripe `account.updated` webhook. Updating KYC status.', $messagePayload);
 
         $stripeAccount = $this->stripeProxy->accountRetrieve($messagePayload['stripeUserId']);
 

@@ -40,7 +40,7 @@ class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageS
     public function __invoke(AccountUpdateMessage $message)
     {
         $messagePayload = $message->getContent()['payload'];
-        $this->logger->info('Received Stripe `acount.updated` webhook. Updating login link.', $messagePayload);
+        $this->logger->info('Received Stripe `account.updated` webhook. Updating login link.', $messagePayload);
 
         $stripeLoginLink = $this->stripeProxy->accountCreateLoginLink($messagePayload['stripeUserId']);
 
