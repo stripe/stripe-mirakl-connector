@@ -169,7 +169,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         if ($this->ignores($event['type'])) {
-            return new Response('Ignored event', Response::HTTP_OK);
+            return new Response(sprintf(
+                'The event type %s is no longer required and can be removed in the operator webhook settings.',
+                $event['type']
+            ), Response::HTTP_OK);
         }
 
         if (!$this->handles($event['type'])) {
