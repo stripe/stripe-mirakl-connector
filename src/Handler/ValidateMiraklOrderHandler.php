@@ -37,7 +37,7 @@ class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAware
         // Prepare order for validation
         $orders = [];
         foreach ($ordersToValidate as $commercialOder => $orderToValidate) {
-            $transactionNumber = $stripePayment[$commercialOder]->getStripePaymentId();
+            $transactionNumber = $stripePayment[$commercialOder]->getStripeChargeId();
             foreach ($orderToValidate as $order) {
                 $orders[] = [
                     'amount' => $order['amount'],

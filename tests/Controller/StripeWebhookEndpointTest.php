@@ -4,10 +4,10 @@ namespace App\Tests\Controller;
 
 use App\Controller\StripeWebhookEndpoint;
 use App\Entity\AccountMapping;
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
-use App\Repository\StripePaymentRepository;
+use App\Repository\StripeChargeRepository;
 use App\Utils\StripeProxy;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -63,7 +63,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setMethods(['findOneByStripeAccountId', 'persistAndFlush'])
             ->getMock();
 
-        $this->stripePaymentRepository = $this->getMockBuilder(StripePaymentRepository::class)
+        $this->stripePaymentRepository = $this->getMockBuilder(StripeChargeRepository::class)
             ->disableOriginalConstructor()
             ->setMethods(['findOneByStripePaymentId', 'persistAndFlush'])
             ->getMock();
@@ -428,7 +428,7 @@ class StripeWebhookEndpointTest extends TestCase
                 'object' => [
                     'id' => $stripePaymentIntentId,
                     'metadata' => [],
-                    'status' => StripePayment::TO_CAPTURE
+                    'status' => StripeCharge::TO_CAPTURE
                 ],
             ],
             'type' => 'payment_intent.created',
@@ -444,7 +444,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $this->assertEquals("Ignored event", $response->getContent());
+        $this->assertEquals("The event type payment_intent.created is no longer required and can be removed in the operator webhook settings.", $response->getContent());
     }
 
     public function testHandleStripeWebhookWithoutMetadata()
@@ -664,9 +664,9 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($stripePaymentIntentId)
             ->willReturn(null);
 
-        $expectedPayment = new StripePayment();
+        $expectedPayment = new StripeCharge();
         $expectedPayment
-            ->setStripePaymentId($stripePaymentIntentId)
+            ->setStripeChargeId($stripePaymentIntentId)
             ->setMiraklOrderId($orderId);
 
         $this
@@ -731,9 +731,9 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($stripePaymentIntentId)
             ->willReturn(null);
 
-        $expectedPayment = new StripePayment();
+        $expectedPayment = new StripeCharge();
         $expectedPayment
-            ->setStripePaymentId($stripePaymentIntentId)
+            ->setStripeChargeId($stripePaymentIntentId)
             ->setMiraklOrderId($orderId);
 
         $this
@@ -806,9 +806,9 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($stripeChargeId)
             ->willReturn(null);
 
-        $expectedPayment = new StripePayment();
+        $expectedPayment = new StripeCharge();
         $expectedPayment
-            ->setStripePaymentId($stripeChargeId)
+            ->setStripeChargeId($stripeChargeId)
             ->setMiraklOrderId($orderId);
 
         $this
@@ -869,9 +869,9 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($stripeChargeId)
             ->willReturn(null);
 
-        $expectedPayment = new StripePayment();
+        $expectedPayment = new StripeCharge();
         $expectedPayment
-            ->setStripePaymentId($stripeChargeId)
+            ->setStripeChargeId($stripeChargeId)
             ->setMiraklOrderId($orderId);
 
         $this
@@ -932,9 +932,9 @@ class StripeWebhookEndpointTest extends TestCase
             ->with($stripeChargeId)
             ->willReturn(null);
 
-        $expectedPayment = new StripePayment();
+        $expectedPayment = new StripeCharge();
         $expectedPayment
-            ->setStripePaymentId($stripeChargeId)
+            ->setStripeChargeId($stripeChargeId)
             ->setMiraklOrderId($orderId);
 
         $this

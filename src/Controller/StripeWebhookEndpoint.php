@@ -2,10 +2,10 @@
 
 namespace App\Controller;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
-use App\Repository\StripePaymentRepository;
+use App\Repository\StripeChargeRepository;
 use App\Utils\StripeProxy;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\ORMException;
@@ -57,9 +57,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private $accountMappingRepository;
 
     /**
-     * @var StripePaymentRepository
+     * @var StripeChargeRepository
      */
-    private $stripePaymentRepository;
+    private $stripeChargeRepository;
 
     /**
      * @var string
@@ -70,13 +70,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         MessageBusInterface $bus,
         StripeProxy $stripeProxy,
         AccountMappingRepository $accountMappingRepository,
-        StripePaymentRepository $stripePaymentRepository,
+        StripeChargeRepository $stripeChargeRepository,
         string $metadataOrderIdFieldName
     ) {
         $this->bus = $bus;
         $this->stripeProxy = $stripeProxy;
         $this->accountMappingRepository = $accountMappingRepository;
-        $this->stripePaymentRepository = $stripePaymentRepository;
+        $this->stripeChargeRepository = $stripeChargeRepository;
         $this->metadataOrderIdFieldName = $metadataOrderIdFieldName;
     }
 
@@ -273,19 +273,19 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         $miraklOrderId = $this->checkAndReturnChargeMetadataOrderId($stripeCharge);
         $this->checkChargeStatus($stripeCharge);
-        $stripePaymentId = $stripeCharge['id'];
+        $stripeChargeId = $stripeCharge['id'];
 
-        $stripePayment = $this->stripePaymentRepository->findOneByStripePaymentId($stripePaymentId);
+        $stripeCharge = $this->stripeChargeRepository->findOneByStripePaymentId($stripeChargeId);
 
-        if (!$stripePayment) {
-            $stripePayment = new StripePayment();
-            $stripePayment->setStripePaymentId($stripePaymentId);
+        if (!$stripeCharge) {
+            $stripeCharge = new StripeCharge();
+            $stripeCharge->setStripeChargeId($stripeChargeId);
         }
 
-        $stripePayment->setMiraklOrderId($miraklOrderId);
+        $stripeCharge->setMiraklOrderId($miraklOrderId);
 
         try {
-            $this->stripePaymentRepository->persistAndFlush($stripePayment);
+            $this->stripeChargeRepository->persistAndFlush($stripeCharge);
         } catch (UniqueConstraintViolationException $e) {
             // in case of concurrency
         }

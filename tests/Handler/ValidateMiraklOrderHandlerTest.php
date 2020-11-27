@@ -2,7 +2,7 @@
 
 namespace App\Tests\Handler;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 use App\Exception\InvalidStripeAccountException;
 use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
@@ -59,9 +59,9 @@ class ValidateMiraklOrderHandlerTest extends TestCase
             ]
         ];
 
-        $stripePayment = new StripePayment();
+        $stripePayment = new StripeCharge();
         $stripePayment
-            ->setStripePaymentId('pi_valid')
+            ->setStripeChargeId('pi_valid')
             ->setMiraklOrderId('Order_66');
 
         $stripePayments = ['Order_66' => $stripePayment];
@@ -79,9 +79,9 @@ class ValidateMiraklOrderHandlerTest extends TestCase
 
     public function testWithNoOrders()
     {
-        $stripePayment = new StripePayment();
+        $stripePayment = new StripeCharge();
         $stripePayment
-            ->setStripePaymentId('pi_valid')
+            ->setStripeChargeId('pi_valid')
             ->setMiraklOrderId('Order_66');
 
         $stripePayments = ['Order_66' => $stripePayment];

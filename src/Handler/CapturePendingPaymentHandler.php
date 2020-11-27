@@ -3,7 +3,7 @@
 namespace App\Handler;
 
 use App\Message\CapturePendingPaymentMessage;
-use App\Repository\StripePaymentRepository;
+use App\Repository\StripeChargeRepository;
 use App\Utils\StripeProxy;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -15,7 +15,7 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
     use LoggerAwareTrait;
 
     /**
-     * @var StripePaymentRepository
+     * @var StripeChargeRepository
      */
     private $stripePaymentRepository;
 
@@ -26,7 +26,7 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
 
     public function __construct(
         StripeProxy $stripeProxy,
-        StripePaymentRepository $stripePaymentRepository
+        StripeChargeRepository $stripePaymentRepository
     ) {
         $this->stripeProxy = $stripeProxy;
         $this->stripePaymentRepository = $stripePaymentRepository;
@@ -45,12 +45,12 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
         }
 
         try {
-            $this->stripeProxy->capture($stripePayment->getStripePaymentId(), $message->getAmount());
+            $this->stripeProxy->capture($stripePayment->getStripeChargeId(), $message->getAmount());
             $stripePayment->capture();
             $this->stripePaymentRepository->persistAndFlush($stripePayment);
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not capture Stripe Payment: %s.', $e->getMessage()), [
-                'paymentId' => $stripePayment->getStripePaymentId(),
+                'paymentId' => $stripePayment->getStripeChargeId(),
                 'amount' => $message->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);

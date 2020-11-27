@@ -2,11 +2,11 @@
 
 namespace App\Command;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
 use App\Message\ValidateMiraklOrderMessage;
-use App\Repository\StripePaymentRepository;
+use App\Repository\StripeChargeRepository;
 use App\Utils\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -33,14 +33,14 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
     private $miraklClient;
 
     /**
-     * @var StripePaymentRepository
+     * @var StripeChargeRepository
      */
     private $stripePaymentRepository;
 
     public function __construct(
         MessageBusInterface $bus,
         MiraklClient $miraklClient,
-        StripePaymentRepository $stripePaymentRepository
+        StripeChargeRepository $stripePaymentRepository
     ) {
         $this->bus = $bus;
         $this->miraklClient = $miraklClient;
@@ -93,7 +93,7 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
         }
 
         // get stripe known payment intent or charge for pending oder
-        $stripePayments = $this->stripePaymentRepository->findPendingPaymentByOrderIds($orderIds);
+        $stripePayments = $this->stripePaymentRepository->findPendingChargeByOrderIds($orderIds);
 
         // keep orders to validate
         $ordersToValidate = array_intersect_key($miraklOrderDebits, $stripePayments);

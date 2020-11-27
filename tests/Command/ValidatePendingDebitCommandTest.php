@@ -2,8 +2,8 @@
 
 namespace App\Tests\Command;
 
-use App\Entity\StripePayment;
-use App\Repository\StripePaymentRepository;
+use App\Entity\StripeCharge;
+use App\Repository\StripeChargeRepository;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -22,7 +22,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
     protected $command;
 
     /**
-     * @var StripePaymentRepository
+     * @var StripeChargeRepository
      */
     protected $stripePaymentRepository;
 
@@ -52,7 +52,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $this->captureDoctrineReceiver = self::$container->get('messenger.transport.capture_pending_payment');
         $this->cancelDoctrineReceiver = self::$container->get('messenger.transport.cancel_pending_payment');
 
-        $this->stripePaymentRepository = self::$container->get('doctrine')->getRepository(StripePayment::class);
+        $this->stripePaymentRepository = self::$container->get('doctrine')->getRepository(StripeCharge::class);
     }
 
     public function testNominalExecute()

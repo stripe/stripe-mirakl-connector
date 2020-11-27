@@ -2,13 +2,13 @@
 
 namespace App\Tests\Handler;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 use App\Handler\CancelPendingPaymentHandler;
 use App\Handler\CapturePendingPaymentHandler;
 use App\Handler\UpdateAccountLoginLinkHandler;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
-use App\Repository\StripePaymentRepository;
+use App\Repository\StripeChargeRepository;
 use App\Tests\StripeWebTestCase;
 use App\Utils\StripeProxy;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
@@ -40,7 +40,7 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
 
         $this->stripeProxy = $container->get('App\Utils\StripeProxy');
 
-        $this->stripePaymentRepository = $container->get('doctrine')->getRepository(StripePayment::class);
+        $this->stripePaymentRepository = $container->get('doctrine')->getRepository(StripeCharge::class);
 
         $this->handler = new CancelPendingPaymentHandler($this->stripeProxy, $this->stripePaymentRepository);
 
@@ -62,7 +62,7 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
             'id' => $stripePaymentId,
         ]);
 
-        $this->assertEquals(StripePayment::CANCELED, $stripePayment->getStatus());
+        $this->assertEquals(StripeCharge::CANCELED, $stripePayment->getStatus());
     }
 
     public function testNominalChargeExecute()
@@ -77,7 +77,7 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
             'id' => $stripePaymentId,
         ]);
 
-        $this->assertEquals(StripePayment::CANCELED, $stripePayment->getStatus());
+        $this->assertEquals(StripeCharge::CANCELED, $stripePayment->getStatus());
     }
 
     public function testNotFoundPaymentExecute()
@@ -92,6 +92,6 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
             'id' => $stripePaymentId,
         ]);
 
-        $this->assertEquals(StripePayment::TO_CAPTURE, $stripePayment->getStatus());
+        $this->assertEquals(StripeCharge::TO_CAPTURE, $stripePayment->getStatus());
     }
 }

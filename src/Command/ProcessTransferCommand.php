@@ -2,11 +2,11 @@
 
 namespace App\Command;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
 use App\Repository\AccountMappingRepository;
-use App\Repository\StripePaymentRepository;
+use App\Repository\StripeChargeRepository;
 use App\Repository\StripeTransferRepository;
 use App\Utils\MiraklClient;
 use App\Utils\StripeProxy;
@@ -57,7 +57,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
     private $accountMappingRepository;
 
     /**
-     * @var StripePaymentRepository
+     * @var StripeChargeRepository
      */
     private $stripePaymentRepository;
 
@@ -67,7 +67,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         MiraklClient $miraklClient,
         StripeTransferRepository $stripeTransferRepository,
         AccountMappingRepository $accountMappingRepository,
-        StripePaymentRepository $stripePaymentRepository
+        StripeChargeRepository $stripePaymentRepository
     ) {
         $this->bus = $bus;
         $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
@@ -147,7 +147,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
             if (isset($stripePaymentToCapture[$miraklOrder['commercial_id']])) {
                 $ignoreReason = sprintf(
                     'Skipping order with pending payment %s',
-                    $stripePaymentToCapture[$miraklOrder['commercial_id']]->getStripePaymentId()
+                    $stripePaymentToCapture[$miraklOrder['commercial_id']]->getStripeChargeId()
                 );
                 $this->logger->info($ignoreReason, [ 'order_id' => $orderId ]);
                 continue;
