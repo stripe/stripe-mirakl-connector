@@ -263,17 +263,17 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private function onChargeCreated(Event $event): string
     {
-        $apiStripePayment = $event->data->object;
-        if (!$apiStripePayment instanceof \Stripe\Charge) {
-            $message = sprintf('Webhook expected a charge. Received a %s instead.', \get_class($apiStripePayment));
+        $stripeCharge = $event->data->object;
+        if (!$stripeCharge instanceof \Stripe\Charge) {
+            $message = sprintf('Webhook expected a charge. Received a %s instead.', \get_class($stripeCharge));
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_BAD_REQUEST);
         }
 
-        $miraklOrderId = $this->checkAndReturnChargeMetadataOrderId($apiStripePayment);
-        $this->checkChargeStatus($apiStripePayment);
-        $stripePaymentId = $apiStripePayment['id'];
+        $miraklOrderId = $this->checkAndReturnChargeMetadataOrderId($stripeCharge);
+        $this->checkChargeStatus($stripeCharge);
+        $stripePaymentId = $stripeCharge['id'];
 
         $stripePayment = $this->stripePaymentRepository->findOneByStripePaymentId($stripePaymentId);
 
