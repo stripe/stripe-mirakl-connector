@@ -1,5 +1,9 @@
 # Changelog
 
+- Version 1.2.5
+    - Fix payment validation + split combination (#38)
+    - Prevent failed payouts from being dispatched twice (#40)
+
 - Version 1.2.4
     - Fetch shops from SERVICE domain too in onboarding job (#31 thanks @fhervieux)
 
