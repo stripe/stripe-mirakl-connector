@@ -71,10 +71,10 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
         ]);
         $this->assertEquals(0, $commandTester->getStatusCode());
 
-        $this->assertCount(2, $this->payoutsReceiver->getSent());
-        $this->assertCount(4, $this->transfersReceiver->getSent());
+        $this->assertCount(1, $this->payoutsReceiver->getSent());
+        $this->assertCount(3, $this->transfersReceiver->getSent());
 
-        $this->assertCount(5, $stripePayoutsPending);
+        $this->assertCount(4, $stripePayoutsPending);
         $this->assertCount(6, $stripeTransfersPending);
 
         $stripePayout = $this->getPayoutByInvoiceId(4);
@@ -261,6 +261,30 @@ class ProcessPayoutIntegrationCommandTest extends KernelTestCase
 
         $this->assertCount(3, $stripePayoutsPending);
         $this->assertCount(3, $stripeTransfersPending);
+    }
+
+    public function testFailedPayoutsSentOnlyOnce()
+    {
+        // Delete all payouts except the failed one
+        $this->stripePayoutRepository
+            ->createQueryBuilder('pa')
+            ->delete(StripePayout::class, 'p')
+            ->where('p.status <> \'PAYOUT_FAILED\'')
+            ->getQuery()
+            ->execute()
+        ;
+
+        $commandTester = new CommandTester($this->command);
+        $commandTester->execute([
+            'command' => $this->command->getName(),
+        ]);
+
+        $stripePayoutPending = $this->stripePayoutRepository->findBy([
+            'status' => StripePayout::PAYOUT_PENDING
+        ]);
+
+        $this->assertCount(1, $stripePayoutPending);
+        $this->assertCount(1, $this->payoutsReceiver->getSent());
     }
 
     private function getPayoutByInvoiceId($invoiceId): StripePayout

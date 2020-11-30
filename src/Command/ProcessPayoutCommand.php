@@ -109,8 +109,16 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
                 // get invoices ID for failed transfers & payouts
                 $toBeRetriedInvoices = $this->getToBeRetriedInvoices();
 
-                // add failed transfer & payout
-                array_push($miraklInvoices, ...$toBeRetriedInvoices);
+                // add failed transfer & payout if not already returned by Mirakl
+                $mirakleInvoiceIds = array_map(function ($mirakleInvoice) {
+                    return $mirakleInvoice['invoice_id'];
+                }, $miraklInvoices);
+
+                foreach ($toBeRetriedInvoices as $toBeRetriedInvoice) {
+                    if (false === array_search($toBeRetriedInvoice['invoice_id'], $mirakleInvoiceIds)) {
+                        $mirakleInvoices[] = $toBeRetriedInvoice;
+                    }
+                }
             } else {
                 $this->logger->info('Executing for all invoices');
                 $miraklInvoices = $this->miraklClient->listInvoices();
