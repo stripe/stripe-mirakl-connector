@@ -30,10 +30,7 @@ class MiraklClient implements LoggerAwareInterface
     private function getOrders(?array $query)
     {
         $filters = [
-            'query' => [
-              'customer_debited' => 'true',
-              'limit' => 50
-            ]
+            'query' => [ 'customer_debited' => 'true' ]
         ];
 
         if ($query) {
@@ -78,10 +75,7 @@ class MiraklClient implements LoggerAwareInterface
     public function listCommercialOrdersById(?array $commercialOrderIds)
     {
         $filters = [
-            'query' => [
-              'commercial_ids' => implode(',', (array) $commercialOrderIds),
-              'limit' => 50
-            ]
+            'query' => [ 'commercial_ids' => implode(',', (array) $commercialOrderIds) ]
         ];
 
         return $this->getAllOrders($filters);
