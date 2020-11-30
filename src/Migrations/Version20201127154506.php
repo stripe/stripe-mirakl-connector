@@ -67,24 +67,47 @@ final class Version20201127154506 extends AbstractMigration implements Container
     private function changePaymentIntentIdForChargeId()
     {
         // Retrieve stripe_payment records linked to a PI
-        $paymentIntentEntities = $this->connection->fetchAll('SELECT id, stripe_payment_id FROM stripe_payment WHERE stripe_payment_id LIKE \'pi_%\' AND status IN (\'to_capture\', \'captured\')');
+        $stripePayments = $this->connection->fetchAll('SELECT id, stripe_payment_id FROM stripe_payment WHERE stripe_payment_id LIKE \'pi_%\' AND status IN (\'to_capture\', \'captured\')');
 
         $updateQuery = 'UPDATE stripe_payment SET stripe_payment_id = :stripePaymentId WHERE id = :id';
 
         // Fetch corresponding charge Id from Strapi and update them in DB
-        foreach ($paymentIntentEntities as $paymentIntentEntity) {
+        foreach ($stripePayments as $stripePayment) {
             try {
-                $stripePaymentIntentObject = \Stripe\PaymentIntent::retrieve($paymentIntentEntity['stripe_payment_id']);
+                $stripePaymentIntentObject = \Stripe\PaymentIntent::retrieve($stripePayment['stripe_payment_id']);
                 $chargeId = $stripePaymentIntentObject->charges->data[0]['id'];  // ['charges']['data'][0];
 
                 $this->connection->executeQuery($updateQuery, [
-                    'id' => $paymentIntentEntity['id'],
+                    'id' => $stripePayment['id'],
                     'stripePaymentId' => $chargeId,
                 ]);
             } catch (\Exception $e) {
                 $this->write(sprintf(
                     'An error occured replacing PaymentIntent of ID: %s by its charge. Skipping.',
-                    $paymentIntentEntity['stripe_payment_id']
+                    $stripePayment['stripe_payment_id']
+                ));
+            }
+        }
+
+        // Retrieve stripe_transfer records linked to a PI
+        $stripeTransfers = $this->connection->fetchAll('SELECT id, transaction_id FROM stripe_transfer WHERE transaction_id LIKE \'pi_%\'');
+
+        $updateQuery = 'UPDATE stripe_transfer SET transaction_id = :stripePaymentId WHERE id = :id';
+
+        // Fetch corresponding charge Id from Strapi and update them in DB
+        foreach ($stripeTransfers as $stripeTransfer) {
+            try {
+                $stripePaymentIntentObject = \Stripe\PaymentIntent::retrieve($stripeTransfer['transaction_id']);
+                $chargeId = $stripePaymentIntentObject->charges->data[0]['id'];  // ['charges']['data'][0];
+
+                $this->connection->executeQuery($updateQuery, [
+                    'id' => $stripeTransfer['id'],
+                    'stripePaymentId' => $chargeId,
+                ]);
+            } catch (\Exception $e) {
+                $this->write(sprintf(
+                    'An error occured replacing PaymentIntent of ID: %s by its charge. Skipping.',
+                    $stripeTransfer['transaction_id']
                 ));
             }
         }
