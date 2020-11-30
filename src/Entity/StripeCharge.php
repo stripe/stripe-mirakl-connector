@@ -6,9 +6,9 @@ use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 
 /**
- * @ORM\Entity(repositoryClass="App\Repository\StripePaymentRepository")
+ * @ORM\Entity(repositoryClass="App\Repository\StripeChargeRepository")
  */
-class StripePayment
+class StripeCharge
 {
     public const TO_CAPTURE = 'to_capture';
     public const CAPTURED = 'captured';
@@ -35,7 +35,7 @@ class StripePayment
     /**
      * @ORM\Column(type="string", unique=true)
      */
-    private $stripePaymentId;
+    private $stripeChargeId;
 
     /**
      * @ORM\Column(type="string")
@@ -83,18 +83,18 @@ class StripePayment
     /**
      * @return string
      */
-    public function getStripePaymentId(): string
+    public function getStripeChargeId(): string
     {
-        return $this->stripePaymentId;
+        return $this->stripeChargeId;
     }
 
     /**
-     * @param string $stripePaymentId
+     * @param string $stripeChargeId
      * @return self
      */
-    public function setStripePaymentId(string $stripePaymentId): self
+    public function setStripeChargeId(string $stripeChargeId): self
     {
-        $this->stripePaymentId = $stripePaymentId;
+        $this->stripeChargeId = $stripeChargeId;
         return $this;
     }
 

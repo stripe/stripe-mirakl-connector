@@ -2,11 +2,11 @@
 
 namespace App\Tests\Handler;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 use App\Handler\CapturePendingPaymentHandler;
 use App\Handler\UpdateAccountLoginLinkHandler;
 use App\Message\CapturePendingPaymentMessage;
-use App\Repository\StripePaymentRepository;
+use App\Repository\StripeChargeRepository;
 use App\Tests\StripeWebTestCase;
 use App\Utils\StripeProxy;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
@@ -24,7 +24,7 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
     private $stripeProxy;
 
     /**
-     * @var StripePaymentRepository
+     * @var StripeChargeRepository
      */
     private $stripePaymentRepository;
 
@@ -40,7 +40,7 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
 
         $this->stripeProxy = $container->get('App\Utils\StripeProxy');
 
-        $this->stripePaymentRepository = $container->get('doctrine')->getRepository(StripePayment::class);
+        $this->stripePaymentRepository = $container->get('doctrine')->getRepository(StripeCharge::class);
 
         $this->handler = new CapturePendingPaymentHandler($this->stripeProxy, $this->stripePaymentRepository);
 
@@ -62,14 +62,14 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
             'id' => $stripePaymentId,
         ]);
 
-        $this->assertEquals(StripePayment::CAPTURED, $stripePayment->getStatus());
+        $this->assertEquals(StripeCharge::CAPTURED, $stripePayment->getStatus());
     }
 
     public function testNominalChargeExecute()
     {
-        $stripePayment = new StripePayment();
+        $stripePayment = new StripeCharge();
         $stripePayment
-            ->setStripePaymentId('ch_valid')
+            ->setStripeChargeId('ch_valid')
             ->setMiraklOrderId('Order_66');
 
         $this->stripePaymentRepository->persistAndFlush($stripePayment);
@@ -82,14 +82,14 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
             'id' => $stripePayment->getId(),
         ]);
 
-        $this->assertEquals(StripePayment::CAPTURED, $stripePayment->getStatus());
+        $this->assertEquals(StripeCharge::CAPTURED, $stripePayment->getStatus());
     }
 
     public function testNominalPaymentIntentErrorExecute()
     {
-        $stripePayment = new StripePayment();
+        $stripePayment = new StripeCharge();
         $stripePayment
-            ->setStripePaymentId('pi_invalid')
+            ->setStripeChargeId('pi_invalid')
             ->setMiraklOrderId('Order_66');
 
         $this->stripePaymentRepository->persistAndFlush($stripePayment);
@@ -102,14 +102,14 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
             'id' => $stripePayment->getId(),
         ]);
 
-        $this->assertEquals(StripePayment::TO_CAPTURE, $stripePayment->getStatus());
+        $this->assertEquals(StripeCharge::TO_CAPTURE, $stripePayment->getStatus());
     }
 
     public function testNominalChargeErrorExecute()
     {
-        $stripePayment = new StripePayment();
+        $stripePayment = new StripeCharge();
         $stripePayment
-            ->setStripePaymentId('ch_invalid')
+            ->setStripeChargeId('ch_invalid')
             ->setMiraklOrderId('Order_66');
 
         $this->stripePaymentRepository->persistAndFlush($stripePayment);
@@ -122,6 +122,6 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
             'id' => $stripePayment->getId(),
         ]);
 
-        $this->assertEquals(StripePayment::TO_CAPTURE, $stripePayment->getStatus());
+        $this->assertEquals(StripeCharge::TO_CAPTURE, $stripePayment->getStatus());
     }
 }

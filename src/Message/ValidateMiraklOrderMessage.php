@@ -2,7 +2,7 @@
 
 namespace App\Message;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 
 class ValidateMiraklOrderMessage
 {
@@ -12,7 +12,7 @@ class ValidateMiraklOrderMessage
     private $orders;
 
     /**
-     * @var StripePayment[]
+     * @var StripeCharge[]
      */
     private $stripePayments;
 
@@ -31,7 +31,7 @@ class ValidateMiraklOrderMessage
     }
 
     /**
-     * @return StripePayment[]
+     * @return StripeCharge[]
      */
     public function getStripePayments(): array
     {

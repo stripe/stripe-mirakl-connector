@@ -2,7 +2,7 @@
 
 namespace App\Message;
 
-use App\Entity\StripePayment;
+use App\Entity\StripeCharge;
 
 class CancelPendingPaymentMessage
 {

@@ -253,4 +253,14 @@ class StripeProxy implements LoggerAwareInterface
 
         return $obj;
     }
+
+    // Payment intent
+    public function paymentIntentRetrieve(string $stripePaymentIntentId): PaymentIntent
+    {
+        $this->logger->info('[Stripe API] Call to \Stripe\PaymentIntent::retrieve', [
+            'stripePaymentIntentId' => $stripePaymentIntentId,
+        ]);
+
+        return PaymentIntent::retrieve($stripePaymentIntentId);
+    }
 }
