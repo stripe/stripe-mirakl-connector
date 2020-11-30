@@ -33,7 +33,7 @@ App\Entity\StripePayout:
         amount: '1234'
         currency: 'eur'
         status: 'PAYOUT_FAILED'
-        miraklInvoiceId: 6
+        miraklInvoiceId: 4
         mirakl_update_time: '<(new DateTime("2019-01-01"))>'
     stripe_payout_6:
         accountMapping: '@mapping_2'
