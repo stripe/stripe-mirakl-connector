@@ -6,7 +6,6 @@ namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
-use Doctrine\Migrations\Version\Version;
 use App\Repository\StripeChargeRepository;
 use App\Utils\StripeProxy;
 
@@ -15,25 +14,13 @@ use App\Utils\StripeProxy;
  */
 final class Version20201207112134 extends AbstractMigration
 {
-    /**
-     * @var StripeChargeRepository
-     */
     private $stripeChargeRepository;
-
-    /**
-     * @var StripeProxy
-     */
     private $stripeProxy;
 
-    public function __construct(
-        Version $version,
-        StripeProxy $stripeProxy,
-        StripeChargeRepository $stripeChargeRepository
-    ) {
-        $this->stripeProxy = $stripeProxy;
+    public function setServices(StripeChargeRepository $stripeChargeRepository, StripeProxy $stripeProxy)
+    {
         $this->stripeChargeRepository = $stripeChargeRepository;
-
-        parent::__construct($version);
+        $this->stripeProxy = $stripeProxy;
     }
 
     public function getDescription() : string
@@ -47,7 +34,10 @@ final class Version20201207112134 extends AbstractMigration
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE stripe_charge ADD stripe_amount INT');
+    }
 
+    public function postUp(Schema $schema): void
+    {
         $stripeChargesWithoutAmount = $this->stripeChargeRepository->findBy(['stripe_amount' => null]);
         foreach ($stripeChargesWithoutAmount as $stripeCharge) {
             $fetchedCharge = $this->stripeProxy->fetchStripeCharge($stripeCharge->getStripeChargeId());
