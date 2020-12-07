@@ -121,66 +121,70 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
             return;
         }
 
+        $amountToCaptureByCommercialOrderId = [];
+        foreach ($stripePayments as $stripePayment) {
+            $commercialOrderId = $stripePayment->getMiraklOrderId();
+
+            if (!isset($amountToCaptureByCommercialOrderId[$commercialOrderId])) {
+                $stripeAmount = $stripePayment->getStripeAmount();
+                $amountToCaptureByCommercialId[$commercialOrderId] = $stripeAmount * 100;
+            }
+        }
+
         // list all orders with the same commercial id as those previously validated
         $ordersToCapture = $this->miraklClient->listCommercialOrdersById(array_keys($stripePayments));
 
         // we keep complete order to capture payment
-        $notTotalyValidated = [];
-        $orderCanBeCaptured = [];
-        $orderCanCancelPayment = [];
+        $ignoredCommercialOrderIds = [];
+        $amountToCancelByCommercialOrderId = [];
+
         foreach ($ordersToCapture as $order) {
             $commercialOrderId = $order['commercial_id'];
 
-            if (in_array($commercialOrderId, $notTotalyValidated, true)) {
+            if (in_array($commercialOrderId, $ignoredCommercialOrderIds, true)) {
                 continue;
             }
 
             $status = $order['order_state'];
 
             if (!in_array($status, self::ORDER_STATUS_VALIDATED, true)) {
-                $notTotalyValidated[] = $commercialOrderId;
+                $ignoredCommercialOrderIds[] = $commercialOrderId;
 
-                if (isset($orderCanBeCaptured[$commercialOrderId])) {
-                    unset($orderCanBeCaptured[$commercialOrderId]);
+                if (isset($amountToCaptureByCommercialOrderId[$commercialOrderId])) {
+                    unset($amountToCaptureByCommercialOrderId[$commercialOrderId]);
                 }
 
-                if (isset($orderCanCancelPayment[$commercialOrderId])) {
-                    unset($orderCanCancelPayment[$commercialOrderId]);
+                if (isset($amountToCancelByCommercialOrderId[$commercialOrderId])) {
+                    unset($amountToCancelByCommercialOrderId[$commercialOrderId]);
                 }
 
                 continue;
             }
 
-            $amount = gmp_intval((string) ($order['total_price'] * 100));
+            $orderAmount = gmp_intval((string) ($order['total_price'] * 100));
 
-            if (in_array($status, self::ORDER_STATUS_TO_CAPTURE)) {
-                if (!isset($orderCanBeCaptured[$commercialOrderId])) {
-                    $orderCanBeCaptured[$commercialOrderId] = 0;
+            if (!in_array($status, self::ORDER_STATUS_TO_CAPTURE)) {
+                if (isset($amountToCaptureByCommercialOrderId[$commercialOrderId])) {
+                    $amountToCaptureByCommercialOrderId[$commercialOrderId] -= $orderAmount;
                 }
 
-                $orderCanBeCaptured[$commercialOrderId] += $amount;
-            } else {
-                // can be partially Captured, no need to cancel payment
-                if (isset($orderCanBeCaptured[$commercialOrderId])) {
-                    continue;
+                if (!isset($amountToCancelByCommercialOrderId[$commercialOrderId])) {
+                    $amountToCancelByCommercialOrderId[$commercialOrderId] = 0;
                 }
-
-                if (!isset($orderCanCancelPayment[$commercialOrderId])) {
-                    $orderCanCancelPayment[$commercialOrderId] = 0;
-                }
-
-                $orderCanCancelPayment[$commercialOrderId] += $amount;
+                $amountToCancelByCommercialOrderId[$commercialOrderId] += $orderAmount;
             }
         }
 
         // capture payment
-        foreach ($orderCanBeCaptured as $commercialId => $amount) {
-            $this->bus->dispatch(new CapturePendingPaymentMessage($stripePayments[$commercialId]->getId(), $amount));
+        if (!empty($amountToCaptureByCommercialOrderId)) {
+            foreach ($amountToCaptureByCommercialOrderId as $commercialId => $commercialOrderAmount) {
+                $this->bus->dispatch(new CapturePendingPaymentMessage($stripePayments[$commercialId]->getId(), $commercialOrderAmount));
+            }
         }
 
         // cancel payment
-        foreach ($orderCanCancelPayment as $commercialId => $amount) {
-            $this->bus->dispatch(new CancelPendingPaymentMessage($stripePayments[$commercialId]->getId(), $amount));
+        foreach ($amountToCancelByCommercialOrderId as $commercialId => $commercialOrderAmount) {
+            $this->bus->dispatch(new CancelPendingPaymentMessage($stripePayments[$commercialId]->getId(), $commercialOrderAmount));
         }
     }
 }
