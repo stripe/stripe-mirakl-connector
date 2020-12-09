@@ -34,10 +34,10 @@ class StripeProxy implements LoggerAwareInterface
      */
     private $webhookOperatorSecret;
 
-    private const APP_NAME = 'MiraklConnector';
-    private const APP_REPO = 'https://github.com/stripe/stripe-mirakl-connector';
-    private const APP_PARTNER_ID = 'pp_partner_FuvjRG4UuotFXS';
-    private const APP_API_VERSION = '2019-08-14';
+    public const APP_NAME = 'MiraklConnector';
+    public const APP_REPO = 'https://github.com/stripe/stripe-mirakl-connector';
+    public const APP_PARTNER_ID = 'pp_partner_FuvjRG4UuotFXS';
+    public const APP_API_VERSION = '2019-08-14';
 
     /**
      * @var string
