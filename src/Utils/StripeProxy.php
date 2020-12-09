@@ -181,11 +181,6 @@ class StripeProxy implements LoggerAwareInterface
         return \Stripe\Charge::retrieve(['id' => $transactionId])->refunds;
     }
 
-    public function fetchStripeCharge(string $stripeChargeId)
-    {
-        return \Stripe\Charge::retrieve(['id' => $stripeChargeId]);
-    }
-
     // Reversal
     public function reverseTransfer(int $amount, string $transfer_id, array $metadata = [])
     {
