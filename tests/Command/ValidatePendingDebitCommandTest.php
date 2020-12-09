@@ -69,26 +69,30 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $cancelMessages = $this->cancelDoctrineReceiver->getSent();
 
         $this->assertCount(1, $validateMessages);
-        $this->assertCount(2, $captureMessages, 'Incorrect capture message count');
+        $this->assertCount(4, $captureMessages, 'Incorrect capture message count');
         $this->assertCount(1, $cancelMessages, 'Incorrect cancel message count');
 
         $ordersToValidate = $validateMessages[0]->getMessage()->getOrders();
-
         $this->assertEquals(['Order_66', 'Order_42'], array_keys($ordersToValidate));
         $this->assertCount(2, $ordersToValidate['Order_66']);
 
         $captureMessage = $captureMessages[0]->getMessage();
-
         $this->assertEquals(1, $captureMessage->getStripePaymentId());
         $this->assertEquals(33000, $captureMessage->getAmount(), 'Invalid amount captured for Order_66');
 
         $captureMessage = $captureMessages[1]->getMessage();
-
         $this->assertEquals(3, $captureMessage->getStripePaymentId());
         $this->assertEquals(33000, $captureMessage->getAmount(), 'Invalid amount captured for Order_11');
 
-        $cancelMessage = $cancelMessages[0]->getMessage();
+        $captureMessage = $captureMessages[2]->getMessage();
+        $this->assertEquals(5, $captureMessage->getStripePaymentId());
+        $this->assertEquals(10000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_01');
 
+        $captureMessage = $captureMessages[3]->getMessage();
+        $this->assertEquals(6, $captureMessage->getStripePaymentId());
+        $this->assertEquals(7000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_02');
+
+        $cancelMessage = $cancelMessages[0]->getMessage();
         $this->assertEquals(2, $cancelMessage->getStripePaymentId());
         $this->assertEquals(66000, $cancelMessage->getAmount(), 'Invalid amount cancelled for Order_42');
     }
