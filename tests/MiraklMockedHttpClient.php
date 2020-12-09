@@ -55,7 +55,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                     return new MockResponse($this->getJsonMiraklOrders());
                 case '/orders?commercial_ids=Order_66%2COrder_42':
                     return new MockResponse($this->getJsonOrdersWithCommercialId());
-                case '/orders?commercial_ids=Order_66%2COrder_42%2COrder_11%2COrder_33%2COrder_op_01%2COrder_op_02':
+                case '/orders?commercial_ids=Order_66%2COrder_42%2COrder_11%2COrder_33%2COrder_op_01%2COrder_op_02%2COrder_op_03':
                     return new MockResponse($this->getJsonOrdersForCancel());
                 case '/shops':
                     return new MockResponse($this->getReturnJsonShops());
@@ -1203,8 +1203,20 @@ class MiraklMockedHttpClient extends MockHttpClient
                     'order_state' => 'SHIPPING',
                     "total_price" => 50.00,
                     "commercial_id" => "Order_op_02",
-                    "order_id" => "Order_op_02-A",
+                    "order_id" => "Order_op_02-B",
                 ],
+                [
+                    'order_state' => 'REFUSED',
+                    "total_price" => 40.00,
+                    "commercial_id" => "Order_op_03",
+                    "order_id" => "Order_op_03-A",
+                ],
+                [
+                    'order_state' => 'REFUSED',
+                    "total_price" => 40.00,
+                    "commercial_id" => "Order_op_03",
+                    "order_id" => "Order_op_03-B",
+                ]
             ]
         ]);
     }

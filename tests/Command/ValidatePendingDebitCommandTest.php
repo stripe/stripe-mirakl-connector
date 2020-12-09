@@ -69,7 +69,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $cancelMessages = $this->cancelDoctrineReceiver->getSent();
 
         $this->assertCount(1, $validateMessages);
-        $this->assertCount(4, $captureMessages, 'Incorrect capture message count');
+        $this->assertCount(5, $captureMessages, 'Incorrect capture message count');
         $this->assertCount(1, $cancelMessages, 'Incorrect cancel message count');
 
         $ordersToValidate = $validateMessages[0]->getMessage()->getOrders();
@@ -91,6 +91,10 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $captureMessage = $captureMessages[3]->getMessage();
         $this->assertEquals(6, $captureMessage->getStripePaymentId());
         $this->assertEquals(7000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_02');
+
+        $captureMessage = $captureMessages[4]->getMessage();
+        $this->assertEquals(7, $captureMessage->getStripePaymentId());
+        $this->assertEquals(2000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_03');
 
         $cancelMessage = $cancelMessages[0]->getMessage();
         $this->assertEquals(2, $cancelMessage->getStripePaymentId());

@@ -23,3 +23,7 @@ App\Entity\StripeCharge:
         miraklOrderId: 'Order_op_02'
         stripeChargeId: 'ch_bbb'
         stripeAmount: 10000 # 20 op + 30 seller 1 (refused) + 50 seller 2
+    stripe_charge_7:
+        miraklOrderId: 'Order_op_03'
+        stripeChargeId: 'ch_ccc'
+        stripeAmount: 10000 # 20 op + 40 seller 1 (refused) + 40 seller 2 (refused)
