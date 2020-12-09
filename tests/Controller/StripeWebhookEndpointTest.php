@@ -469,7 +469,8 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => null,
                     'id' => $stripeChargeId,
                     'metadata' => [],
-                    'status' => 'pending'
+                    'status' => 'pending',
+                    'amount' => 2000
                 ],
             ],
             'type' => 'charge.succeeded',
@@ -598,7 +599,8 @@ class StripeWebhookEndpointTest extends TestCase
                     'metadata' => [
                         $this->metadataOrderIdFieldName => 42,
                     ],
-                    'status' => 'failed'
+                    'status' => 'failed',
+                    'amount' => 2000
                 ],
             ],
             'type' => 'charge.succeeded',
@@ -642,7 +644,8 @@ class StripeWebhookEndpointTest extends TestCase
                     'metadata' => [
                         $this->metadataOrderIdFieldName => $orderId,
                     ],
-                    'status' => 'succeeded'
+                    'status' => 'succeeded',
+                    'amount' => 2000
                 ],
             ],
             'type' => 'charge.succeeded',
@@ -667,7 +670,8 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedPayment = new StripeCharge();
         $expectedPayment
             ->setStripeChargeId($stripePaymentIntentId)
-            ->setMiraklOrderId($orderId);
+            ->setMiraklOrderId($orderId)
+            ->setStripeAmount(2000);
 
         $this
             ->stripePaymentRepository
@@ -709,7 +713,8 @@ class StripeWebhookEndpointTest extends TestCase
                     ],
                     'id' => $stripePaymentIntentId,
                     'metadata' => null,
-                    'status' => 'succeeded'
+                    'status' => 'succeeded',
+                    'amount' => 2000
                 ],
             ],
             'type' => 'charge.succeeded',
@@ -734,7 +739,8 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedPayment = new StripeCharge();
         $expectedPayment
             ->setStripeChargeId($stripePaymentIntentId)
-            ->setMiraklOrderId($orderId);
+            ->setMiraklOrderId($orderId)
+            ->setStripeAmount(2000);
 
         $this
             ->stripePaymentRepository
@@ -779,7 +785,8 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => $stripePaymentIntentId,
                     'id' => $stripeChargeId,
                     'metadata' => null,
-                    'status' => 'succeeded'
+                    'status' => 'succeeded',
+                    'amount' => 2000
                 ],
             ],
             'type' => 'charge.succeeded'
@@ -809,7 +816,8 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedPayment = new StripeCharge();
         $expectedPayment
             ->setStripeChargeId($stripeChargeId)
-            ->setMiraklOrderId($orderId);
+            ->setMiraklOrderId($orderId)
+            ->setStripeAmount(2000);
 
         $this
             ->stripePaymentRepository
@@ -847,7 +855,8 @@ class StripeWebhookEndpointTest extends TestCase
                     'metadata' => [
                         $this->metadataOrderIdFieldName => $orderId,
                     ],
-                    'status' => 'succeeded'
+                    'status' => 'succeeded',
+                    'amount' => 2000
                 ],
             ],
             'type' => 'charge.succeeded',
@@ -872,7 +881,8 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedPayment = new StripeCharge();
         $expectedPayment
             ->setStripeChargeId($stripeChargeId)
-            ->setMiraklOrderId($orderId);
+            ->setMiraklOrderId($orderId)
+            ->setStripeAmount(2000);
 
         $this
             ->stripePaymentRepository
@@ -910,7 +920,8 @@ class StripeWebhookEndpointTest extends TestCase
                     'metadata' => [
                         $this->metadataOrderIdFieldName => $orderId,
                     ],
-                    'status' => 'succeeded'
+                    'status' => 'succeeded',
+                    'amount' => 2000
                 ],
             ],
             'type' => 'charge.updated',
@@ -935,7 +946,8 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedPayment = new StripeCharge();
         $expectedPayment
             ->setStripeChargeId($stripeChargeId)
-            ->setMiraklOrderId($orderId);
+            ->setMiraklOrderId($orderId)
+            ->setStripeAmount(2000);
 
         $this
             ->stripePaymentRepository

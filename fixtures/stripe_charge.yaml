@@ -2,12 +2,16 @@ App\Entity\StripeCharge:
     stripe_charge_1:
         miraklOrderId: 'Order_66'
         stripeChargeId: 'pi_valid'
+        stripeAmount: 66000
     stripe_charge_2:
         miraklOrderId: 'Order_42'
         stripeChargeId: 'pi_valid2'
+        stripeAmount: 66000
     stripe_charge_3:
         miraklOrderId: 'Order_11'
         stripeChargeId: 'ch_transaction_4'
+        stripeAmount: 33000
     stripe_charge_4:
         miraklOrderId: 'Order_33'
         stripeChargeId: 'ch_not_found'
+        stripeAmount: 66000
