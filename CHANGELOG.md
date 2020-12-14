@@ -1,5 +1,10 @@
 # Changelog
 
+- Version 1.2.6
+    - Rename sequence to match code naming (#45)
+    - Fix incorrect method call in webhook controller (#43 thanks @christophersjchow)
+    - Improve compatibility with hybrid orders in capture flow (#42)
+
 - Version 1.2.5
     - Fix payment validation + split combination (#38)
     - Prevent failed payouts from being dispatched twice (#40)
