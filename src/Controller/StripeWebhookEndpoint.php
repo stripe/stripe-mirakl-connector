@@ -274,12 +274,15 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $miraklOrderId = $this->checkAndReturnChargeMetadataOrderId($stripeCharge);
         $this->checkChargeStatus($stripeCharge);
         $stripeChargeId = $stripeCharge['id'];
+        $stripeAmount = $stripeCharge['amount'];
 
         $stripeCharge = $this->stripeChargeRepository->findOneByStripePaymentId($stripeChargeId);
 
         if (!$stripeCharge) {
             $stripeCharge = new StripeCharge();
-            $stripeCharge->setStripeChargeId($stripeChargeId);
+            $stripeCharge
+                ->setStripeChargeId($stripeChargeId)
+                ->setStripeAmount($stripeAmount);
         }
 
         $stripeCharge->setMiraklOrderId($miraklOrderId);

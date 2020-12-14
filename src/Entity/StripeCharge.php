@@ -55,6 +55,11 @@ class StripeCharge
     private $modificationDatetime;
 
     /**
+     * @ORM\Column(type="integer", nullable=true)
+     */
+    private $stripeAmount;
+
+    /**
      * @return int
      */
     public function getId(): int
@@ -169,6 +174,24 @@ class StripeCharge
     public function setModificationDatetime(\DateTimeInterface $modificationDatetime): self
     {
         $this->modificationDatetime = $modificationDatetime;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getStripeAmount(): int
+    {
+        return $this->stripeAmount;
+    }
+
+    /**
+     * @param int $stripeAmount
+     * @return self
+     */
+    public function setStripeAmount(int $stripeAmount): self
+    {
+        $this->stripeAmount = $stripeAmount;
         return $this;
     }
 }

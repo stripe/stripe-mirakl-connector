@@ -35,16 +35,16 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
     /**
      * @var StripeChargeRepository
      */
-    private $stripePaymentRepository;
+    private $stripeChargeRepository;
 
     public function __construct(
         MessageBusInterface $bus,
         MiraklClient $miraklClient,
-        StripeChargeRepository $stripePaymentRepository
+        StripeChargeRepository $stripeChargeRepository
     ) {
         $this->bus = $bus;
         $this->miraklClient = $miraklClient;
-        $this->stripePaymentRepository = $stripePaymentRepository;
+        $this->stripeChargeRepository = $stripeChargeRepository;
 
         parent::__construct();
     }
@@ -93,20 +93,20 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
         }
 
         // get stripe known payment intent or charge for pending oder
-        $stripePayments = $this->stripePaymentRepository->findPendingChargeByOrderIds($orderIds);
+        $stripeCharges = $this->stripeChargeRepository->findPendingChargeByOrderIds($orderIds);
 
         // keep orders to validate
-        $ordersToValidate = array_intersect_key($miraklOrderDebits, $stripePayments);
+        $ordersToValidate = array_intersect_key($miraklOrderDebits, $stripeCharges);
 
         // keep payment for pending orders
-        $stripePayments = array_intersect_key($stripePayments, $ordersToValidate);
+        $stripeCharges = array_intersect_key($stripeCharges, $ordersToValidate);
 
         if (empty($ordersToValidate)) {
             $this->logger->info('No mirakl order to validate');
             return;
         }
 
-        $this->bus->dispatch(new ValidateMiraklOrderMessage($ordersToValidate, $stripePayments));
+        $this->bus->dispatch(new ValidateMiraklOrderMessage($ordersToValidate, $stripeCharges));
     }
 
     /**
@@ -114,73 +114,66 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
      */
     protected function capturePendingPayment(OutputInterface $output): void
     {
-        $stripePayments = $this->stripePaymentRepository->findPendingPayments();
+        $stripeCharges = $this->stripeChargeRepository->findPendingPayments();
 
-        if (empty($stripePayments)) {
+        if (empty($stripeCharges)) {
             $output->writeln('No payment to capture');
             return;
         }
 
+        $chargesAmountByCommercialIds = [];
+        foreach ($stripeCharges as $stripeCharge) {
+            $chargesAmountByCommercialIds[$stripeCharge->getMiraklOrderId()] = $stripeCharge->getStripeAmount();
+        }
+
         // list all orders with the same commercial id as those previously validated
-        $ordersToCapture = $this->miraklClient->listCommercialOrdersById(array_keys($stripePayments));
+        $ordersToCapture = $this->miraklClient->listCommercialOrdersById(array_keys($stripeCharges));
 
         // we keep complete order to capture payment
-        $notTotalyValidated = [];
-        $orderCanBeCaptured = [];
-        $orderCanCancelPayment = [];
+        $ignoredCommercialOrderIds = [];
+        $amountToCaptureByCommercialOrderId = [];
+
         foreach ($ordersToCapture as $order) {
             $commercialOrderId = $order['commercial_id'];
 
-            if (in_array($commercialOrderId, $notTotalyValidated, true)) {
+            if (in_array($commercialOrderId, $ignoredCommercialOrderIds, true)) {
                 continue;
             }
 
             $status = $order['order_state'];
 
+            // This order is not validated.
+            // We need to skip any cpature/cancelling for the full commercial order
             if (!in_array($status, self::ORDER_STATUS_VALIDATED, true)) {
-                $notTotalyValidated[] = $commercialOrderId;
+                $ignoredCommercialOrderIds[] = $commercialOrderId;
 
-                if (isset($orderCanBeCaptured[$commercialOrderId])) {
-                    unset($orderCanBeCaptured[$commercialOrderId]);
-                }
-
-                if (isset($orderCanCancelPayment[$commercialOrderId])) {
-                    unset($orderCanCancelPayment[$commercialOrderId]);
+                if (isset($amountToCaptureByCommercialOrderId[$commercialOrderId])) {
+                    unset($amountToCaptureByCommercialOrderId[$commercialOrderId]);
                 }
 
                 continue;
             }
 
-            $amount = gmp_intval((string) ($order['total_price'] * 100));
+            $orderAmount = gmp_intval((string) ($order['total_price'] * 100));
 
-            if (in_array($status, self::ORDER_STATUS_TO_CAPTURE)) {
-                if (!isset($orderCanBeCaptured[$commercialOrderId])) {
-                    $orderCanBeCaptured[$commercialOrderId] = 0;
-                }
-
-                $orderCanBeCaptured[$commercialOrderId] += $amount;
-            } else {
-                // can be partially Captured, no need to cancel payment
-                if (isset($orderCanBeCaptured[$commercialOrderId])) {
-                    continue;
-                }
-
-                if (!isset($orderCanCancelPayment[$commercialOrderId])) {
-                    $orderCanCancelPayment[$commercialOrderId] = 0;
-                }
-
-                $orderCanCancelPayment[$commercialOrderId] += $amount;
+            if (!isset($amountToCaptureByCommercialOrderId[$commercialOrderId])) {
+                $amountToCaptureByCommercialOrderId[$commercialOrderId] = $chargesAmountByCommercialIds[$commercialOrderId];
+            }
+            
+            if (!in_array($status, self::ORDER_STATUS_TO_CAPTURE)) {
+                // This order is not to be fully captured.
+                // We decrement the total amount to capture
+                $amountToCaptureByCommercialOrderId[$commercialOrderId] -= $orderAmount;
             }
         }
 
-        // capture payment
-        foreach ($orderCanBeCaptured as $commercialId => $amount) {
-            $this->bus->dispatch(new CapturePendingPaymentMessage($stripePayments[$commercialId]->getId(), $amount));
-        }
-
-        // cancel payment
-        foreach ($orderCanCancelPayment as $commercialId => $amount) {
-            $this->bus->dispatch(new CancelPendingPaymentMessage($stripePayments[$commercialId]->getId(), $amount));
+        foreach ($amountToCaptureByCommercialOrderId as $commercialId => $commercialOrderAmount) {
+            if ($commercialOrderAmount > 0) {
+                $this->bus->dispatch(new CapturePendingPaymentMessage($stripeCharges[$commercialId]->getId(), $commercialOrderAmount));
+            } else {
+                // All orders have been refused/cancelled: cancel capture
+                $this->bus->dispatch(new CancelPendingPaymentMessage($stripeCharges[$commercialId]->getId(), $chargesAmountByCommercialIds[$commercialId]));
+            }
         }
     }
 }
