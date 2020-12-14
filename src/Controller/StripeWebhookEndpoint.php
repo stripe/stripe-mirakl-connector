@@ -276,7 +276,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeChargeId = $stripeCharge['id'];
         $stripeAmount = $stripeCharge['amount'];
 
-        $stripeCharge = $this->stripeChargeRepository->findOneByStripePaymentId($stripeChargeId);
+        $stripeCharge = $this->stripeChargeRepository->findOneByStripeChargeId($stripeChargeId);
 
         if (!$stripeCharge) {
             $stripeCharge = new StripeCharge();
@@ -304,7 +304,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         if (null === $paymentIntent) {
             return null;
         }
-        
+
         if (!$paymentIntent instanceof \Stripe\PaymentIntent) {
             $paymentIntent = $this->stripeProxy->paymentIntentRetrieve($paymentIntent);
         }
@@ -318,7 +318,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private function checkAndReturnChargeMetadataOrderId(\Stripe\Charge $stripeCharge): string
     {
         if (!isset($stripeCharge['metadata'][$this->metadataOrderIdFieldName])) {
-            
+
             // Check that linked payment intent does not contain itself the metadata
             $paymentIntentMetadata = $this->checkAndReturnPaymentIntentMetadataOrderId($stripeCharge->payment_intent);
             if (null !== $paymentIntentMetadata) {

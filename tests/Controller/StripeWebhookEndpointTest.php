@@ -65,7 +65,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $this->stripePaymentRepository = $this->getMockBuilder(StripeChargeRepository::class)
             ->disableOriginalConstructor()
-            ->setMethods(['findOneByStripePaymentId', 'persistAndFlush'])
+            ->setMethods(['findOneByStripeChargeId', 'persistAndFlush'])
             ->getMock();
 
         $logger = new NullLogger();
@@ -663,7 +663,7 @@ class StripeWebhookEndpointTest extends TestCase
         $this
             ->stripePaymentRepository
             ->expects($this->once())
-            ->method('findOneByStripePaymentId')
+            ->method('findOneByStripeChargeId')
             ->with($stripePaymentIntentId)
             ->willReturn(null);
 
@@ -732,7 +732,7 @@ class StripeWebhookEndpointTest extends TestCase
         $this
             ->stripePaymentRepository
             ->expects($this->once())
-            ->method('findOneByStripePaymentId')
+            ->method('findOneByStripeChargeId')
             ->with($stripePaymentIntentId)
             ->willReturn(null);
 
@@ -809,7 +809,7 @@ class StripeWebhookEndpointTest extends TestCase
         $this
             ->stripePaymentRepository
             ->expects($this->once())
-            ->method('findOneByStripePaymentId')
+            ->method('findOneByStripeChargeId')
             ->with($stripeChargeId)
             ->willReturn(null);
 
@@ -874,7 +874,7 @@ class StripeWebhookEndpointTest extends TestCase
         $this
             ->stripePaymentRepository
             ->expects($this->once())
-            ->method('findOneByStripePaymentId')
+            ->method('findOneByStripeChargeId')
             ->with($stripeChargeId)
             ->willReturn(null);
 
@@ -939,7 +939,7 @@ class StripeWebhookEndpointTest extends TestCase
         $this
             ->stripePaymentRepository
             ->expects($this->once())
-            ->method('findOneByStripePaymentId')
+            ->method('findOneByStripeChargeId')
             ->with($stripeChargeId)
             ->willReturn(null);
 
