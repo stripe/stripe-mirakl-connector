@@ -18,7 +18,7 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
     /**
      * @var StripeChargeRepository
      */
-    private $stripePaymentRepository;
+    private $stripeChargeRepository;
 
     /**
      * @var StripeProxy
@@ -27,31 +27,31 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
 
     public function __construct(
         StripeProxy $stripeProxy,
-        StripeChargeRepository $stripePaymentRepository
+        StripeChargeRepository $stripeChargeRepository
     ) {
         $this->stripeProxy = $stripeProxy;
-        $this->stripePaymentRepository = $stripePaymentRepository;
+        $this->stripeChargeRepository = $stripeChargeRepository;
     }
 
     public function __invoke(CancelPendingPaymentMessage $message)
     {
-        $stripePaymentId = $message->getStripePaymentId();
+        $stripeChargeId = $message->getstripeChargeId();
 
-        $stripePayment = $this->stripePaymentRepository->findOneBy([
-            'id' => $stripePaymentId,
+        $stripeCharge = $this->stripeChargeRepository->findOneBy([
+            'id' => $stripeChargeId,
         ]);
 
-        if (null === $stripePayment) {
+        if (null === $stripeCharge) {
             return;
         }
 
         try {
-            $this->stripeProxy->cancelBeforeCapture($stripePayment->getStripeChargeId(), $message->getAmount());
-            $stripePayment->cancel();
-            $this->stripePaymentRepository->persistAndFlush($stripePayment);
+            $this->stripeProxy->cancelBeforeCapture($stripeCharge->getStripeChargeId(), $message->getAmount());
+            $stripeCharge->cancel();
+            $this->stripeChargeRepository->persistAndFlush($stripeCharge);
         } catch (ApiErrorException $e) {
-            $this->logger->error(sprintf('Could not cancel Stripe Payment: %s.', $e->getMessage()), [
-                'paymentId' => $stripePayment->getStripeChargeId(),
+            $this->logger->error(sprintf('Could not cancel Stripe Charge: %s.', $e->getMessage()), [
+                'chargeId' => $stripeCharge->getStripeChargeId(),
                 'amount' => $message->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);

@@ -26,7 +26,7 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
      */
     private $stripeProxy;
 
-    private $stripePaymentRepository;
+    private $stripeChargeRepository;
 
     /**
      * @var UpdateAccountLoginLinkHandler
@@ -40,9 +40,9 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
 
         $this->stripeProxy = $container->get('App\Utils\StripeProxy');
 
-        $this->stripePaymentRepository = $container->get('doctrine')->getRepository(StripeCharge::class);
+        $this->stripeChargeRepository = $container->get('doctrine')->getRepository(StripeCharge::class);
 
-        $this->handler = new CancelPendingPaymentHandler($this->stripeProxy, $this->stripePaymentRepository);
+        $this->handler = new CancelPendingPaymentHandler($this->stripeProxy, $this->stripeChargeRepository);
 
         $logger = new NullLogger();
 
@@ -52,14 +52,14 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
 
     public function testNominalPaymentIntentExecute()
     {
-        $stripePaymentId = 1;
+        $stripeChargeId = 1;
 
-        $message = new CancelPendingPaymentMessage($stripePaymentId, 33000);
+        $message = new CancelPendingPaymentMessage($stripeChargeId, 33000);
         $handler = $this->handler;
         $handler($message);
 
-        $stripePayment = $this->stripePaymentRepository->findOneBy([
-            'id' => $stripePaymentId,
+        $stripePayment = $this->stripeChargeRepository->findOneBy([
+            'id' => $stripeChargeId,
         ]);
 
         $this->assertEquals(StripeCharge::CANCELED, $stripePayment->getStatus());
@@ -67,14 +67,14 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
 
     public function testNominalChargeExecute()
     {
-        $stripePaymentId = 3;
+        $stripeChargeId = 3;
 
-        $message = new CancelPendingPaymentMessage($stripePaymentId, 33000);
+        $message = new CancelPendingPaymentMessage($stripeChargeId, 33000);
         $handler = $this->handler;
         $handler($message);
 
-        $stripePayment = $this->stripePaymentRepository->findOneBy([
-            'id' => $stripePaymentId,
+        $stripePayment = $this->stripeChargeRepository->findOneBy([
+            'id' => $stripeChargeId,
         ]);
 
         $this->assertEquals(StripeCharge::CANCELED, $stripePayment->getStatus());
@@ -82,14 +82,14 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
 
     public function testNotFoundPaymentExecute()
     {
-        $stripePaymentId = 4;
+        $stripeChargeId = 4;
 
-        $message = new CancelPendingPaymentMessage($stripePaymentId, 33000);
+        $message = new CancelPendingPaymentMessage($stripeChargeId, 33000);
         $handler = $this->handler;
         $handler($message);
 
-        $stripePayment = $this->stripePaymentRepository->findOneBy([
-            'id' => $stripePaymentId,
+        $stripePayment = $this->stripeChargeRepository->findOneBy([
+            'id' => $stripeChargeId,
         ]);
 
         $this->assertEquals(StripeCharge::TO_CAPTURE, $stripePayment->getStatus());

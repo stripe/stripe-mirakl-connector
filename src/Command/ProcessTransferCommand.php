@@ -59,7 +59,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
     /**
      * @var StripeChargeRepository
      */
-    private $stripePaymentRepository;
+    private $stripeChargeRepository;
 
     public function __construct(
         MessageBusInterface $bus,
@@ -67,14 +67,14 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         MiraklClient $miraklClient,
         StripeTransferRepository $stripeTransferRepository,
         AccountMappingRepository $accountMappingRepository,
-        StripeChargeRepository $stripePaymentRepository
+        StripeChargeRepository $stripeChargeRepository
     ) {
         $this->bus = $bus;
         $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
         $this->miraklClient = $miraklClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->accountMappingRepository = $accountMappingRepository;
-        $this->stripePaymentRepository = $stripePaymentRepository;
+        $this->stripeChargeRepository = $stripeChargeRepository;
         parent::__construct();
     }
 
@@ -138,7 +138,7 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
         $existingTransfers = $this->stripeTransferRepository
             ->findExistingTransfersByOrderIds(array_column($miraklOrders, 'order_id'));
 
-        $stripePaymentToCapture = $this->stripePaymentRepository->findPendingPayments();
+        $stripePaymentToCapture = $this->stripeChargeRepository->findPendingPayments();
 
         $transfers = [];
         foreach ($miraklOrders as $miraklOrder) {

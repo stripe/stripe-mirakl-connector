@@ -159,7 +159,7 @@ class ValidatePendingDebitCommand extends Command implements LoggerAwareInterfac
             if (!isset($amountToCaptureByCommercialOrderId[$commercialOrderId])) {
                 $amountToCaptureByCommercialOrderId[$commercialOrderId] = $chargesAmountByCommercialIds[$commercialOrderId];
             }
-            
+
             if (!in_array($status, self::ORDER_STATUS_TO_CAPTURE)) {
                 // This order is not to be fully captured.
                 // We decrement the total amount to capture

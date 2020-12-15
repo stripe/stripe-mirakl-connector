@@ -5,15 +5,15 @@ namespace App\Utils;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Shivas\VersioningBundle\Service\VersionManager;
+use Stripe\Exception\ApiErrorException;
+use Stripe\HttpClient\ClientInterface;
+use Stripe\Stripe;
+use Stripe\StripeObject;
 use Stripe\Account;
 use Stripe\Charge;
 use Stripe\Event;
-use Stripe\Exception\ApiErrorException;
-use Stripe\HttpClient\ClientInterface;
 use Stripe\LoginLink;
 use Stripe\PaymentIntent;
-use Stripe\Stripe;
-use Stripe\StripeObject;
 
 /**
  * Separated (and public) methods for test purposes, as it is not possible to mock static calls.
@@ -215,6 +215,12 @@ class StripeProxy implements LoggerAwareInterface
             $params['amount_to_capture'] = $amount;
             $message = '[Stripe API] Call to PaymentIntent/Capture';
         } elseif ('ch' === $prefix || 'py' === $prefix) {
+            // Check for PI
+            $charge = $this->chargeRetrieve($paymentId);
+            if (isset($charge->payment_intent) && !empty($charge->payment_intent)) {
+                return $this->capture($charge->payment_intent, $amount);
+            }
+
             $obj = Charge::constructFrom(['id' => $paymentId]);
             $params['amount'] = $amount;
             $message = '[Stripe API] Call to Charge/Capture';
@@ -246,6 +252,12 @@ class StripeProxy implements LoggerAwareInterface
             $message = '[Stripe API] Call to PaymentIntent/Cancel';
             $this->logger->info($message, ['stripeId' => $paymentId]);
         } elseif ('ch' === $prefix || 'py' === $prefix) {
+            // Check for PI
+            $charge = $this->chargeRetrieve($paymentId);
+            if (isset($charge->payment_intent) && !empty($charge->payment_intent)) {
+                return $this->cancelBeforeCapture($charge->payment_intent, $amount);
+            }
+
             $obj = $this->createRefund($amount, $paymentId);
         } else {
             throw new \Exception('payment not yet managed');
@@ -262,5 +274,15 @@ class StripeProxy implements LoggerAwareInterface
         ]);
 
         return PaymentIntent::retrieve($stripePaymentIntentId);
+    }
+
+    // Charge
+    public function chargeRetrieve(string $stripeChargeId): Charge
+    {
+        $this->logger->info('[Stripe API] Call to \Stripe\Charge::retrieve', [
+            'stripeChargeId' => $stripeChargeId,
+        ]);
+
+        return Charge::retrieve($stripeChargeId);
     }
 }

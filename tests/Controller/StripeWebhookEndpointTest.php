@@ -36,7 +36,7 @@ class StripeWebhookEndpointTest extends TestCase
     /**
      * @var \PHPUnit\Framework\MockObject\MockObject
      */
-    protected $stripePaymentRepository;
+    protected $stripeChargeRepository;
 
     /**
      * @var StripeProxy|\PHPUnit\Framework\MockObject\MockObject
@@ -63,7 +63,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setMethods(['findOneByStripeAccountId', 'persistAndFlush'])
             ->getMock();
 
-        $this->stripePaymentRepository = $this->getMockBuilder(StripeChargeRepository::class)
+        $this->stripeChargeRepository = $this->getMockBuilder(StripeChargeRepository::class)
             ->disableOriginalConstructor()
             ->setMethods(['findOneByStripeChargeId', 'persistAndFlush'])
             ->getMock();
@@ -74,7 +74,7 @@ class StripeWebhookEndpointTest extends TestCase
             $this->bus,
             $this->stripeProxy,
             $this->accountMappingRepository,
-            $this->stripePaymentRepository,
+            $this->stripeChargeRepository,
             $this->metadataOrderIdFieldName
         );
         $this->controller->setLogger($logger);
@@ -661,7 +661,7 @@ class StripeWebhookEndpointTest extends TestCase
 
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('findOneByStripeChargeId')
             ->with($stripePaymentIntentId)
@@ -674,7 +674,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setStripeAmount(2000);
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedPayment);
@@ -730,7 +730,7 @@ class StripeWebhookEndpointTest extends TestCase
 
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('findOneByStripeChargeId')
             ->with($stripePaymentIntentId)
@@ -743,7 +743,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setStripeAmount(2000);
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedPayment);
@@ -807,7 +807,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->willReturn(\Stripe\PaymentIntent::constructFrom($stripePaymentIntent));
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('findOneByStripeChargeId')
             ->with($stripeChargeId)
@@ -820,7 +820,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setStripeAmount(2000);
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedPayment);
@@ -872,7 +872,7 @@ class StripeWebhookEndpointTest extends TestCase
 
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('findOneByStripeChargeId')
             ->with($stripeChargeId)
@@ -885,7 +885,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setStripeAmount(2000);
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedPayment);
@@ -937,7 +937,7 @@ class StripeWebhookEndpointTest extends TestCase
 
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('findOneByStripeChargeId')
             ->with($stripeChargeId)
@@ -950,7 +950,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setStripeAmount(2000);
 
         $this
-            ->stripePaymentRepository
+            ->stripeChargeRepository
             ->expects($this->once())
             ->method('persistAndFlush')
             ->with($expectedPayment);

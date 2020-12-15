@@ -24,7 +24,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
     /**
      * @var StripeChargeRepository
      */
-    protected $stripePaymentRepository;
+    protected $stripeChargeRepository;
 
     /**
      * @var object|\Symfony\Component\Messenger\Transport\TransportInterface|null
@@ -52,7 +52,7 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $this->captureDoctrineReceiver = self::$container->get('messenger.transport.capture_pending_payment');
         $this->cancelDoctrineReceiver = self::$container->get('messenger.transport.cancel_pending_payment');
 
-        $this->stripePaymentRepository = self::$container->get('doctrine')->getRepository(StripeCharge::class);
+        $this->stripeChargeRepository = self::$container->get('doctrine')->getRepository(StripeCharge::class);
     }
 
     public function testNominalExecute()
@@ -77,38 +77,38 @@ class ValidatePendingDebitCommandTest extends KernelTestCase
         $this->assertCount(2, $ordersToValidate['Order_66']);
 
         $captureMessage = $captureMessages[0]->getMessage();
-        $this->assertEquals(1, $captureMessage->getStripePaymentId());
+        $this->assertEquals(1, $captureMessage->getstripeChargeId());
         $this->assertEquals(33000, $captureMessage->getAmount(), 'Invalid amount captured for Order_66');
 
         $captureMessage = $captureMessages[1]->getMessage();
-        $this->assertEquals(3, $captureMessage->getStripePaymentId());
+        $this->assertEquals(3, $captureMessage->getstripeChargeId());
         $this->assertEquals(33000, $captureMessage->getAmount(), 'Invalid amount captured for Order_11');
 
         $captureMessage = $captureMessages[2]->getMessage();
-        $this->assertEquals(5, $captureMessage->getStripePaymentId());
+        $this->assertEquals(5, $captureMessage->getstripeChargeId());
         $this->assertEquals(10000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_01');
 
         $captureMessage = $captureMessages[3]->getMessage();
-        $this->assertEquals(6, $captureMessage->getStripePaymentId());
+        $this->assertEquals(6, $captureMessage->getstripeChargeId());
         $this->assertEquals(7000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_02');
 
         $captureMessage = $captureMessages[4]->getMessage();
-        $this->assertEquals(7, $captureMessage->getStripePaymentId());
+        $this->assertEquals(7, $captureMessage->getstripeChargeId());
         $this->assertEquals(2000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_03');
 
         $cancelMessage = $cancelMessages[0]->getMessage();
-        $this->assertEquals(2, $cancelMessage->getStripePaymentId());
+        $this->assertEquals(2, $cancelMessage->getstripeChargeId());
         $this->assertEquals(66000, $cancelMessage->getAmount(), 'Invalid amount cancelled for Order_42');
     }
 
     public function testNominalNoPayment()
     {
-        foreach ($this->stripePaymentRepository->findPendingPayments() as $payment) {
+        foreach ($this->stripeChargeRepository->findPendingPayments() as $payment) {
             $payment->capture();
-            $this->stripePaymentRepository->persist($payment);
+            $this->stripeChargeRepository->persist($payment);
         }
 
-        $this->stripePaymentRepository->flush();
+        $this->stripeChargeRepository->flush();
 
         $commandTester = new CommandTester($this->command);
         $commandTester->execute([

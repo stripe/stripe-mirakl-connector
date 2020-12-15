@@ -64,6 +64,8 @@ class StripeMockedHttpClient implements ClientInterface
                 return [$this->getJsonStripeReversal('trr_4'), 200, []];
             case 'https://api.stripe.com/v1/payment_intents/pi_valid/capture':
                 return [$this->getJsonStripeObject('pi_valid'), 200, []];
+            case 'https://api.stripe.com/v1/charges/ch_valid':
+                return [$this->getJsonStripeObject('ch_valid'), 200, []];
             case 'https://api.stripe.com/v1/charges/ch_valid/capture':
                 return [$this->getJsonStripeObject('ch_valid'), 200, []];
             case 'https://api.stripe.com/v1/payment_intents/pi_invalid/capture':
