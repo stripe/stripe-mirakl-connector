@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Utils;
+namespace App\Service;
 
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -59,10 +59,9 @@ class MiraklClient implements LoggerAwareInterface
     }
 
     // GET OR11 by date
-    public function listOrdersByDate(?\DateTimeInterface $datetime)
+    public function listOrdersByDate(string $datetime)
     {
-        $dt = $datetime !== null ? $datetime->format(self::DATE_FORMAT) : null;
-        return $this->getOrders([ 'start_update_date' => $dt ]);
+        return $this->getOrders([ 'start_update_date' => $datetime ]);
     }
 
     // GET OR11 by id

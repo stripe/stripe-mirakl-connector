@@ -19,14 +19,14 @@ services:
     class: App\Tests\MiraklMockedHttpClient
     public: true
 
-  App\Utils\MiraklClient:
-    class: App\Utils\MiraklClient
+  App\Service\MiraklClient:
+    class: App\Service\MiraklClient
     public: true
     arguments:
       $miraklClient: '@App\Tests\MiraklMockedHttpClient'
 
-  App\Utils\StripeProxy:
-    class: App\Utils\StripeProxy
+  App\Service\StripeClient:
+    class: App\Service\StripeClient
     public: true
     calls:
       - method: setHttpClient

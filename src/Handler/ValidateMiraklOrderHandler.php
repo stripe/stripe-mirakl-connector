@@ -3,7 +3,7 @@
 namespace App\Handler;
 
 use App\Message\ValidateMiraklOrderMessage;
-use App\Utils\MiraklClient;
+use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;

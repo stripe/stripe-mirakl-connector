@@ -10,8 +10,8 @@ use App\Message\ProcessTransferMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -44,9 +44,9 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripePayoutRepository
@@ -63,11 +63,11 @@ class ProcessPayoutCommand extends Command implements LoggerAwareInterface
      */
     private $accountMappingRepository;
 
-    public function __construct(MessageBusInterface $bus, MiraklClient $miraklClient, StripeProxy $stripeProxy, StripePayoutRepository $stripePayoutRepository, StripeTransferRepository $stripeTransferRepository, AccountMappingRepository $accountMappingRepository)
+    public function __construct(MessageBusInterface $bus, MiraklClient $miraklClient, StripeClient $stripeClient, StripePayoutRepository $stripePayoutRepository, StripeTransferRepository $stripeTransferRepository, AccountMappingRepository $accountMappingRepository)
     {
         $this->bus = $bus;
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->stripePayoutRepository = $stripePayoutRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->accountMappingRepository = $accountMappingRepository;

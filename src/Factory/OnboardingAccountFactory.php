@@ -5,7 +5,7 @@ namespace App\Factory;
 use App\Exception\InvalidArgumentException;
 use App\Repository\AccountMappingRepository;
 use App\Repository\OnboardingAccountRepository;
-use App\Utils\MiraklClient;
+use App\Service\MiraklClient;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 

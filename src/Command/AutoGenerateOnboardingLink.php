@@ -5,7 +5,7 @@ namespace App\Command;
 use App\Exception\InvalidArgumentException;
 use App\Factory\MiraklPatchShopFactory;
 use App\Factory\OnboardingAccountFactory;
-use App\Utils\MiraklClient;
+use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Console\Command\Command;

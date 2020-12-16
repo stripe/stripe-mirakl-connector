@@ -4,8 +4,8 @@ namespace App\Handler;
 
 use App\Factory\MiraklPatchShopFactory;
 use App\Message\AccountUpdateMessage;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
@@ -21,19 +21,19 @@ class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageS
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var MiraklPatchShopFactory
      */
     private $patchFactory;
 
-    public function __construct(MiraklClient $miraklClient, StripeProxy $stripeProxy, MiraklPatchShopFactory $patchFactory)
+    public function __construct(MiraklClient $miraklClient, StripeClient $stripeClient, MiraklPatchShopFactory $patchFactory)
     {
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->patchFactory = $patchFactory;
     }
 
@@ -42,7 +42,7 @@ class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageS
         $messagePayload = $message->getContent()['payload'];
         $this->logger->info('Received Stripe `account.updated` webhook. Updating login link.', $messagePayload);
 
-        $stripeLoginLink = $this->stripeProxy->accountCreateLoginLink($messagePayload['stripeUserId']);
+        $stripeLoginLink = $this->stripeClient->accountCreateLoginLink($messagePayload['stripeUserId']);
 
         $shopPatch = $this->patchFactory
             ->setMiraklShopId($messagePayload['miraklShopId'])

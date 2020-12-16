@@ -94,11 +94,6 @@ class StripeTransfer
     private $currency;
 
     /**
-     * @ORM\Column(type="datetime")
-     */
-    private $miraklUpdateTime;
-
-    /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
      * @Gedmo\Timestampable(on="create")
      */
@@ -226,7 +221,9 @@ class StripeTransfer
     public function setStatus(string $status): self
     {
         if (!in_array($status, self::getAvailableStatus())) {
-            throw new \InvalidArgumentException('Invalid order status');
+            throw new \InvalidArgumentException(
+                'Invalid order status. Input was: ' . $status
+            );
         }
         $this->status = $status;
 
@@ -253,18 +250,6 @@ class StripeTransfer
     public function setCurrency(string $currency): self
     {
         $this->currency = $currency;
-
-        return $this;
-    }
-
-    public function getMiraklUpdateTime(): ?\DateTimeInterface
-    {
-        return $this->miraklUpdateTime;
-    }
-
-    public function setMiraklUpdateTime(\DateTime $miraklUpdateTime): self
-    {
-        $this->miraklUpdateTime = $miraklUpdateTime;
 
         return $this;
     }

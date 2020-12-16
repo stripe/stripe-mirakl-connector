@@ -2,7 +2,7 @@
 
 namespace App\Validator;
 
-use App\Utils\MiraklClient;
+use App\Service\MiraklClient;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 

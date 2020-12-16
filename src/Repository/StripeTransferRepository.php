@@ -40,47 +40,19 @@ class StripeTransferRepository extends ServiceEntityRepository
         $this->getEntityManager()->flush();
     }
 
-    public function getLastMiraklUpdateTime(): ?\DateTimeInterface
+    public function getFailedOrderIDs(\DateTimeInterface $before)
     {
-        $lastUpdatedStripeTransfer = $this->createQueryBuilder('t')
-            ->orderBy('t.miraklUpdateTime', 'DESC')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
+        $failedTransfers = $this->findBy([
+            'status' => StripeTransfer::TRANSFER_FAILED,
+            'type' => StripeTransfer::TRANSFER_ORDER,
+        ]);
 
-        if (null === $lastUpdatedStripeTransfer) {
-            return null;
+        $orderIds = [];
+        foreach ($failedTransfers as $transfer) {
+            $orderIds[] = $transfer->getMiraklId();
         }
 
-        return $lastUpdatedStripeTransfer->getMiraklUpdateTime();
-    }
-
-    protected function failTransfersBeforeQueryBuilder(\DateTimeInterface $before): QueryBuilder
-    {
-        return  $this->createQueryBuilder('t')
-            ->where("t.miraklUpdateTime < :before")
-            ->andWhere("t.status like :status")
-            ->setParameter("before", $before)
-            ->setParameter("status", StripeTransfer::TRANSFER_FAILED);
-    }
-
-    public function getFailTransfersBefore(\DateTimeInterface $before): array
-    {
-        $failTransfersQuery = $this->failTransfersBeforeQueryBuilder($before)->getQuery();
-
-        return $failTransfersQuery->execute();
-    }
-
-    public function getMiraklOrderIdFailTransfersBefore(\DateTimeInterface $before)
-    {
-        $failTransfers = $this->getFailTransfersBefore($before);
-
-        $miraklOrderId = [];
-        foreach ($failTransfers as $transfer) {
-            $miraklOrderId[] = $transfer->getMiraklId();
-        }
-
-        return $miraklOrderId;
+        return $orderIds;
     }
 
     public function findExistingTransfersByOrderIds($idsToCheck)

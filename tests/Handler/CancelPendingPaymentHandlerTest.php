@@ -10,7 +10,7 @@ use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
 use App\Repository\StripeChargeRepository;
 use App\Tests\StripeWebTestCase;
-use App\Utils\StripeProxy;
+use App\Service\StripeClient;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Psr\Log\NullLogger;
 use Stripe\Exception\ApiConnectionException;
@@ -22,9 +22,9 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
     use RecreateDatabaseTrait;
 
     /**
-     * @var StripeProxy|\PHPUnit\Framework\MockObject\MockObject
+     * @var StripeClient|\PHPUnit\Framework\MockObject\MockObject
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     private $stripeChargeRepository;
 
@@ -38,11 +38,11 @@ class CancelPendingPaymentHandlerTest extends StripeWebTestCase
         self::bootKernel();
         $container = self::$kernel->getContainer();
 
-        $this->stripeProxy = $container->get('App\Utils\StripeProxy');
+        $this->stripeClient = $container->get('App\Service\StripeClient');
 
         $this->stripeChargeRepository = $container->get('doctrine')->getRepository(StripeCharge::class);
 
-        $this->handler = new CancelPendingPaymentHandler($this->stripeProxy, $this->stripeChargeRepository);
+        $this->handler = new CancelPendingPaymentHandler($this->stripeClient, $this->stripeChargeRepository);
 
         $logger = new NullLogger();
 

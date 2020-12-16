@@ -2,29 +2,29 @@
 
 namespace App\Repository;
 
-use App\Utils\StripeProxy;
+use App\Service\StripeClient;
 use Stripe\Account;
 use Stripe\StripeObject;
 
 class StripeAccountRepository
 {
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
-    public function __construct(StripeProxy $stripeProxy)
+    public function __construct(StripeClient $stripeClient)
     {
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
     }
 
     public function setManualPayout($stripeUserId): Account
     {
-        return $this->stripeProxy->updateAccount($stripeUserId, ['settings' => ['payouts' => ['schedule' => ['interval' => 'manual']]]]);
+        return $this->stripeClient->updateAccount($stripeUserId, ['settings' => ['payouts' => ['schedule' => ['interval' => 'manual']]]]);
     }
 
     public function findByCode(string $code): StripeObject
     {
-        return $this->stripeProxy->loginWithCode($code);
+        return $this->stripeClient->loginWithCode($code);
     }
 }

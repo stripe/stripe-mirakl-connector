@@ -4,8 +4,8 @@ namespace App\Handler;
 
 use App\Exception\InvalidStripeAccountException;
 use App\Message\AccountUpdateMessage;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Account;
@@ -30,14 +30,14 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
-    public function __construct(MiraklClient $miraklClient, StripeProxy $stripeProxy)
+    public function __construct(MiraklClient $miraklClient, StripeClient $stripeClient)
     {
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
     }
 
     public function __invoke(AccountUpdateMessage $message)
@@ -45,7 +45,7 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
         $messagePayload = $message->getContent()['payload'];
         $this->logger->info('Received Stripe `account.updated` webhook. Updating KYC status.', $messagePayload);
 
-        $stripeAccount = $this->stripeProxy->accountRetrieve($messagePayload['stripeUserId']);
+        $stripeAccount = $this->stripeClient->accountRetrieve($messagePayload['stripeUserId']);
 
         $this->miraklClient->patchShops([
             [

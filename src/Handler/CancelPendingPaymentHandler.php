@@ -5,7 +5,7 @@ namespace App\Handler;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
 use App\Repository\StripeChargeRepository;
-use App\Utils\StripeProxy;
+use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -21,15 +21,15 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
     private $stripeChargeRepository;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     public function __construct(
-        StripeProxy $stripeProxy,
+        StripeClient $stripeClient,
         StripeChargeRepository $stripeChargeRepository
     ) {
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->stripeChargeRepository = $stripeChargeRepository;
     }
 
@@ -46,7 +46,7 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
         }
 
         try {
-            $this->stripeProxy->cancelBeforeCapture($stripeCharge->getStripeChargeId(), $message->getAmount());
+            $this->stripeClient->cancelBeforeCapture($stripeCharge->getStripeChargeId(), $message->getAmount());
             $stripeCharge->cancel();
             $this->stripeChargeRepository->persistAndFlush($stripeCharge);
         } catch (ApiErrorException $e) {

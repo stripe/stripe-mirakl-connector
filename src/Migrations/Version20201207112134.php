@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace DoctrineMigrations;
 
 use Stripe\Stripe;
-use App\Utils\StripeProxy;
+use App\Service\StripeClient;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use Shivas\VersioningBundle\Service\VersionManager;
@@ -30,11 +30,10 @@ final class Version20201207112134 extends AbstractMigration implements Container
      */
     public function up(Schema $schema) : void
     {
-        // this up() migration is auto-generated, please modify it to your needs
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->connectStripe();
-        
+
         $this->addSql('ALTER TABLE stripe_charge ADD COLUMN stripe_amount INT');
         $this->fetchAndUpdateMissingAmounts();
         $this->addSql('ALTER TABLE stripe_charge ALTER COLUMN stripe_amount SET NOT NULL; ');
@@ -42,7 +41,6 @@ final class Version20201207112134 extends AbstractMigration implements Container
 
     public function down(Schema $schema) : void
     {
-        // this down() migration is auto-generated, please modify it to your needs
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE stripe_charge DROP COLUMN stripe_amount');
@@ -94,11 +92,11 @@ final class Version20201207112134 extends AbstractMigration implements Container
 
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(
-            StripeProxy::APP_NAME,
+            StripeClient::APP_NAME,
             $versionManager->getVersion()->__toString(),
-            StripeProxy::APP_REPO,
-            StripeProxy::APP_PARTNER_ID
+            StripeClient::APP_REPO,
+            StripeClient::APP_PARTNER_ID
         );
-        Stripe::setApiVersion(StripeProxy::APP_API_VERSION);
+        Stripe::setApiVersion(StripeClient::APP_API_VERSION);
     }
 }

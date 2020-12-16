@@ -9,8 +9,8 @@ use App\Message\ProcessRefundMessage;
 use App\Message\RefundFailedMessage;
 use App\Repository\StripeTransferRepository;
 use App\Repository\StripeRefundRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -31,9 +31,9 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripeTransferRepository
@@ -58,8 +58,8 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
         $application = new Application($kernel);
         $this->command = $application->find('messenger:setup-transports');
 
-        $this->miraklClient = $container->get('App\Utils\MiraklClient');
-        $this->stripeProxy = $container->get('App\Utils\StripeProxy');
+        $this->miraklClient = $container->get('App\Service\MiraklClient');
+        $this->stripeClient = $container->get('App\Service\StripeClient');
         $this->stripeTransferRepository = $container->get('doctrine')->getRepository(StripeTransfer::class);
         $this->stripeRefundRepository = $container->get('doctrine')->getRepository(StripeRefund::class);
         $this->messageBus = self::$container->get(MessageBusInterface::class);
@@ -67,7 +67,7 @@ class ProcessRefundHandlerIntegrationTest extends WebTestCase
 
         $this->handler = new ProcessRefundHandler(
             $this->miraklClient,
-            $this->stripeProxy,
+            $this->stripeClient,
             $this->stripeTransferRepository,
             $this->stripeRefundRepository,
             $this->messageBus

@@ -8,8 +8,9 @@ use App\Message\ProcessTransferMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\StripeChargeRepository;
 use App\Repository\StripeTransferRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\ConfigService;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -47,11 +48,6 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
     private $miraklClient;
 
     /**
-     * @var StripeTransferRepository
-     */
-    private $stripeTransferRepository;
-
-    /**
      * @var AccountMappingRepository
      */
     private $accountMappingRepository;
@@ -61,20 +57,33 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
      */
     private $stripeChargeRepository;
 
+    /**
+     * @var StripeTransferRepository
+     */
+    private $stripeTransferRepository;
+
+    /**
+     * @var ConfigService
+     */
+    private $configService;
+
     public function __construct(
         MessageBusInterface $bus,
         bool $enablesAutoTransferCreation,
         MiraklClient $miraklClient,
-        StripeTransferRepository $stripeTransferRepository,
         AccountMappingRepository $accountMappingRepository,
-        StripeChargeRepository $stripeChargeRepository
+        StripeChargeRepository $stripeChargeRepository,
+        StripeTransferRepository $stripeTransferRepository,
+        ConfigService $configService
     ) {
         $this->bus = $bus;
         $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
         $this->miraklClient = $miraklClient;
-        $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->configService = $configService;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->stripeChargeRepository = $stripeChargeRepository;
+        $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->configService = $configService;
         parent::__construct();
     }
 
@@ -92,41 +101,44 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
             return 0;
         }
 
-        // getArgument should never return a string when using InputArgument::IS_ARRAY
-        $miraklOrderIds = $input->getArgument('mirakl_order_ids');
-        assert(null === $miraklOrderIds || is_array($miraklOrderIds));
+        // Order IDs passed as argument
+        $orderIds = $input->getArgument('mirakl_order_ids');
+        assert(null === $orderIds || is_array($orderIds));
 
-        if (null !== $miraklOrderIds && count($miraklOrderIds) > 0) {
-            $this->logger->info(
-                'Executing with specific orders',
-                [ 'order_ids' => $miraklOrderIds ]
-            );
-            $miraklOrders = $this->miraklClient->listOrdersById($miraklOrderIds);
-        } else {
-            $lastMiraklUpdateTime = $this->stripeTransferRepository->getLastMiraklUpdateTime();
+        if (null !== $orderIds && count($orderIds) > 0) {
+            $this->logger->info('Executing for orders', [ 'order_ids' => $orderIds ]);
+            $miraklOrders = $this->miraklClient->listOrdersById($orderIds);
 
-            if (null !== $lastMiraklUpdateTime) {
-                $this->logger->info(
-                    'Executing for recent orders',
-                    [ 'since' => $lastMiraklUpdateTime->format(MiraklClient::DATE_FORMAT) ]
-                );
-                $miraklOrders = $this->miraklClient->listOrdersByDate($lastMiraklUpdateTime);
+            $transfers = $this->prepareTransfers($miraklOrders);
+            $this->dispatchTransfers($transfers);
 
-                // add failed mirakl orders older than $lastMiraklUpdateTime
-                $failedOrderIds = $this->stripeTransferRepository->getMiraklOrderIdFailTransfersBefore($lastMiraklUpdateTime);
-                if (! empty($failedOrderIds)) {
-                    $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderIds);
-                    $miraklOrders = array_merge($miraklOrders, $miraklFailedTransferOrders);
-                }
-            } else {
-                $this->logger->info('Executing for all orders');
-                $miraklOrders = $this->miraklClient->listOrders();
+            return 0;
+        }
+
+        // No order IDs passed as argument, fetch by date
+        $checkpoint = $this->configService->getProcessTransferCheckpoint();
+        if ($checkpoint) {
+            $this->logger->info('Executing for recent orders, checkpoint: ' . $checkpoint);
+            $miraklOrders = $this->miraklClient->listOrdersByDate($checkpoint);
+
+            // add failed mirakl orders older than $lastFetch
+            $failedOrderIds = $this->stripeTransferRepository->getFailedOrderIDs($checkpoint);
+            if (!empty($failedOrderIds)) {
+                $miraklFailedTransferOrders = $this->miraklClient->listOrdersById($failedOrderIds);
+                $miraklOrders = array_merge($miraklOrders, $miraklFailedTransferOrders);
             }
+        } else {
+            $this->logger->info('Executing for all orders');
+            $miraklOrders = $this->miraklClient->listOrders();
         }
 
         if (count($miraklOrders) > 0) {
             $transfers = $this->prepareTransfers($miraklOrders);
             $this->dispatchTransfers($transfers);
+
+            // TODO: After merging failed transfers this can be wrong
+            $lastOrder = $miraklOrders[count($miraklOrders) - 1];
+            $this->configService->setProcessTransferCheckpoint($lastOrder['last_updated_date']);
         }
 
         return 0;
@@ -259,20 +271,6 @@ class ProcessTransferCommand extends Command implements LoggerAwareInterface
             $failedReason .= ' '.sprintf('Cannot find Stripe account for Seller ID %s', $shopId);
         } else {
             $transfer->setAccountMapping($mapping);
-        }
-
-        // Mirakl update time
-        $miraklUpdateTime = \DateTime::createFromFormat(
-            MiraklClient::DATE_FORMAT,
-            $miraklOrder['last_updated_date']
-        );
-
-        if (!$miraklUpdateTime) {
-            $failed = true;
-            $failedReason .= ' '.sprintf('Cannot parse last_updated_date %s', $miraklOrder['last_updated_date']);
-            $transfer->setMiraklUpdateTime(new \DateTime('2000-01-01')); // can't be null
-        } else {
-            $transfer->setMiraklUpdateTime($miraklUpdateTime);
         }
 
         if ($failed) {

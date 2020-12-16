@@ -7,8 +7,8 @@ use App\Handler\ProcessPayoutHandler;
 use App\Message\PayoutFailedMessage;
 use App\Message\ProcessPayoutMessage;
 use App\Repository\StripePayoutRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -29,9 +29,9 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripePayoutRepository
@@ -51,15 +51,15 @@ class ProcessPayoutsHandlerIntegrationTest extends WebTestCase
         $application = new Application($kernel);
         $this->command = $application->find('messenger:setup-transports');
 
-        $this->miraklClient = $container->get('App\Utils\MiraklClient');
-        $this->stripeProxy = $container->get('App\Utils\StripeProxy');
+        $this->miraklClient = $container->get('App\Service\MiraklClient');
+        $this->stripeClient = $container->get('App\Service\StripeClient');
         $this->stripePayoutRepository = $container->get('doctrine')->getRepository(StripePayout::class);
         $this->messageBus = self::$container->get(MessageBusInterface::class);
         $this->httpNotificationReceiver = self::$container->get('messenger.transport.operator_http_notification');
 
         $this->handler = new ProcessPayoutHandler(
             $this->miraklClient,
-            $this->stripeProxy,
+            $this->stripeClient,
             $this->stripePayoutRepository,
             $this->messageBus
         );

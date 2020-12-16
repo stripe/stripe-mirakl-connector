@@ -6,7 +6,7 @@ use App\Entity\StripeCharge;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\StripeChargeRepository;
-use App\Utils\StripeProxy;
+use App\Service\StripeClient;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\ORMException;
 use Psr\Log\LoggerAwareInterface;
@@ -47,9 +47,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private $bus;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var AccountMappingRepository
@@ -68,13 +68,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
     public function __construct(
         MessageBusInterface $bus,
-        StripeProxy $stripeProxy,
+        StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
         StripeChargeRepository $stripeChargeRepository,
         string $metadataOrderIdFieldName
     ) {
         $this->bus = $bus;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->stripeChargeRepository = $stripeChargeRepository;
         $this->metadataOrderIdFieldName = $metadataOrderIdFieldName;
@@ -157,7 +157,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     protected function handleStripeWebhook($payload, string $signatureHeader, bool $isOperatorWebhook): Response
     {
         try {
-            $event = $this->stripeProxy->webhookConstructEvent($payload, $signatureHeader, $isOperatorWebhook);
+            $event = $this->stripeClient->webhookConstructEvent($payload, $signatureHeader, $isOperatorWebhook);
         } catch (\UnexpectedValueException $e) {
             $this->logger->error('Invalid payload');
 
@@ -306,7 +306,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         if (!$paymentIntent instanceof \Stripe\PaymentIntent) {
-            $paymentIntent = $this->stripeProxy->paymentIntentRetrieve($paymentIntent);
+            $paymentIntent = $this->stripeClient->paymentIntentRetrieve($paymentIntent);
         }
 
         return $paymentIntent['metadata'][$this->metadataOrderIdFieldName] ?? null;

@@ -7,8 +7,8 @@ use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
 use App\Handler\UpdateKYCStatusHandler;
 use App\Message\AccountUpdateMessage;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Stripe\Account;
@@ -21,9 +21,9 @@ class UpdateKYCStatusHandlerTest extends TestCase
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var MiraklPatchShopFactory
@@ -38,9 +38,9 @@ class UpdateKYCStatusHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->miraklClient = $this->createMock(MiraklClient::class);
-        $this->stripeProxy = $this->createMock(StripeProxy::class);
+        $this->stripeClient = $this->createMock(StripeClient::class);
 
-        $this->handler = new UpdateKYCStatusHandler($this->miraklClient, $this->stripeProxy);
+        $this->handler = new UpdateKYCStatusHandler($this->miraklClient, $this->stripeClient);
 
         $logger = new NullLogger();
 
@@ -57,7 +57,7 @@ class UpdateKYCStatusHandlerTest extends TestCase
         $stripeAccount->payouts_enabled = $payoutEnabled;
         $stripeAccount->charges_enabled = $chargesEnabled;
 
-        $this->stripeProxy
+        $this->stripeClient
             ->expects($this->once())
             ->method('accountRetrieve')
             ->with('acct_valid')
@@ -155,7 +155,7 @@ class UpdateKYCStatusHandlerTest extends TestCase
         $stripeAccount->payouts_enabled = $payoutEnabled;
         $stripeAccount->charges_enabled = $chargesEnabled;
 
-        $this->stripeProxy
+        $this->stripeClient
             ->expects($this->once())
             ->method('accountRetrieve')
             ->with('acct_invalid')

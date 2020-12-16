@@ -8,7 +8,7 @@ use App\Entity\StripeCharge;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\StripeChargeRepository;
-use App\Utils\StripeProxy;
+use App\Service\StripeClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
@@ -39,9 +39,9 @@ class StripeWebhookEndpointTest extends TestCase
     protected $stripeChargeRepository;
 
     /**
-     * @var StripeProxy|\PHPUnit\Framework\MockObject\MockObject
+     * @var StripeClient|\PHPUnit\Framework\MockObject\MockObject
      */
-    protected $stripeProxy;
+    protected $stripeClient;
 
     /**
      * @var string
@@ -56,7 +56,7 @@ class StripeWebhookEndpointTest extends TestCase
             ->setMethods(['dispatch'])
             ->getMock();
 
-        $this->stripeProxy = $this->createMock(StripeProxy::class);
+        $this->stripeClient = $this->createMock(StripeClient::class);
 
         $this->accountMappingRepository = $this->getMockBuilder(AccountMappingRepository::class)
             ->disableOriginalConstructor()
@@ -72,7 +72,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $this->controller = new StripeWebhookEndpoint(
             $this->bus,
-            $this->stripeProxy,
+            $this->stripeClient,
             $this->accountMappingRepository,
             $this->stripeChargeRepository,
             $this->metadataOrderIdFieldName
@@ -95,7 +95,7 @@ class StripeWebhookEndpointTest extends TestCase
         );
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -121,7 +121,7 @@ class StripeWebhookEndpointTest extends TestCase
         );
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -160,7 +160,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -199,7 +199,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -246,7 +246,7 @@ class StripeWebhookEndpointTest extends TestCase
         $dispatchedMessage = new AccountUpdateMessage($miraklShopId, $stripeAccountId);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, 'validSignature')
@@ -310,7 +310,7 @@ class StripeWebhookEndpointTest extends TestCase
         $dispatchedMessage = new AccountUpdateMessage($miraklShopId, $stripeAccountId);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, 'validSignature')
@@ -374,7 +374,7 @@ class StripeWebhookEndpointTest extends TestCase
         $dispatchedMessage = new AccountUpdateMessage($miraklShopId, $stripeAccountId);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, 'validSignature')
@@ -436,7 +436,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -478,7 +478,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -521,7 +521,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -564,7 +564,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -608,7 +608,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -653,7 +653,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -722,7 +722,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -794,13 +794,13 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
             ->willReturn($expectedEvent);
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('paymentIntentRetrieve')
             ->with($stripePaymentIntentId)
@@ -864,7 +864,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -929,7 +929,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)
@@ -985,7 +985,7 @@ class StripeWebhookEndpointTest extends TestCase
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
         $this
-            ->stripeProxy
+            ->stripeClient
             ->expects($this->once())
             ->method('webhookConstructEvent')
             ->with($payload, $signature)

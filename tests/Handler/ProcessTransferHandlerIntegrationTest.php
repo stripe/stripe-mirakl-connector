@@ -7,8 +7,8 @@ use App\Handler\ProcessTransferHandler;
 use App\Message\ProcessTransferMessage;
 use App\Message\TransferFailedMessage;
 use App\Repository\StripeTransferRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -29,9 +29,9 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripeTransferRepository
@@ -51,15 +51,15 @@ class ProcessTransferHandlerIntegrationTest extends WebTestCase
         $application = new Application($kernel);
         $this->command = $application->find('messenger:setup-transports');
 
-        $this->miraklClient = $container->get('App\Utils\MiraklClient');
-        $this->stripeProxy = $container->get('App\Utils\StripeProxy');
+        $this->miraklClient = $container->get('App\Service\MiraklClient');
+        $this->stripeClient = $container->get('App\Service\StripeClient');
         $this->stripeTransferRepository = $container->get('doctrine')->getRepository(StripeTransfer::class);
         $this->messageBus = self::$container->get(MessageBusInterface::class);
         $this->httpNotificationReceiver = self::$container->get('messenger.transport.operator_http_notification');
 
         $this->handler = new ProcessTransferHandler(
             $this->miraklClient,
-            $this->stripeProxy,
+            $this->stripeClient,
             $this->stripeTransferRepository,
             $this->messageBus
         );

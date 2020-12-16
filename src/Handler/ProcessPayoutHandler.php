@@ -5,8 +5,8 @@ namespace App\Handler;
 use App\Entity\StripePayout;
 use App\Message\ProcessPayoutMessage;
 use App\Repository\StripePayoutRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -22,9 +22,9 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripePayoutRepository
@@ -33,11 +33,11 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
 
     public function __construct(
         MiraklClient $miraklClient,
-        StripeProxy $stripeProxy,
+        StripeClient $stripeClient,
         StripePayoutRepository $stripePayoutRepository
     ) {
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->stripePayoutRepository = $stripePayoutRepository;
     }
 
@@ -73,7 +73,7 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
         $invoiceId = $stripePayout->getMiraklInvoiceId();
 
         try {
-            $response = $this->stripeProxy->createPayout($currency, $amount, $stripeAccountId, [
+            $response = $this->stripeClient->createPayout($currency, $amount, $stripeAccountId, [
                 'miraklShopId' => $accountMapping->getMiraklShopId(),
                 'invoiceId' => $invoiceId,
             ]);

@@ -5,7 +5,7 @@ namespace App\Command;
 use App\Entity\StripeRefund;
 use App\Message\ProcessRefundMessage;
 use App\Repository\StripeRefundRepository;
-use App\Utils\MiraklClient;
+use App\Service\MiraklClient;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;

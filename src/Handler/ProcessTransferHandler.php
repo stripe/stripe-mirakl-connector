@@ -5,8 +5,8 @@ namespace App\Handler;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
 use App\Repository\StripeTransferRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -22,9 +22,9 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripeTransferRepository
@@ -33,11 +33,11 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
 
     public function __construct(
         MiraklClient $miraklClient,
-        StripeProxy $stripeProxy,
+        StripeClient $stripeClient,
         StripeTransferRepository $stripeTransferRepository
     ) {
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
     }
 
@@ -86,7 +86,7 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                 StripeTransfer::TRANSFER_SUBSCRIPTION,
             ]);
             $transactionId = $stripeTransfer->getTransactionId();
-            $response = $this->stripeProxy->createTransfer($currency, $amount, $stripeAccountId, $transactionId, $metadata, $fromConnectedAccount);
+            $response = $this->stripeClient->createTransfer($currency, $amount, $stripeAccountId, $transactionId, $metadata, $fromConnectedAccount);
             $transferId = $response->id;
             $stripeTransfer
                 ->setStatus(StripeTransfer::TRANSFER_CREATED)

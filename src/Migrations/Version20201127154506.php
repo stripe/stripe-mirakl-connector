@@ -11,9 +11,6 @@ use Stripe\Stripe;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
-/**
- * Auto-generated Migration: Please modify to your needs!
- */
 final class Version20201127154506 extends AbstractMigration implements ContainerAwareInterface
 {
     private const APP_NAME = 'MiraklConnector';

@@ -8,8 +8,8 @@ use App\Exception\RefundProcessException;
 use App\Message\ProcessRefundMessage;
 use App\Repository\StripeTransferRepository;
 use App\Repository\StripeRefundRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -26,9 +26,9 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripeTransferRepository
@@ -42,12 +42,12 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
 
     public function __construct(
         MiraklClient $miraklClient,
-        StripeProxy $stripeProxy,
+        StripeClient $stripeClient,
         StripeTransferRepository $stripeTransferRepository,
         StripeRefundRepository $stripeRefundRepository
     ) {
         $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->stripeRefundRepository = $stripeRefundRepository;
     }
@@ -126,7 +126,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         // Make the refund in stripe
         try {
             $metadata = ['miraklRefundId' => $refund->getMiraklRefundId()];
-            $response = $this->stripeProxy->createRefund($refund->getAmount(), $transfer->getTransactionId(), $metadata);
+            $response = $this->stripeClient->createRefund($refund->getAmount(), $transfer->getTransactionId(), $metadata);
             $refund->setStripeRefundId($response->id);
         } catch (ApiErrorException $e) {
             throw new \App\Exception\RefundProcessException(sprintf('Could not create refund in stripe: %s', $e->getMessage()));
@@ -154,7 +154,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         // Make the reverse transfer in stripe
         try {
             $metadata = ['miraklRefundId' => $refund->getMiraklRefundId()];
-            $response = $this->stripeProxy->reverseTransfer($refund->getAmount() - $refund->getCommission(), $transfer->getTransferId(), $metadata);
+            $response = $this->stripeClient->reverseTransfer($refund->getAmount() - $refund->getCommission(), $transfer->getTransferId(), $metadata);
             $refund->setStripeReversalId($response->id);
         } catch (ApiErrorException $e) {
             throw new \App\Exception\RefundProcessException(sprintf('Could not create reversal in stripe: %s', $e->getMessage()));
@@ -163,7 +163,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
 
     private function isRefundAlreadyPresentInStripe(StripeTransfer $transfer, ?string $miraklRefundId)
     {
-        $refunds = $this->stripeProxy->listRefunds($transfer->getTransactionId());
+        $refunds = $this->stripeClient->listRefunds($transfer->getTransactionId());
         $miraklRefundIds = array_map(
             function ($item) {
                 return $item->metadata['miraklRefundId'];
@@ -176,7 +176,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
 
     private function isReversalAlreadyPresentInStripe(StripeTransfer $transfer, ?string $miraklRefundId)
     {
-        $reversals = $this->stripeProxy->listReversals($transfer->getTransferId());
+        $reversals = $this->stripeClient->listReversals($transfer->getTransferId());
         $miraklRefundIds = array_map(
             function ($item) {
                 return $item->metadata['miraklRefundId'];

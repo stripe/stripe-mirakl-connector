@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Utils;
+namespace App\Service;
 
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -20,7 +20,7 @@ use Stripe\PaymentIntent;
  *
  * @codeCoverageIgnore
  */
-class StripeProxy implements LoggerAwareInterface
+class StripeClient implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
