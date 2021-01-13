@@ -20,7 +20,6 @@ before_install:
 
 script:
   - make phpstan;
-  - make php-cs-fixer-check;
   - make ci-phpunit;
 
 after_script: ./vendor/bin/php-coveralls -v

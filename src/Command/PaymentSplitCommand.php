@@ -113,9 +113,9 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         foreach ($chunks as $chunk) {
             $this->dispatchTransfers(
                 $this->paymentSplitService->updateTransfersFromOrders(
-                                    $chunk,
-                                    $this->miraklClient->listOrdersById(array_keys($chunk))
-                                )
+                    $chunk,
+                    $this->miraklClient->listOrdersById(array_keys($chunk))
+                )
             );
         }
     }
