@@ -34,18 +34,18 @@ class ConfigServiceTest extends KernelTestCase
 
     public function testGetValue()
     {
-        $val = $this->configService->getProcessTransferCheckpoint();
+        $val = $this->configService->getPaymentSplitCheckpoint();
         $this->assertEquals(null, $val);
     }
 
     public function testUpdateValue()
     {
-        $this->configService->setProcessTransferCheckpoint('2000-01-01');
-        $val = $this->configService->getProcessTransferCheckpoint();
+        $this->configService->setPaymentSplitCheckpoint('2000-01-01');
+        $val = $this->configService->getPaymentSplitCheckpoint();
         $this->assertEquals('2000-01-01', $val);
 
-        $this->configService->setProcessTransferCheckpoint('2001-01-01');
-        $val = $this->configService->getProcessTransferCheckpoint();
+        $this->configService->setPaymentSplitCheckpoint('2001-01-01');
+        $val = $this->configService->getPaymentSplitCheckpoint();
         $this->assertEquals('2001-01-01', $val);
     }
 }

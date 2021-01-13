@@ -2,8 +2,9 @@
 
 namespace App\Handler;
 
+use App\Entity\PaymentMapping;
 use App\Message\CapturePendingPaymentMessage;
-use App\Repository\StripeChargeRepository;
+use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -15,9 +16,9 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
     use LoggerAwareTrait;
 
     /**
-     * @var StripeChargeRepository
+     * @var PaymentMappingRepository
      */
-    private $stripeChargeRepository;
+    private $paymentMappingRepository;
 
     /**
      * @var StripeClient
@@ -26,31 +27,31 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
 
     public function __construct(
         StripeClient $stripeClient,
-        StripeChargeRepository $stripeChargeRepository
+        PaymentMappingRepository $paymentMappingRepository
     ) {
         $this->stripeClient = $stripeClient;
-        $this->stripeChargeRepository = $stripeChargeRepository;
+        $this->paymentMappingRepository = $paymentMappingRepository;
     }
 
     public function __invoke(CapturePendingPaymentMessage $message)
     {
-        $stripeChargeId = $message->getstripeChargeId();
-
-        $stripeCharge = $this->stripeChargeRepository->findOneBy([
-            'id' => $stripeChargeId,
+        $paymentMapping = $this->paymentMappingRepository->findOneBy([
+            'id' => $message->getPaymentMappingId(),
         ]);
-
-        if (null === $stripeCharge) {
-            return;
-        }
+        assert(null !== $paymentMapping);
+        assert(PaymentMapping::TO_CAPTURE === $paymentMapping->getStatus());
 
         try {
-            $this->stripeClient->capture($stripeCharge->getStripeChargeId(), $message->getAmount());
-            $stripeCharge->capture();
-            $this->stripeChargeRepository->persistAndFlush($stripeCharge);
+            $this->stripeClient->capturePayment(
+                $paymentMapping->getStripeChargeId(),
+                $message->getAmount()
+            );
+
+            $paymentMapping->capture();
+            $this->paymentMappingRepository->persistAndFlush($paymentMapping);
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not capture Stripe Charge: %s.', $e->getMessage()), [
-                'chargeId' => $stripeCharge->getStripeChargeId(),
+                'chargeId' => $paymentMapping->getStripeChargeId(),
                 'amount' => $message->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);

@@ -29,9 +29,10 @@ class PayoutFailedMessage implements NotifiableMessageInterface
                 'amount' => $payout->getAmount(),
                 'currency' => $payout->getCurrency(),
                 'miraklInvoiceId' => $payout->getMiraklInvoiceId(),
-                'stripePayoutId' => $payout->getStripePayoutId(),
+                'stripePayoutId' => $payout->getPayoutId(),
+                'payoutId' => $payout->getPayoutId(),
                 'status' => $payout->getStatus(),
-                'failedReason' => $payout->getFailedReason(),
+                'failedReason' => $payout->getStatusReason(),
             ],
         ];
     }

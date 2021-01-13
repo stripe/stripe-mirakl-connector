@@ -2,7 +2,7 @@
 
 namespace App\Tests\Handler;
 
-use App\Entity\StripeCharge;
+use App\Entity\PaymentMapping;
 use App\Exception\InvalidStripeAccountException;
 use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
@@ -34,16 +34,19 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $this->miraklClient = $this->createMock(MiraklClient::class);
 
         $this->handler = new ValidateMiraklOrderHandler($this->miraklClient);
-
-        $logger = new NullLogger();
-
-        $this->handler->setLogger($logger);
+        $this->handler->setLogger(new NullLogger());
     }
 
+    private function executeHandler($orders, $paymentMappings)
+    {
+				($this->handler)(new ValidateMiraklOrderMessage(
+						$orders,
+						$paymentMappings
+				));
+    }
 
     public function testNominalExecute()
     {
-
         $orders = [
             'Order_66' => [
                 'Order_66-A' => [
@@ -59,42 +62,36 @@ class ValidateMiraklOrderHandlerTest extends TestCase
             ]
         ];
 
-        $stripePayment = new StripeCharge();
-        $stripePayment
+        $paymentMapping = new PaymentMapping();
+        $paymentMapping
             ->setStripeChargeId('pi_valid')
             ->setMiraklOrderId('Order_66');
 
-        $stripePayments = ['Order_66' => $stripePayment];
+        $paymentMappings = ['Order_66' => $paymentMapping];
 
         $this
             ->miraklClient
             ->expects($this->once())
              ->method('validatePayments');
 
-        $message = new ValidateMiraklOrderMessage($orders, $stripePayments);
-
-        $handler = $this->handler;
-        $handler($message);
+        $this->executeHandler($orders, $paymentMappings);
     }
 
     public function testWithNoOrders()
     {
-        $stripePayment = new StripeCharge();
-        $stripePayment
+        $paymentMapping = new PaymentMapping();
+        $paymentMapping
             ->setStripeChargeId('pi_valid')
             ->setMiraklOrderId('Order_66');
 
-        $stripePayments = ['Order_66' => $stripePayment];
+        $paymentMappings = ['Order_66' => $paymentMapping];
 
         $this
             ->miraklClient
             ->expects($this->never())
             ->method('validatePayments');
 
-        $message = new ValidateMiraklOrderMessage([], $stripePayments);
-
-        $handler = $this->handler;
-        $handler($message);
+        $this->executeHandler([], $paymentMappings);
     }
 
 }

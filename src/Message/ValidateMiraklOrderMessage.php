@@ -2,7 +2,7 @@
 
 namespace App\Message;
 
-use App\Entity\StripeCharge;
+use App\Entity\PaymentMapping;
 
 class ValidateMiraklOrderMessage
 {
@@ -12,14 +12,14 @@ class ValidateMiraklOrderMessage
     private $orders;
 
     /**
-     * @var StripeCharge[]
+     * @var PaymentMapping[]
      */
-    private $stripePayments;
+    private $paymentMappings;
 
-    public function __construct(array $orders, array $stripePayments)
+    public function __construct(array $orders, array $paymentMappings)
     {
         $this->orders = $orders;
-        $this->stripePayments = $stripePayments;
+        $this->paymentMappings = $paymentMappings;
     }
 
     /**
@@ -31,10 +31,10 @@ class ValidateMiraklOrderMessage
     }
 
     /**
-     * @return StripeCharge[]
+     * @return PaymentMapping[]
      */
-    public function getStripePayments(): array
+    public function getPaymentMappings(): array
     {
-        return $this->stripePayments;
+        return $this->paymentMappings;
     }
 }

@@ -7,15 +7,15 @@ class ProcessRefundMessage
     /**
      * @var string
      */
-    private $miraklRefundId;
+    private $stripeRefundId;
 
-    public function __construct(string $miraklRefundId)
+    public function __construct(string $stripeRefundId)
     {
-        $this->miraklRefundId = $miraklRefundId;
+        $this->stripeRefundId = $stripeRefundId;
     }
 
-    public function geMiraklRefundId(): string
+    public function getStripeRefundId(): string
     {
-        return $this->miraklRefundId;
+        return $this->stripeRefundId;
     }
 }

@@ -2,10 +2,10 @@
 
 namespace App\Controller;
 
-use App\Entity\StripeCharge;
+use App\Entity\PaymentMapping;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
-use App\Repository\StripeChargeRepository;
+use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\ORMException;
@@ -57,9 +57,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private $accountMappingRepository;
 
     /**
-     * @var StripeChargeRepository
+     * @var PaymentMappingRepository
      */
-    private $stripeChargeRepository;
+    private $paymentMappingRepository;
 
     /**
      * @var string
@@ -70,13 +70,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         MessageBusInterface $bus,
         StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
-        StripeChargeRepository $stripeChargeRepository,
+        PaymentMappingRepository $paymentMappingRepository,
         string $metadataOrderIdFieldName
     ) {
         $this->bus = $bus;
         $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
-        $this->stripeChargeRepository = $stripeChargeRepository;
+        $this->paymentMappingRepository = $paymentMappingRepository;
         $this->metadataOrderIdFieldName = $metadataOrderIdFieldName;
     }
 
@@ -276,10 +276,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeChargeId = $stripeCharge['id'];
         $stripeAmount = $stripeCharge['amount'];
 
-        $stripeCharge = $this->stripeChargeRepository->findOneByStripeChargeId($stripeChargeId);
+        $stripeCharge = $this->paymentMappingRepository->findOneByStripeChargeId($stripeChargeId);
 
         if (!$stripeCharge) {
-            $stripeCharge = new StripeCharge();
+            $stripeCharge = new PaymentMapping();
             $stripeCharge
                 ->setStripeChargeId($stripeChargeId)
                 ->setStripeAmount($stripeAmount);
@@ -288,7 +288,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeCharge->setMiraklOrderId($miraklOrderId);
 
         try {
-            $this->stripeChargeRepository->persistAndFlush($stripeCharge);
+            $this->paymentMappingRepository->persistAndFlush($stripeCharge);
         } catch (UniqueConstraintViolationException $e) {
             // in case of concurrency
         }

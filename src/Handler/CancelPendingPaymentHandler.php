@@ -2,9 +2,10 @@
 
 namespace App\Handler;
 
+use App\Entity\PaymentMapping;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
-use App\Repository\StripeChargeRepository;
+use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -16,9 +17,9 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
     use LoggerAwareTrait;
 
     /**
-     * @var StripeChargeRepository
+     * @var PaymentMappingRepository
      */
-    private $stripeChargeRepository;
+    private $paymentMappingRepository;
 
     /**
      * @var StripeClient
@@ -27,32 +28,27 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
 
     public function __construct(
         StripeClient $stripeClient,
-        StripeChargeRepository $stripeChargeRepository
+        PaymentMappingRepository $paymentMappingRepository
     ) {
         $this->stripeClient = $stripeClient;
-        $this->stripeChargeRepository = $stripeChargeRepository;
+        $this->paymentMappingRepository = $paymentMappingRepository;
     }
 
     public function __invoke(CancelPendingPaymentMessage $message)
     {
-        $stripeChargeId = $message->getstripeChargeId();
-
-        $stripeCharge = $this->stripeChargeRepository->findOneBy([
-            'id' => $stripeChargeId,
+        $paymentMapping = $this->paymentMappingRepository->findOneBy([
+            'id' => $message->getPaymentMappingId(),
         ]);
-
-        if (null === $stripeCharge) {
-            return;
-        }
+        assert(null !== $paymentMapping);
+        assert(PaymentMapping::TO_CAPTURE === $paymentMapping->getStatus());
 
         try {
-            $this->stripeClient->cancelBeforeCapture($stripeCharge->getStripeChargeId(), $message->getAmount());
-            $stripeCharge->cancel();
-            $this->stripeChargeRepository->persistAndFlush($stripeCharge);
+            $this->stripeClient->cancelPayment($paymentMapping->getStripeChargeId());
+            $paymentMapping->cancel();
+            $this->paymentMappingRepository->flush();
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not cancel Stripe Charge: %s.', $e->getMessage()), [
-                'chargeId' => $stripeCharge->getStripeChargeId(),
-                'amount' => $message->getAmount(),
+                'chargeId' => $paymentMapping->getStripeChargeId(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);
         }

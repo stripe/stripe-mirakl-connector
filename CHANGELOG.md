@@ -1,10 +1,19 @@
 # Changelog
 
+- Version 2.0.0
+    - Added Config entity to store payment split and seller settlement workflows checkpoints
+		- Processes waiting on a dependency are now "on hold" instead of failing and triggering an alert, e.g. attempting to split a payment still pending used to trigger an error/alert, we now wait for it to be successful.
+		- Breaking changes to resources exposed by the connector API:
+		    - Resource: renamed `StripeCharge` entity to `PaymentMapping`
+		    - Resource: removed `TRANSFER_INVALID_AMOUNT` status from `StripeTransfer`
+		    - Resource: added `*_ABORTED` and `*_ON_HOLD` statuses to `StripeTransfer`, `StripePayout` and `StripeRefund`
+				- Notification: `stripePayoutId` in the `payout.failed` notification has been deprecated in favor of `payoutId`
+
 - Version 1.2.7
     - Fixed capture flow when using PaymentIntents (#46)
 
 - Version 1.2.6
-    - Rename sequence to match code naming (#45)
+    - Renamed sequence to match code naming (#45)
     - Fixed incorrect method call in webhook controller (#43 thanks @christophersjchow)
     - Improve compatibility with hybrid orders in capture flow (#42)
 

@@ -1,7 +1,0 @@
-App\Entity\OnboardingAccount:
-    onboarding_account_{1..10}:
-        mirakl_shop_id: '<current()>'
-        stripe_state: '<uuid()>'
-    onboarding_account_11:
-        mirakl_shop_id: '11'
-        stripe_state: 'state_11'

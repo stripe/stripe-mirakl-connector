@@ -26,31 +26,28 @@ class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAware
 
     public function __invoke(ValidateMiraklOrderMessage $message)
     {
-        $ordersToValidate = $message->getOrders();
+        $ordersByCommercialId = $message->getOrders();
 
-        if (empty($ordersToValidate)) {
+        if (empty($ordersByCommercialId)) {
             return;
         }
 
-        $stripePayment = $message->getStripePayments();
-
         // Prepare order for validation
         $orders = [];
-        foreach ($ordersToValidate as $commercialOder => $orderToValidate) {
-            $transactionNumber = $stripePayment[$commercialOder]->getStripeChargeId();
-            foreach ($orderToValidate as $order) {
+        $paymentMappings = $message->getPaymentMappings();
+        foreach ($ordersByCommercialId as $commercialId => $ordersById) {
+            foreach ($ordersById as $order) {
                 $orders[] = [
                     'amount' => $order['amount'],
-                    'order_id' => $order['order_id'],
                     'customer_id' => $order['customer_id'],
+                    'order_id' => $order['order_id'],
                     'payment_status' => 'OK',
-                    'transaction_number' => $transactionNumber,
+                    'transaction_number' => $paymentMappings[$commercialId]->getStripeChargeId()
                 ];
             }
         }
 
-        $nbOrders = count($orders);
-        $this->logger->info("Validate {$nbOrders} Mirakl order(s)");
+        $this->logger->info('Validate ' . count($orders) . ' Mirakl order(s)');
         $this->miraklClient->validatePayments($orders);
     }
 }

@@ -2,8 +2,6 @@
 
 namespace App\Service;
 
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
 use Shivas\VersioningBundle\Service\VersionManager;
 use Stripe\Exception\ApiErrorException;
 use Stripe\HttpClient\ClientInterface;
@@ -16,13 +14,10 @@ use Stripe\LoginLink;
 use Stripe\PaymentIntent;
 
 /**
- * Separated (and public) methods for test purposes, as it is not possible to mock static calls.
- *
  * @codeCoverageIgnore
  */
-class StripeClient implements LoggerAwareInterface
+class StripeClient
 {
-    use LoggerAwareTrait;
 
     /**
      * @var string
@@ -64,6 +59,17 @@ class StripeClient implements LoggerAwareInterface
         ];
     }
 
+    // Account
+    public function accountRetrieve(string $stripeUserId): Account
+    {
+        return \Stripe\Account::retrieve($stripeUserId);
+    }
+
+    public function accountCreateLoginLink(string $stripeUserId): LoginLink
+    {
+        return \Stripe\Account::createLoginLink($stripeUserId);
+    }
+
     // OAUTH
     public function loginWithCode(string $code): StripeObject
     {
@@ -73,28 +79,19 @@ class StripeClient implements LoggerAwareInterface
         ]);
     }
 
-    // Account
-    public function accountRetrieve(string $stripeUserId): Account
+    public function setPayoutToManual(string $stripeAccountId): Account
     {
-        $this->logger->info('[Stripe API] Call to \Stripe\Account::retrieve', [
-            'stripeUserId' => $stripeUserId,
-        ]);
+        $params = [
+            'settings' => [
+                'payouts' => [
+                    'schedule' => [
+                        'interval' => 'manual'
+                    ]
+                ]
+            ]
+        ];
 
-        return \Stripe\Account::retrieve($stripeUserId);
-    }
-
-    public function accountCreateLoginLink(string $stripeUserId): LoginLink
-    {
-        return \Stripe\Account::createLoginLink($stripeUserId);
-    }
-
-    public function updateAccount(string $stripeUserId, array $params = []): Account
-    {
-        $this->logger->info('[Stripe API] Call to \Stripe\Account::update', [
-            'stripeUserId' => $stripeUserId,
-        ]);
-
-        return \Stripe\Account::update($stripeUserId, $params);
+        return \Stripe\Account::update($stripeAccountId, $params);
     }
 
     // Signature
@@ -115,87 +112,58 @@ class StripeClient implements LoggerAwareInterface
     }
 
     // Transfer
-    public function createTransfer(string $currency, int $amount, ?string $stripeConnectedAccountId, ?string $transactionId, array $metadata = [], bool $fromConnectedAccount = false)
+    public function createTransfer(string $currency, int $amount, string $accountId, ?string $chargeId, array $metadata = [])
     {
-        $mergedMetadata = array_merge($metadata, $this->getDefaultMetadata());
-        $params = [
+        return \Stripe\Transfer::create([
             'currency' => $currency,
             'amount' => $amount,
-            'metadata' => $mergedMetadata,
-        ];
-        $options = [];
-        if (null !== $transactionId) {
-            $params['source_transaction'] = $transactionId;
-        }
-        if ($fromConnectedAccount) {
-            $platformAccount = \Stripe\Account::retrieve();
-            $params['destination'] = $platformAccount->id;
-            $options['stripe_account'] = $stripeConnectedAccountId;
-        } else {
-            $params['destination'] = $stripeConnectedAccountId;
-        }
+            'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
+            'destination' => $accountId,
+            'source_transaction' => $chargeId
+        ]);
+    }
 
-        $this->logger->info('[Stripe API] Call to \Stripe\Transfer::create', array_merge($params, $options));
+    // Transfer
+    public function createTransferFromConnectedAccount(string $currency, int $amount, string $accountId, array $metadata = [])
+    {
+        $platformAccount = \Stripe\Account::retrieve();
+        return \Stripe\Transfer::create([
+            'currency' => $currency,
+            'amount' => $amount,
+            'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
+            'destination' => $platformAccount->id
+        ], [ 'stripe_account' => $accountId ]);
+    }
 
-        return \Stripe\Transfer::create($params, $options);
+    // Reversal
+    public function reverseTransfer(int $amount, string $transferId, array $metadata = [])
+    {
+        return \Stripe\Transfer::createReversal($transferId, [
+            'amount' => $amount,
+            'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
+        ]);
     }
 
     // Payout
     public function createPayout(string $currency, int $amount, string $stripeAccountId, array $metadata = [])
     {
-        $mergedMetadata = array_merge($metadata, $this->getDefaultMetadata());
-        $this->logger->info('[Stripe API] Call to \Stripe\Payout::create', [
-            'currency' => $currency,
-            'amount' => $amount,
-            'metadata' => $mergedMetadata,
-            'stripe_account' => $stripeAccountId,
-        ]);
-
         return \Stripe\Payout::create([
             'currency' => $currency,
             'amount' => $amount,
-            'metadata' => $mergedMetadata,
+            'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
         ], [
             'stripe_account' => $stripeAccountId,
         ]);
     }
 
     // Refund
-    public function createRefund(int $amount, ?string $transactionId, array $metadata = [])
+    public function createRefund(string $charge, ?int $amount, array $metadata = [])
     {
-        $mergedMetadata = array_merge($metadata, $this->getDefaultMetadata());
-        $params = [
-            'charge' => $transactionId,
+        return \Stripe\Refund::create([
+            'charge' => $charge,
             'amount' => $amount,
-            'metadata' => $mergedMetadata,
-            'reverse_transfer' => false,
-        ];
-
-        $this->logger->info('[Stripe API] Call to \Stripe\Refund::create', $params);
-
-        return \Stripe\Refund::create($params);
-    }
-
-    public function listRefunds(?string $transactionId)
-    {
-        return \Stripe\Charge::retrieve(['id' => $transactionId])->refunds;
-    }
-
-    // Reversal
-    public function reverseTransfer(int $amount, string $transfer_id, array $metadata = [])
-    {
-        $mergedMetadata = array_merge($metadata, $this->getDefaultMetadata());
-        $params = [
-            'amount' => $amount,
-            'metadata' => $mergedMetadata,
-        ];
-
-        return \Stripe\Transfer::createReversal($transfer_id, $params);
-    }
-
-    public function listReversals(?string $transfer_id)
-    {
-        return \Stripe\Transfer::retrieve(['id' => $transfer_id])->reversals;
+            'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
+        ]);
     }
 
     /**
@@ -204,85 +172,65 @@ class StripeClient implements LoggerAwareInterface
      * @return Charge|PaymentIntent
      * @throws \Stripe\Exception\ApiErrorException
      */
-    public function capture(string $paymentId, int $amount)
+    public function capturePayment(string $paymentId, int $amount)
     {
-        $params = [];
+        switch (substr($paymentId, 0, 3)) {
+            case 'pi_':
+                $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
+                return $pi->capture([ 'amount_to_capture' =>  $amount]);
+            case 'ch_':
+            case 'py_':
+                $charge = $this->chargeRetrieve($paymentId);
 
-        $prefix = substr($paymentId, 0, 2);
+                // Check for PI
+                $paymentIntentId = $charge->payment_intent ?? null;
+                if ($paymentIntentId) {
+                    return $this->capturePayment($paymentIntentId, $amount);
+                }
 
-        if ('pi' === $prefix) {
-            $obj = PaymentIntent::constructFrom(['id' => $paymentId]);
-            $params['amount_to_capture'] = $amount;
-            $message = '[Stripe API] Call to PaymentIntent/Capture';
-        } elseif ('ch' === $prefix || 'py' === $prefix) {
-            // Check for PI
-            $charge = $this->chargeRetrieve($paymentId);
-            if (isset($charge->payment_intent) && !empty($charge->payment_intent)) {
-                return $this->capture($charge->payment_intent, $amount);
-            }
-
-            $obj = Charge::constructFrom(['id' => $paymentId]);
-            $params['amount'] = $amount;
-            $message = '[Stripe API] Call to Charge/Capture';
-        } else {
-            throw new \Exception('payment not yet managed');
+                return $charge->capture([ 'amount' =>  $amount]);
+            default:
+                throw new \Exception('Unexpected payment type: ' . $paymentId);
         }
-
-        $this->logger->info($message, [
-            'stripeId' => $paymentId,
-            'amount' => $amount,
-        ]);
-
-        return $obj->capture($params);
     }
 
     /**
      * @param string $paymentId
-     * @param int $amount
      * @return Charge|PaymentIntent
      * @throws ApiErrorException
      */
-    public function cancelBeforeCapture(string $paymentId, int $amount)
+    public function cancelPayment(string $paymentId)
     {
-        $prefix = substr($paymentId, 0, 2);
+        switch (substr($paymentId, 0, 3)) {
+            case 'pi_':
+                $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
+                $pi->cancel();
+                return $pi;
+            case 'ch_':
+            case 'py_':
+                $charge = $this->chargeRetrieve($paymentId);
 
-        if ('pi' === $prefix) {
-            $obj = PaymentIntent::constructFrom(['id' => $paymentId]);
-            $obj->cancel();
-            $message = '[Stripe API] Call to PaymentIntent/Cancel';
-            $this->logger->info($message, ['stripeId' => $paymentId]);
-        } elseif ('ch' === $prefix || 'py' === $prefix) {
-            // Check for PI
-            $charge = $this->chargeRetrieve($paymentId);
-            if (isset($charge->payment_intent) && !empty($charge->payment_intent)) {
-                return $this->cancelBeforeCapture($charge->payment_intent, $amount);
-            }
+                // Check for PI
+                $paymentIntentId = $charge->payment_intent ?? null;
+                if ($paymentIntentId) {
+                    return $this->cancelPayment($paymentIntentId);
+                }
 
-            $obj = $this->createRefund($amount, $paymentId);
-        } else {
-            throw new \Exception('payment not yet managed');
+                return $this->createRefund($paymentId, null);
+            default:
+                throw new \Exception('Unexpected payment type: ' . $paymentId);
         }
-
-        return $obj;
     }
 
     // Payment intent
     public function paymentIntentRetrieve(string $stripePaymentIntentId): PaymentIntent
     {
-        $this->logger->info('[Stripe API] Call to \Stripe\PaymentIntent::retrieve', [
-            'stripePaymentIntentId' => $stripePaymentIntentId,
-        ]);
-
         return PaymentIntent::retrieve($stripePaymentIntentId);
     }
 
     // Charge
     public function chargeRetrieve(string $stripeChargeId): Charge
     {
-        $this->logger->info('[Stripe API] Call to \Stripe\Charge::retrieve', [
-            'stripeChargeId' => $stripeChargeId,
-        ]);
-
         return Charge::retrieve($stripeChargeId);
     }
 }

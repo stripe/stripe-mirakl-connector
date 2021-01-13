@@ -39,32 +39,27 @@ class StripePayoutRepository extends ServiceEntityRepository
         $this->getEntityManager()->flush();
     }
 
-    public function getLastMiraklUpdateTime(): ?\DateTimeInterface
+    private function mapPayoutsByInvoiceId(array $payouts)
     {
-        $lastUpdatedStripePayout = $this->createQueryBuilder('p')
-            ->orderBy('p.miraklUpdateTime', 'DESC')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-
-        if (null === $lastUpdatedStripePayout) {
-            return null;
+        $map = [];
+        foreach ($payouts as $payout) {
+            $map[$payout->getMiraklInvoiceId()] = $payout;
         }
 
-        return $lastUpdatedStripePayout->getMiraklUpdateTime();
+        return $map;
     }
 
-    public function findExistingPayoutsByInvoiceIds($idsToCheck)
+    public function findRetriablePayouts()
     {
-        $existingPayouts = $this->findBy([
-            'miraklInvoiceId' => $idsToCheck
-        ]);
+        return $this->mapPayoutsByInvoiceId($this->findBy([
+            'status' => StripePayout::getRetriableStatus()
+        ]));
+    }
 
-        $payoutsByInvoiceId = [];
-        foreach ($existingPayouts as $payout) {
-            $payoutsByInvoiceId[$payout->getMiraklInvoiceId()] = $payout;
-        }
-
-        return $payoutsByInvoiceId;
+    public function findPayoutsByInvoiceIds(array $invoiceIds)
+    {
+        return $this->mapPayoutsByInvoiceId($this->findBy([
+            'miraklInvoiceId' => $invoiceIds
+        ]));
     }
 }

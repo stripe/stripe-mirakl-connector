@@ -8,7 +8,6 @@ use App\Service\MiraklClient;
 
 class ConfigService
 {
-    public const PROCESS_TRANSFER_CHECKPOINT = 'process_transfer_checkpoint';
 
     /**
      * @var ConfigRepository
@@ -30,7 +29,7 @@ class ConfigService
         if (null === $config) {
             $config = new Config();
             $config->setKey($key);
-            $this->configRepository->persist($config);
+            $this->configRepository->persistAndFlush($config);
         }
 
         return $config;
@@ -48,9 +47,9 @@ class ConfigService
     /**
      * @return string|null
      */
-    public function getProcessTransferCheckpoint(): ?string
+    public function getPaymentSplitCheckpoint(): ?string
     {
-        $config = $this->getConfigByKey(self::PROCESS_TRANSFER_CHECKPOINT);
+        $config = $this->getConfigByKey(Config::PAYMENT_SPLIT_CHECKPOINT);
         return $config->getValue();
     }
 
@@ -58,9 +57,29 @@ class ConfigService
      * @param string|null $value
      * @return self
      */
-    public function setProcessTransferCheckpoint(?string $value): self
+    public function setPaymentSplitCheckpoint(?string $value): self
     {
-        $config = $this->getConfigByKey(self::PROCESS_TRANSFER_CHECKPOINT);
+        $config = $this->getConfigByKey(Config::PAYMENT_SPLIT_CHECKPOINT);
+        $config->setValue($value);
+        return $this->save();
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getSellerSettlementCheckpoint(): ?string
+    {
+        $config = $this->getConfigByKey(Config::SELLER_SETTLEMENT_CHECKPOINT);
+        return $config->getValue();
+    }
+
+    /**
+     * @param string|null $value
+     * @return self
+     */
+    public function setSellerSettlementCheckpoint(?string $value): self
+    {
+        $config = $this->getConfigByKey(Config::SELLER_SETTLEMENT_CHECKPOINT);
         $config->setValue($value);
         return $this->save();
     }

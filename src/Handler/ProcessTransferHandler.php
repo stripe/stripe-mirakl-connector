@@ -3,9 +3,9 @@
 namespace App\Handler;
 
 use App\Entity\StripeTransfer;
+use App\Exception\InvalidArgumentException;
 use App\Message\ProcessTransferMessage;
 use App\Repository\StripeTransferRepository;
-use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -15,11 +15,6 @@ use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInterface
 {
     use LoggerAwareTrait;
-
-    /**
-     * @var MiraklClient
-     */
-    private $miraklClient;
 
     /**
      * @var StripeClient
@@ -32,77 +27,85 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
     private $stripeTransferRepository;
 
     public function __construct(
-        MiraklClient $miraklClient,
         StripeClient $stripeClient,
         StripeTransferRepository $stripeTransferRepository
     ) {
-        $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
     }
 
     public function __invoke(ProcessTransferMessage $message)
     {
-        $transferToProcess = $this->stripeTransferRepository->findOneBy([
-            'id' => $message->getStripeTransferId(),
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $message->getStripeTransferId()
         ]);
+        assert(null !== $transfer);
+        assert(StripeTransfer::TRANSFER_CREATED !== $transfer->getStatus());
 
-        if (null === $transferToProcess) {
-            return;
-        }
+        $type = $transfer->getType();
+        $amount = $transfer->getAmount();
+        $currency = $transfer->getCurrency();
+        assert(null !== $amount && null !== $currency);
 
-        $this->processTransfer($transferToProcess, $message->getType());
-    }
-
-    private function processTransfer(StripeTransfer $stripeTransfer, string $type): void
-    {
-        $currency = $stripeTransfer->getCurrency();
-        $amount = $stripeTransfer->getAmount();
-
-        $accountMapping = $stripeTransfer->getAccountMapping();
-        $stripeTransferId = $stripeTransfer->getId();
-        if (!$accountMapping) {
-            $failedReason = sprintf('Stripe transfer %s has no associated Mirakl-Stripe mapping', $stripeTransferId);
-            $this->logger->error($failedReason, [
-                'Stripe transfer Id' => $stripeTransferId,
-            ]);
-            $stripeTransfer
-                ->setFailedReason($failedReason)
-                ->setStatus(StripeTransfer::TRANSFER_FAILED);
-            $this->stripeTransferRepository->persistAndFlush($stripeTransfer);
-
-            return;
-        }
-
-        $stripeAccountId = $accountMapping->getStripeAccountId();
-        $miraklShopId = $accountMapping->getMiraklShopId();
         try {
-            $metadata = [
-                'miraklShopId' => $miraklShopId,
-                'miraklId' => $stripeTransfer->getMiraklId(),
-            ];
-            $fromConnectedAccount = in_array($type, [
-                StripeTransfer::TRANSFER_EXTRA_INVOICES,
-                StripeTransfer::TRANSFER_SUBSCRIPTION,
-            ]);
-            $transactionId = $stripeTransfer->getTransactionId();
-            $response = $this->stripeClient->createTransfer($currency, $amount, $stripeAccountId, $transactionId, $metadata, $fromConnectedAccount);
-            $transferId = $response->id;
-            $stripeTransfer
-                ->setStatus(StripeTransfer::TRANSFER_CREATED)
-                ->setFailedReason(null)
-                ->setTransferId($transferId);
+            $metadata = [ 'miraklId' => $transfer->getMiraklId() ];
+            switch ($type) {
+                case StripeTransfer::TRANSFER_ORDER:
+                case StripeTransfer::TRANSFER_EXTRA_CREDITS:
+                    $accountMapping = $transfer->getAccountMapping();
+                    assert(null !== $accountMapping);
+                    assert(null !== $accountMapping->getStripeAccountId());
+
+                    $metadata['miraklShopId'] = $accountMapping->getMiraklShopId();
+                    $response = $this->stripeClient->createTransfer(
+                        $currency,
+                        $amount,
+                        $accountMapping->getStripeAccountId(),
+                        $transfer->getTransactionId(),
+                        $metadata
+                    );
+                    break;
+                case StripeTransfer::TRANSFER_SUBSCRIPTION:
+                case StripeTransfer::TRANSFER_EXTRA_INVOICES:
+                    $accountMapping = $transfer->getAccountMapping();
+                    assert(null !== $accountMapping);
+                    assert(null !== $accountMapping->getStripeAccountId());
+
+                    $metadata['miraklShopId'] = $accountMapping->getMiraklShopId();
+                    $response = $this->stripeClient->createTransferFromConnectedAccount(
+                        $currency,
+                        $amount,
+                        $accountMapping->getStripeAccountId(),
+                        $metadata
+                    );
+                    break;
+                case StripeTransfer::TRANSFER_REFUND:
+                    assert(null !== $transfer->getTransactionId());
+
+                    $response = $this->stripeClient->reverseTransfer(
+                        $amount,
+                        $transfer->getTransactionId(),
+                        $metadata
+                    );
+                    break;
+                default:
+                    throw new InvalidArgumentException('Unexpected transfer type: ' . $type);
+            }
+
+            $transfer->setTransferId($response->id);
+            $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+            $transfer->setStatusReason(null);
         } catch (ApiErrorException $e) {
-            $this->logger->error(sprintf('Could not create Stripe Transfer: %s.', $e->getMessage()), [
-                'miraklShopId' => $miraklShopId,
-                'stripeTransferId' => $stripeTransfer->getMiraklId(),
-                'stripeErrorCode' => $e->getStripeCode(),
+            $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
+            $this->logger->error($message, [
+                'miraklId' => $transfer->getMiraklId(),
+                'stripeErrorCode' => $e->getStripeCode()
             ]);
 
-            $stripeTransfer
-                ->setStatus(StripeTransfer::TRANSFER_FAILED)
-                ->setFailedReason(substr($e->getMessage(), 0, 1024));
+            $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);
+            $transfer->setStatusReason(substr($e->getMessage(), 0, 1024));
         }
-        $this->stripeTransferRepository->persistAndFlush($stripeTransfer);
+
+        $this->stripeTransferRepository->flush();
     }
 }

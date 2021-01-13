@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Exception\InvalidArgumentException;
 use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 
@@ -10,6 +11,9 @@ use Gedmo\Mapping\Annotation as Gedmo;
  */
 class Config
 {
+    public const PAYMENT_SPLIT_CHECKPOINT = 'process_transfer_checkpoint';
+    public const SELLER_SETTLEMENT_CHECKPOINT = 'process_payout_checkpoint';
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
@@ -26,6 +30,14 @@ class Config
      * @ORM\Column(type="string", nullable=true)
      */
     private $value;
+
+    public static function getAvailableKeys(): array
+    {
+        return [
+            self::PAYMENT_SPLIT_CHECKPOINT,
+            self::SELLER_SETTLEMENT_CHECKPOINT,
+        ];
+    }
 
     /**
      * @return int
@@ -49,6 +61,10 @@ class Config
      */
     public function setKey(string $key): self
     {
+        if (!in_array($key, self::getAvailableKeys())) {
+            throw new InvalidArgumentException('Invalid config key');
+        }
+
         $this->key = $key;
         return $this;
     }

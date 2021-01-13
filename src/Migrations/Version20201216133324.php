@@ -8,9 +8,6 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 use App\Service\ConfigService;
 
-/**
- * Auto-generated Migration: Please modify to your needs!
- */
 final class Version20201216133324 extends AbstractMigration
 {
     public function getDescription() : string
@@ -26,20 +23,57 @@ final class Version20201216133324 extends AbstractMigration
         $this->addSql('CREATE TABLE config (id INT NOT NULL, key VARCHAR(255) NOT NULL, value VARCHAR(255) DEFAULT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_84CED2B33EFA2266 ON config (config_id_seq)');
 
-        $this->addSql('INSERT INTO config (key, value) VALUES (' . ConfigService::PROCESS_TRANSFER_CHECKPOINT . ',
-          (SELECT mirakl_update_time FROM stripe_transfer ORDER BY mirakl_update_time DESC LIMIT 1)
-        )');
+        $this->addSql('ALTER TABLE stripe_payout RENAME COLUMN failed_reason TO status_reason');
+        $this->addSql('ALTER TABLE stripe_payout RENAME COLUMN mirakl_update_time TO mirakl_created_date');
+        $this->addSql('ALTER TABLE stripe_payout RENAME COLUMN stripe_payout_id TO payout_id');
+        $this->addSql('ALTER TABLE stripe_payout ALTER COLUMN amount DROP NOT NULL');
+        $this->addSql('ALTER TABLE stripe_payout ALTER COLUMN currency DROP NOT NULL');
 
-        $this->addSql('ALTER TABLE stripe_transfer DROP mirakl_update_time');
+        $this->addSql('ALTER TABLE stripe_refund RENAME COLUMN failed_reason TO status_reason');
+        $this->addSql('ALTER TABLE stripe_refund DROP COLUMN commission');
+        $this->addSql('ALTER TABLE stripe_refund DROP COLUMN stripe_reversal_id');
+        $this->addSql('ALTER TABLE stripe_refund ADD COLUMN transaction_id VARCHAR(255) DEFAULT NULL');
+
+        $this->addSql('ALTER TABLE stripe_transfer RENAME COLUMN failed_reason TO status_reason');
+        $this->addSql('ALTER TABLE stripe_transfer RENAME COLUMN mirakl_update_time TO mirakl_created_date');
+        $this->addSql('ALTER TABLE stripe_transfer ALTER COLUMN amount DROP NOT NULL');
+        $this->addSql('ALTER TABLE stripe_transfer ALTER COLUMN currency DROP NOT NULL');
+
+        $this->addSql("UPDATE stripe_transfer SET status = 'TRANSFER_ABORTED' WHERE status = 'TRANSFER_INVALID_AMOUNT'");
+
+        $this->addSql('ALTER TABLE stripe_charge RENAME TO payment_mapping');
     }
 
     public function down(Schema $schema) : void
     {
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
 
-        $this->addSql('CREATE SCHEMA public');
-        $this->addSql('DROP SEQUENCE config_id_seq CASCADE');
+        $this->addSql('ALTER TABLE payment_mapping RENAME TO stripe_charge');
+
+        $this->addSql("UPDATE stripe_transfer SET status = 'TRANSFER_FAILED' WHERE status = 'TRANSFER_ABORTED'");
+        $this->addSql("UPDATE stripe_transfer SET status = 'TRANSFER_FAILED' WHERE status = 'TRANSFER_ON_HOLD'");
+
+        $this->addSql('ALTER TABLE stripe_transfer ALTER COLUMN currency SET DEFAULT \'eur\'');
+        $this->addSql('ALTER TABLE stripe_transfer ALTER COLUMN currency SET NOT NULL');
+        $this->addSql('ALTER TABLE stripe_transfer ALTER COLUMN amount SET DEFAULT 0');
+        $this->addSql('ALTER TABLE stripe_transfer ALTER COLUMN amount SET NOT NULL');
+        $this->addSql('ALTER TABLE stripe_transfer RENAME COLUMN mirakl_created_date TO mirakl_update_time');
+        $this->addSql('ALTER TABLE stripe_transfer RENAME COLUMN status_reason TO failed_reason');
+
+        $this->addSql('ALTER TABLE stripe_refund DROP COLUMN transaction_id');
+        $this->addSql('ALTER TABLE stripe_refund ADD COLUMN stripe_reversal_id VARCHAR(255) DEFAULT NULL');
+        $this->addSql('ALTER TABLE stripe_refund ADD COLUMN commission INT');
+        $this->addSql('ALTER TABLE stripe_refund RENAME COLUMN status_reason TO failed_reason');
+
+        $this->addSql('ALTER TABLE stripe_payout ALTER COLUMN currency SET DEFAULT \'eur\'');
+        $this->addSql('ALTER TABLE stripe_payout ALTER COLUMN currency SET NOT NULL');
+        $this->addSql('ALTER TABLE stripe_payout ALTER COLUMN amount SET DEFAULT 0');
+        $this->addSql('ALTER TABLE stripe_payout ALTER COLUMN amount SET NOT NULL');
+        $this->addSql('ALTER TABLE stripe_payout RENAME COLUMN payout_id TO stripe_payout_id');
+        $this->addSql('ALTER TABLE stripe_payout RENAME COLUMN mirakl_created_date TO mirakl_update_time');
+        $this->addSql('ALTER TABLE stripe_payout RENAME COLUMN status_reason TO failed_reason');
+
         $this->addSql('DROP TABLE config');
-        $this->addSql('ALTER TABLE stripe_transfer ADD mirakl_update_time TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL');
+        $this->addSql('DROP SEQUENCE config_id_seq CASCADE');
     }
 }

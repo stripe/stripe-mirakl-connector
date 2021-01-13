@@ -7,15 +7,11 @@ use App\Entity\AccountMapping;
 
 class AccountMappingFactory
 {
-    public function createMappingFromDTO(AccountMappingDTO $accountMappingDTO): AccountMapping
+    public function createMappingFromDTO(AccountMappingDTO $dto): AccountMapping
     {
         $mapping = new AccountMapping();
-
-        $miraklShopId = $accountMappingDTO->getMiraklShopId();
-        $stripeUserId = $accountMappingDTO->getStripeUserId();
-
-        $mapping->setMiraklShopId($miraklShopId)
-                ->setStripeAccountId($stripeUserId);
+        $mapping->setMiraklShopId($dto->getMiraklShopId());
+        $mapping->setStripeAccountId($dto->getStripeUserId());
 
         return $mapping;
     }

@@ -2,20 +2,17 @@
 
 namespace App\Service;
 
-use Psr\Log\LoggerAwareInterface;
-use Psr\Log\LoggerAwareTrait;
+use App\Exception\InvalidArgumentException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Separated (and public) methods for test purposes, as it is not possible to mock static calls.
- *
  * @codeCoverageIgnore
  */
-class MiraklClient implements LoggerAwareInterface
+class MiraklClient
 {
-    use LoggerAwareTrait;
-
     const DATE_FORMAT = \DateTime::ISO8601;
+    const DATE_FORMAT_INVALID_MESSAGE = 'Unexpected date format, expecting %s, input was %s';
 
     /**
      * @var HttpClientInterface
@@ -27,125 +24,202 @@ class MiraklClient implements LoggerAwareInterface
         $this->client = $miraklClient;
     }
 
-    private function getOrders(?array $query)
+    private function getResponseBody(ResponseInterface $response)
     {
-        $filters = [
-            'query' => [ 'customer_debited' => 'true' ]
-        ];
-
-        if ($query) {
-            $filters['query'] = array_merge($filters['query'], (array) $query);
-        }
-
-        return $this->getAllOrders($filters);
+        return json_decode($response->getContent(), true);
     }
 
-    private function getAllOrders(?array $filters)
+    private function getPaginatedResource(string $resource, string $endpoint, array $params = [])
     {
-        if (!$filters) {
-            $filters = [];
+        $options = [ 'query' => array_merge([ 'max' => 10 ], $params) ];
+
+        $response = $this->client->request('GET', $endpoint, $options);
+        $agg = $this->getResponseBody($response)[$resource] ?? [];
+        while ($next = $this->getNext($response)) {
+            $response = $this->client->request('GET', $next);
+            $objects = $this->getResponseBody($response)[$resource] ?? [];
+            if (empty($objects)) {
+                break;
+            }
+
+            $agg = array_merge($agg, $objects);
         }
 
-        $this->logger->info('[Mirakl API] Call to OR11 - fetch orders');
-        $response = $this->client->request('GET', '/api/orders', $filters);
-
-        return json_decode($response->getContent(), true)['orders'];
+        return $agg;
     }
 
-    // GET OR11
+    private function getPaginatedNestedResource(string $resource, string $nested, string $endpoint)
+    {
+        $options = [ 'query' => [ 'max' => 10 ] ];
+
+        $response = $this->client->request('GET', $endpoint, $options);
+        $agg = $this->getResponseBody($response)[$resource][$nested] ?? [];
+
+        while ($next = $this->getNext($response)) {
+            $response = $this->client->request('GET', $next);
+            $objects = $this->getResponseBody($response)[$resource][$nested] ?? [];
+            if (empty($objects)) {
+                break;
+            }
+
+            $agg = array_merge($agg, $objects);
+        }
+
+        return $agg;
+    }
+
+    private function getNext(ResponseInterface $response)
+    {
+        static $pattern = '/<([^>]+)>;\s*rel="([^"]+)"/';
+
+        $h = $response->getHeaders();
+        $links = isset($h['link'][0]) ? explode(',', $h['link'][0]) : [];
+        foreach ($links as $link) {
+            $res = preg_match($pattern, trim($link), $matches);
+            if (false !== $res && 'next' === $matches[2]) {
+                return $matches[1];
+            }
+        }
+
+        return null;
+    }
+
+    // return [ order_id => order ]
+    private function mapByOrderId(array $orders)
+    {
+        $orderIds = array_column($orders, 'order_id');
+        return array_combine($orderIds, $orders);
+    }
+
+    // return [ order_commercial_id => [ order_id => order] ]
+    private function mapByCommercialAndOrderId(array $orders)
+    {
+        $map = [];
+        foreach ($orders as $order) {
+            $commercialId = $order['commercial_id'] ?? $order['order_commercial_id'];
+            if (!isset($map[$commercialId])) {
+                $map[$commercialId] = [];
+            }
+
+            $map[$commercialId][$order['order_id']] = $order;
+        }
+
+        return $map;
+    }
+
+    // return [ invoice_id => invoice ]
+    private function mapByInvoiceId(array $invoices)
+    {
+        $invoiceIds = array_map('strval', array_column($invoices, 'invoice_id'));
+        return array_combine($invoiceIds, $invoices);
+    }
+
+    // OR11
     public function listOrders()
     {
-        return $this->getOrders([]);
+        return $this->mapByOrderId(
+            $this->getPaginatedResource('orders', '/api/orders')
+        );
     }
 
-    // GET OR11 by date
+    // OR11 by date
     public function listOrdersByDate(string $datetime)
     {
-        return $this->getOrders([ 'start_update_date' => $datetime ]);
+        return $this->mapByOrderId($this->getPaginatedResource(
+            'orders',
+            '/api/orders',
+            [ 'start_date' => $datetime ]
+        ));
     }
 
-    // GET OR11 by id
-    public function listOrdersById(?array $orderIds)
+    // OR11 by order_id
+    public function listOrdersById(array $orderIds)
     {
-        return $this->getOrders([ 'order_ids' => implode(',', (array) $orderIds) ]);
+        return $this->mapByOrderId($this->getPaginatedResource(
+            'orders',
+            '/api/orders',
+            [ 'order_ids' => implode(',', $orderIds) ]
+        ));
     }
 
-    // GET OR11 by commercial_id (without prefilter)
-    public function listCommercialOrdersById(?array $commercialOrderIds)
+    // OR11 by commercial_id
+    public function listOrdersByCommercialId(array $commercialIds)
     {
-        $filters = [
-            'query' => [ 'commercial_ids' => implode(',', (array) $commercialOrderIds) ]
-        ];
-
-        return $this->getAllOrders($filters);
+        return $this->mapByCommercialAndOrderId($this->getPaginatedResource(
+            'orders',
+            '/api/orders',
+            [ 'commercial_ids' => implode(',', $commercialIds) ]
+        ));
     }
 
-    // GET PA12
-    public function listPendingRefunds()
+    // PA11
+    public function listPendingDebits()
     {
-        $this->logger->info('[Mirakl API] Call to PA12 - List pending order refunds');
-        $response = $this->client->request('GET', '/api/payment/refund');
-
-        return json_decode($response->getContent(), true)['orders']['order'];
-    }
-
-    // GET PA11
-    public function listPendingPayments()
-    {
-        $this->logger->info('[Mirakl API] Call to PA11 - List pending payments');
+        return $this->mapByCommercialAndOrderId($this->getPaginatedNestedResource(
+            'orders',
+            'order',
+            '/api/payment/debit'
+        ));
         $response = $this->client->request('GET', '/api/payment/debit');
-
-        return json_decode($response->getContent(), true)['orders']['order'];
+        return $this->getResponseBody($response)['orders']['order'];
     }
 
-    // PUT PA02
-    public function validateRefunds(array $refunds)
-    {
-        $this->logger->info('[Mirakl API] Call to PA02 - validate refunds');
-        $this->client->request('PUT', '/api/payment/refund', [
-            'json' => ['refunds' => $refunds],
-        ]);
-    }
-
-    // PUT PA01
+    // PA01
     public function validatePayments(array $orders)
     {
-        $this->logger->info('[Mirakl API] Call to PA01 - validate payments');
         $this->client->request('PUT', '/api/payment/debit', [
-            'json' => ['orders' => $orders],
+            'json' => [ 'orders' => $orders ]
         ]);
     }
 
-    private function getInvoices(?array $query)
+    // PA12
+    public function listPendingRefunds()
     {
-        $filters = ['query' => $query ?: []];
-
-        $this->logger->info('[Mirakl API] Call to IV01 - fetch invoices');
-        $response = $this->client->request('GET', '/api/invoices', $filters);
-
-        return json_decode($response->getContent(), true)['invoices'];
+        return $this->mapByOrderId($this->getPaginatedNestedResource(
+            'orders',
+            'order',
+            '/api/payment/refund'
+        ));
     }
 
-    // GET IV01
+    // PA02
+    public function validateRefunds(array $refunds)
+    {
+        $this->client->request('PUT', '/api/payment/refund', [
+            'json' => [ 'refunds' => $refunds ]
+        ]);
+    }
+
+    // IV01
     public function listInvoices()
     {
-        return $this->getInvoices([]);
+        return $this->mapByInvoiceId($this->getPaginatedResource(
+            'invoices',
+            '/api/invoices'
+        ));
     }
 
-    // GET IV01 by date
-    public function listInvoicesByDate(?\DateTimeInterface $datetime)
+    // IV01 by date
+    public function listInvoicesByDate(string $datetime)
     {
-        $dt = $datetime !== null ? $datetime->format(self::DATE_FORMAT) : null;
-        return $this->getInvoices([ 'start_date' => $dt ]);
+        return $this->mapByInvoiceId($this->getPaginatedResource(
+            'invoices',
+            '/api/invoices',
+            [ 'start_date' => $datetime ]
+        ));
     }
 
-    // GET IV01 by shop
-    public function listInvoicesByShopId(?string $shopId)
+    // IV01 by shop
+    public function listInvoicesByShopId(int $shopId)
     {
-        return $this->getInvoices([ 'shop' => $shopId ]);
+        return $this->mapByInvoiceId($this->getPaginatedResource(
+            'invoices',
+            '/api/invoices',
+            [ 'shop' => $shopId ]
+        ));
     }
 
-    // GET S20
+    // S20
     public function fetchShops(?array $shopIds, ?\DateTimeInterface $updatedAfter = null, bool $paginate = true)
     {
         $filters = ['query' => []];
@@ -159,21 +233,40 @@ class MiraklClient implements LoggerAwareInterface
             $filters['query']['updated_since'] = $updatedAfter->format(self::DATE_FORMAT);
         }
 
-        $this->logger->info('[Mirakl API] Call to S20 - fetch shops');
         $response = $this->client->request('GET', '/api/shops', $filters);
 
-        return json_decode($response->getContent(), true)['shops'];
+        return $this->getResponseBody($response)['shops'];
     }
 
-    // PUT S07
+    // S07
     public function patchShops(array $patchedShops)
     {
         $response = $this->client->request('PUT', '/api/shops', [
             'json' => ['shops' => $patchedShops],
         ]);
 
-        $this->logger->info('[Mirakl API] Call to S07 - patch shops');
+        return $this->getResponseBody($response)['shop_returns'];
+    }
 
-        return json_decode($response->getContent(), true)['shop_returns'];
+    // parse a date based on the format used by Mirakl
+    public static function getDatetimeFromString(string $date): \DateTimeInterface
+    {
+        $dt = \DateTime::createFromFormat(self::DATE_FORMAT, $date);
+        if (!$dt) {
+            // Shouldn't happen unless Mirakl changed the date format
+            throw new InvalidArgumentException(sprintf(
+                self::DATE_FORMAT_INVALID_MESSAGE,
+                self::DATE_FORMAT,
+                $date
+            ));
+        }
+
+        return $dt;
+    }
+
+    // parse a date based on the format used by Mirakl
+    public static function getStringFromDatetime(\DateTimeInterface $date): string
+    {
+        return $date->format(self::DATE_FORMAT);
     }
 }

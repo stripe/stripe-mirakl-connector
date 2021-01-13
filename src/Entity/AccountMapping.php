@@ -81,7 +81,7 @@ class AccountMapping
         return $this;
     }
 
-    public function getStripeAccountId(): ?string
+    public function getStripeAccountId(): string
     {
         return $this->stripeAccountId;
     }

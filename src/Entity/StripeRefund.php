@@ -19,9 +19,24 @@ use Gedmo\Mapping\Annotation as Gedmo;
  */
 class StripeRefund
 {
+    public const REFUND_ON_HOLD = 'REFUND_ON_HOLD';
+    public const REFUND_ABORTED = 'REFUND_ABORTED';
     public const REFUND_PENDING = 'REFUND_PENDING';
-    public const REFUND_CREATED = 'REFUND_CREATED';
     public const REFUND_FAILED = 'REFUND_FAILED';
+    public const REFUND_CREATED = 'REFUND_CREATED';
+
+    // Refund status reasons: on hold
+    public const REFUND_STATUS_REASON_NO_CHARGE_ID = 'Cannot find the ID of the payment to be refunded';
+    public const REFUND_STATUS_REASON_PAYMENT_NOT_READY = 'Payment %s is not ready yet, status is %s';
+    public const REFUND_STATUS_REASON_PAID_NO_CHARGE = 'Payment %s succeeded but no charge is attached';
+    public const REFUND_STATUS_REASON_REFUND_NOT_FOUND = 'Cannot find StripeRefund with ID %s';
+    public const REFUND_STATUS_REASON_REFUND_NOT_VALIDATED = 'Refund %s has yet to be validated';
+    public const REFUND_STATUS_REASON_PAYMENT_TYPE_UNRECOGNIZED = 'Cannot deduce type from %s';
+
+    // Refund status reasons: aborted
+    public const REFUND_STATUS_REASON_PAYMENT_FAILED = 'Payment %s failed';
+    public const REFUND_STATUS_REASON_PAYMENT_CANCELED = 'Payment %s has been canceled';
+    public const REFUND_STATUS_REASON_PAYMENT_REFUNDED = 'Payment %s has been fully refunded';
 
     /**
      * @ORM\Id()
@@ -34,11 +49,6 @@ class StripeRefund
      * @ORM\Column(type="integer")
      */
     private $amount;
-
-    /**
-     * @ORM\Column(type="integer")
-     */
-    private $commission = 0;
 
     /**
      * @ORM\Column(type="string")
@@ -63,12 +73,12 @@ class StripeRefund
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $stripeRefundId;
+    private $transactionId;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $stripeReversalId;
+    private $stripeRefundId;
 
     /**
      * @ORM\Column(type="string")
@@ -78,7 +88,7 @@ class StripeRefund
     /**
      * @ORM\Column(type="string", length=1024, nullable=true)
      */
-    private $failedReason;
+    private $statusReason;
 
     /**
      * @ORM\Column(type="datetime", nullable=true)
@@ -100,17 +110,37 @@ class StripeRefund
     public static function getAvailableStatus(): array
     {
         return [
+            self::REFUND_ON_HOLD,
+            self::REFUND_ABORTED,
             self::REFUND_PENDING,
-            self::REFUND_CREATED,
             self::REFUND_FAILED,
+            self::REFUND_CREATED
         ];
     }
 
     public static function getInvalidStatus(): array
     {
         return [
-            self::REFUND_FAILED,
+            self::REFUND_FAILED
         ];
+    }
+
+    public static function getRetriableStatus(): array
+    {
+        return [
+            self::REFUND_FAILED,
+            self::REFUND_ON_HOLD
+        ];
+    }
+
+    public function isRetriable(): bool
+    {
+        return in_array($this->getStatus(), self::getRetriableStatus());
+    }
+
+    public function isDispatchable(): bool
+    {
+        return self::REFUND_PENDING === $this->getStatus();
     }
 
     public function getId(): ?int
@@ -142,6 +172,18 @@ class StripeRefund
         return $this;
     }
 
+    public function getTransactionId(): ?string
+    {
+        return $this->transactionId;
+    }
+
+    public function setTransactionId(string $transactionId): self
+    {
+        $this->transactionId = $transactionId;
+
+        return $this;
+    }
+
     public function getMiraklRefundId(): ?string
     {
         return $this->miraklRefundId;
@@ -166,6 +208,24 @@ class StripeRefund
         return $this;
     }
 
+    /**
+     * @return mixed
+     */
+    public function getMiraklOrderLineId()
+    {
+        return $this->miraklOrderLineId;
+    }
+
+    /**
+     * @param mixed $miraklOrderLineId
+     * @return StripeRefund
+     */
+    public function setMiraklOrderLineId($miraklOrderLineId)
+    {
+        $this->miraklOrderLineId = $miraklOrderLineId;
+        return $this;
+    }
+
     public function getStripeRefundId(): ?string
     {
         return $this->stripeRefundId;
@@ -174,18 +234,6 @@ class StripeRefund
     public function setStripeRefundId(string $stripeRefundId): self
     {
         $this->stripeRefundId = $stripeRefundId;
-
-        return $this;
-    }
-
-    public function getStripeReversalId(): ?string
-    {
-        return $this->stripeReversalId;
-    }
-
-    public function setStripeReversalId(string $stripeReversalId): self
-    {
-        $this->stripeReversalId = $stripeReversalId;
 
         return $this;
     }
@@ -205,14 +253,14 @@ class StripeRefund
         return $this;
     }
 
-    public function getFailedReason(): ?string
+    public function getStatusReason(): ?string
     {
-        return $this->failedReason;
+        return $this->statusReason;
     }
 
-    public function setFailedReason(?string $failedReason): self
+    public function setStatusReason(?string $statusReason): self
     {
-        $this->failedReason = $failedReason;
+        $this->statusReason = $statusReason;
 
         return $this;
     }
@@ -250,43 +298,6 @@ class StripeRefund
     {
         $this->modificationDatetime = $modificationDatetime;
 
-        return $this;
-    }
-
-    /**
-     * @return int
-     */
-    public function getCommission() : int
-    {
-        return $this->commission;
-    }
-
-    /**
-     * @param mixed $commission
-     * @return StripeRefund
-     */
-    public function setCommission($commission): self
-    {
-        $this->commission = $commission;
-
-        return $this;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getMiraklOrderLineId()
-    {
-        return $this->miraklOrderLineId;
-    }
-
-    /**
-     * @param mixed $miraklOrderLineId
-     * @return StripeRefund
-     */
-    public function setMiraklOrderLineId($miraklOrderLineId)
-    {
-        $this->miraklOrderLineId = $miraklOrderLineId;
         return $this;
     }
 }
