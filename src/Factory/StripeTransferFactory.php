@@ -14,7 +14,7 @@ use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Charge;
-use Stripe\Exception\ApiConnectionException;
+use Stripe\Exception\InvalidRequestException;
 
 class StripeTransferFactory implements LoggerAwareInterface
 {
@@ -135,7 +135,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         if (!$transfer->getTransactionId() && !empty($trid)) {
             try {
                 $transfer->setTransactionId($this->getOrderTransactionId($trid));
-            } catch (ApiConnectionException $e) {
+            } catch (InvalidRequestException $e) {
                 return $this->abortTransfer(
                     $transfer,
                     $e->getMessage()

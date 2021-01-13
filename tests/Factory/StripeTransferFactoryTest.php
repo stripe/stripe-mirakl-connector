@@ -264,7 +264,7 @@ class StripeTransferFactoryTest extends KernelTestCase
 								'CHARGE_BASIC', 'CHARGE_PAYMENT', 'CHARGE_STATUS_CAPTURED'
 						],
 						StripeTransfer::TRANSFER_ABORTED => [
-								'CHARGE_STATUS_FAILED', 'CHARGE_REFUNDED'
+								'CHARGE_STATUS_FAILED', 'CHARGE_REFUNDED', 'CHARGE_NOT_FOUND'
 						]
 				];
 
@@ -298,7 +298,9 @@ class StripeTransferFactoryTest extends KernelTestCase
 								'PAYMENT_INTENT_BASIC', 'PAYMENT_INTENT_STATUS_SUCCEEDED'
 						],
 						StripeTransfer::TRANSFER_ABORTED => [
-								'PAYMENT_INTENT_STATUS_CANCELED', 'PAYMENT_INTENT_REFUNDED'
+								'PAYMENT_INTENT_STATUS_CANCELED',
+								'PAYMENT_INTENT_REFUNDED',
+								'PAYMENT_INTENT_NOT_FOUND'
 						]
 				];
 

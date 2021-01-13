@@ -3,6 +3,7 @@
 namespace App\Tests;
 
 use Stripe\Exception\ApiConnectionException;
+use Stripe\Exception\InvalidRequestException;
 use Stripe\HttpClient\ClientInterface;
 
 class StripeMockedHttpClient implements ClientInterface
@@ -65,6 +66,7 @@ class StripeMockedHttpClient implements ClientInterface
      *                        CURLFile)
      *
      * @throws \Stripe\Exception\ApiConnectionException
+     * @throws \Stripe\Exception\InvalidRequestException
      * @throws \Stripe\Exception\UnexpectedValueException
      *
      * @return array an array whose first element is raw request body, second
@@ -189,7 +191,7 @@ class StripeMockedHttpClient implements ClientInterface
 							break;
 					case self::CHARGE_NOT_FOUND:
 					default:
-							throw new ApiConnectionException("$id not found", 404);
+							throw new InvalidRequestException("$id not found", 404);
 				}
 
 				if ('capture' === $action) {
@@ -251,7 +253,7 @@ class StripeMockedHttpClient implements ClientInterface
 							break;
 					case self::PAYMENT_INTENT_NOT_FOUND:
 					default:
-							throw new ApiConnectionException("$id not found", 404);
+							throw new InvalidRequestException("$id not found", 404);
 				}
 
 				if ('capture' === $action || 'cancel' === $action) {

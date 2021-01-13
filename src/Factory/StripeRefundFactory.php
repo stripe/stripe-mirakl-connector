@@ -12,7 +12,7 @@ use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Charge;
-use Stripe\Exception\ApiConnectionException;
+use Stripe\Exception\InvalidRequestException;
 
 class StripeRefundFactory implements LoggerAwareInterface
 {
@@ -92,18 +92,18 @@ class StripeRefundFactory implements LoggerAwareInterface
         // Check charge status
         try {
             $this->checkTransactionStatus($transactionId);
-        } catch (ApiConnectionException $e) {
+        } catch (InvalidRequestException $e) {
             return $this->abortRefund(
                 $refund,
                 $e->getMessage()
             );
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                                // Problem is final, let's abort
-                                case 10: return $this->abortRefund($refund, $e->getMessage());
-                                // Problem is just temporary, let's put on hold
-                                case 20: return $this->putRefundOnHold($refund, $e->getMessage());
-                        }
+                // Problem is final, let's abort
+                case 10: return $this->abortRefund($refund, $e->getMessage());
+                // Problem is just temporary, let's put on hold
+                case 20: return $this->putRefundOnHold($refund, $e->getMessage());
+            }
         }
 
         // All good
