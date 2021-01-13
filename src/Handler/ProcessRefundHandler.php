@@ -63,7 +63,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
 
             $this->miraklClient->validateRefunds([[
                 'amount' => $refund->getAmount() / 100,
-                'currency_iso_code' => $refund->getCurrency(),
+                'currency_iso_code' => strtoupper($refund->getCurrency()),
                 'payment_status' => 'OK',
                 'refund_id' => $refund->getMiraklRefundId(),
                 'transaction_number' => $refund->getStripeRefundId(),
