@@ -119,10 +119,9 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
     {
         $createdDates = array_map(
             function ($o) {
-                return $o-> getMiraklCreatedDate();
+                return $o->getMiraklCreatedDate();
             },
-            $this->flattenTransfers($transfersByInvoiceId),
-            $payouts
+            array_merge($this->flattenTransfers($transfersByInvoiceId), $payouts)
         );
 
         sort($createdDates);

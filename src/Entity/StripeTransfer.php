@@ -238,7 +238,7 @@ class StripeTransfer
         return $this->transferId;
     }
 
-    public function setTransferId(string $transferId): self
+    public function setTransferId(?string $transferId): self
     {
         $this->transferId = $transferId;
 
