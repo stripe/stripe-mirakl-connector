@@ -107,10 +107,6 @@ class SellerSettlementService
         $updated = [];
         foreach ($existingTransfers as $invoiceId => $transfers) {
             foreach ($transfers as $type => $transfer) {
-                if (!$transfer->isRetriable()) {
-                    continue;
-                }
-
                 if (!isset($updated[$invoiceId])) {
                     $updated[$invoiceId] = [];
                 }

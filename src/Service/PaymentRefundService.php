@@ -137,10 +137,6 @@ class PaymentRefundService
     {
         $updated = [];
         foreach ($transfers as $refundId => $transfer) {
-            if (!$transfer->isRetriable()) {
-                continue;
-            }
-
             $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
         }
 

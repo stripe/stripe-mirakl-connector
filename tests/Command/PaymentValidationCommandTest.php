@@ -88,12 +88,12 @@ class PaymentValidationCommandTest extends KernelTestCase
 				$this->mockPaymentMapping(
 						MiraklMock::ORDER_COMMERCIAL_NONE_VALIDATED,
 						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						1234
+						12345
 				);
 				$this->mockPaymentMapping(
 						MiraklMock::ORDER_COMMERCIAL_PARTIALLY_VALIDATED,
 						StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE,
-						1234
+						12345
 				);
         $this->executeCommand();
         $this->assertCount(1, $messages = $this->validateReceiver->getSent());

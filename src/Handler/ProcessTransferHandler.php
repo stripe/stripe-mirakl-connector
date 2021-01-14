@@ -88,13 +88,13 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                         $metadata
                     );
                     break;
-                default:
-                    throw new InvalidArgumentException('Unexpected transfer type: ' . $type);
             }
 
-            $transfer->setTransferId($response->id);
-            $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
-            $transfer->setStatusReason(null);
+            if (isset($response->id)) {
+                $transfer->setTransferId($response->id);
+                $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+                $transfer->setStatusReason(null);
+            }
         } catch (ApiErrorException $e) {
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
             $this->logger->error($message, [

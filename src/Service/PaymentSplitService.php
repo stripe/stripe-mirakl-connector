@@ -81,10 +81,6 @@ class PaymentSplitService
     {
         $updated = [];
         foreach ($existingTransfers as $orderId => $transfer) {
-            if (!$transfer->isRetriable()) {
-                continue;
-            }
-
             $updated[$orderId] = $this->stripeTransferFactory->updateFromOrder(
                 $transfer,
                 $orders[$orderId]

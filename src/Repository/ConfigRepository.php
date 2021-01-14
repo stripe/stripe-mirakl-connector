@@ -38,18 +38,6 @@ class ConfigRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param Config $config
-     * @return Config
-     * @throws \Doctrine\ORM\ORMException
-     */
-    public function persist(Config $config): Config
-    {
-        $this->getEntityManager()->persist($config);
-
-        return $config;
-    }
-
-    /**
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */

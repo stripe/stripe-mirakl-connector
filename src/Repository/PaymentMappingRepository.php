@@ -38,18 +38,6 @@ class PaymentMappingRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param PaymentMapping $paymentMapping
-     * @return PaymentMapping
-     * @throws \Doctrine\ORM\ORMException
-     */
-    public function persist(PaymentMapping $paymentMapping): PaymentMapping
-    {
-        $this->getEntityManager()->persist($paymentMapping);
-
-        return $paymentMapping;
-    }
-
-    /**
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
@@ -70,18 +58,6 @@ class PaymentMappingRepository extends ServiceEntityRepository
         }
 
         return $map;
-    }
-
-    /**
-     * @param array $orderIds
-     * @return PaymentMapping[]
-     */
-    public function findToCapturePaymentsByOrderIds(array $orderIds): array
-    {
-        return $this->mapByMiraklOrderId($this->findBy([
-            'miraklOrderId' => $orderIds,
-            'status' => PaymentMapping::TO_CAPTURE
-        ]));
     }
 
     /**

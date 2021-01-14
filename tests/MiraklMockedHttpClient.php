@@ -266,24 +266,25 @@ class MiraklMockedHttpClient extends MockHttpClient
 										break;
 								case self::ORDER_COMMERCIAL_NONE_VALIDATED:
 										$orders = array_merge($orders, $this->mockOrdersById([
-												self::ORDER_STATUS_WAITING_DEBIT,
+												self::ORDER_STATUS_WAITING_ACCEPTANCE,
+												self::ORDER_STATUS_WAITING_DEBIT
 										]));
 										break;
 								case self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED:
 										$orders = array_merge($orders, $this->mockOrdersById([
 												self::ORDER_STATUS_WAITING_DEBIT_PAYMENT,
-												self::ORDER_STATUS_SHIPPING,
+												self::ORDER_STATUS_SHIPPING
 										]));
 										break;
 								case self::ORDER_COMMERCIAL_PARTIALLY_REFUSED:
 										$orders = array_merge($orders, $this->mockOrdersById([
 												self::ORDER_STATUS_CLOSED,
-												self::ORDER_STATUS_REFUSED,
+												self::ORDER_STATUS_REFUSED
 										]));
 										break;
 								case self::ORDER_COMMERCIAL_CANCELED:
 										$orders = array_merge($orders, $this->mockOrdersById([
-												self::ORDER_STATUS_CANCELED,
+												self::ORDER_STATUS_CANCELED
 										]));
 										break;
 						}
@@ -303,6 +304,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 										break;
 								case self::ORDER_STATUS_WAITING_ACCEPTANCE:
 										$order = $this->getOrder($orderId, 'WAITING_ACCEPTANCE');
+										$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
 										break;
 								case self::ORDER_STATUS_WAITING_DEBIT:
 										$order = $this->getOrder($orderId, 'WAITING_DEBIT');
