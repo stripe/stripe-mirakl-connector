@@ -132,7 +132,7 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         // Save charge ID to be used in source_transaction
         $trid = $order['transaction_number'] ?? '';
-        if (!$transfer->getTransactionId() && !empty($trid)) {
+        if (!empty($trid)) {
             try {
                 $transfer->setTransactionId($this->getOrderTransactionId($trid));
             } catch (InvalidRequestException $e) {
