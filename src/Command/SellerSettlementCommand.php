@@ -132,7 +132,12 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
     {
         $checkpoint = $this->configService->getSellerSettlementCheckpoint() ?? '';
         $this->logger->info('Executing for recent invoices, checkpoint: ' . $checkpoint);
-        $invoices = $this->miraklClient->listInvoicesByDate($checkpoint);
+        if ($checkpoint) {
+            $invoices = $this->miraklClient->listInvoicesByDate($checkpoint);
+        } else {
+            $invoices = $this->miraklClient->listInvoices();
+        }
+                
         if (empty($invoices)) {
             $this->logger->info('No new invoice');
             return;

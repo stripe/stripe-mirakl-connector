@@ -124,7 +124,12 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
     {
         $checkpoint = $this->configService->getPaymentSplitCheckpoint() ?? '';
         $this->logger->info('Executing for recent orders, checkpoint: ' . $checkpoint);
-        $orders = $this->miraklClient->listOrdersByDate($checkpoint);
+        if ($checkpoint) {
+            $orders = $this->miraklClient->listOrdersByDate($checkpoint);
+        } else {
+            $orders = $this->miraklClient->listOrders();
+        }
+
         if (empty($orders)) {
             $this->logger->info('No new order');
             return;

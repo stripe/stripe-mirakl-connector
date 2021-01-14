@@ -155,6 +155,9 @@ class MiraklMockedHttpClient extends MockHttpClient
 								switch (true) {
 										case isset($params['start_date']):
 												$date = $params['start_date'];
+												if (empty($date)) {
+								            throw new \Exception("Invalid start date", 400);
+												}
 												return [ 'orders' => $this->mockOrdersByStartDate($date, $offset) ];
 										case isset($params['order_ids']):
 												$orderIds = explode(',', $params['order_ids']);
@@ -162,6 +165,8 @@ class MiraklMockedHttpClient extends MockHttpClient
 										case isset($params['commercial_ids']):
 												$commercialIds = explode(',', $params['commercial_ids']);
 												return [ 'orders' => $this->mockOrdersByCommercialId($commercialIds) ];
+										default:
+												return [ 'orders' => [] ];
 								}
 								break;
 						case '/api/payment/debit':
@@ -206,9 +211,14 @@ class MiraklMockedHttpClient extends MockHttpClient
 								switch (true) {
 										case isset($params['start_date']):
 												$date = $params['start_date'];
+												if (empty($date)) {
+								            throw new \Exception("Invalid start date", 400);
+												}
 												return [ 'invoices' => $this->mockInvoicesByStartDate($date, $offset) ];
 										case isset($params['shop']):
 												return [ 'invoices' => $this->mockInvoicesByShop($params['shop']) ];
+										default:
+												return [ 'invoices' => [] ];
 								}
 								break;
 				}

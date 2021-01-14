@@ -124,6 +124,14 @@ class PaymentSplitCommandTest extends KernelTestCase
         $this->assertCount(4, $this->getTransfersFromRepository());
     }
 
+    public function testFirstExecution()
+    {
+				$this->configService->setPaymentSplitCheckpoint(null);
+        $this->executeCommand();
+        $this->assertCount(0, $this->doctrineReceiver->getSent());
+        $this->assertCount(0, $this->getTransfersFromRepository());
+    }
+
     public function testNoNewOrders()
     {
 				$this->configService->setPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_NO_NEW_ORDERS);

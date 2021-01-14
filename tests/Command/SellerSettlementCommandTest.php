@@ -138,6 +138,16 @@ class SellerSettlementCommandTest extends KernelTestCase
         $this->assertCount(3, $this->getPayoutsFromRepository());
     }
 
+    public function testFirstExecution()
+    {
+				$this->configService->setSellerSettlementCheckpoint(null);
+        $this->executeCommand();
+        $this->assertCount(0, $this->transfersReceiver->getSent());
+        $this->assertCount(0, $this->getTransfersFromRepository());
+        $this->assertCount(0, $this->payoutsReceiver->getSent());
+        $this->assertCount(0, $this->getPayoutsFromRepository());
+    }
+
     public function testNoNewInvoices()
     {
 				$this->configService->setSellerSettlementCheckpoint(MiraklMock::INVOICE_DATE_NO_NEW_INVOICES);
