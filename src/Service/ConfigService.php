@@ -47,9 +47,9 @@ class ConfigService
     /**
      * @return string|null
      */
-    public function getPaymentSplitCheckpoint(): ?string
+    public function getProductPaymentSplitCheckpoint(): ?string
     {
-        $config = $this->getConfigByKey(Config::PAYMENT_SPLIT_CHECKPOINT);
+        $config = $this->getConfigByKey(Config::PRODUCT_PAYMENT_SPLIT_CHECKPOINT);
         return $config->getValue();
     }
 
@@ -57,9 +57,29 @@ class ConfigService
      * @param string|null $value
      * @return self
      */
-    public function setPaymentSplitCheckpoint(?string $value): self
+    public function setProductPaymentSplitCheckpoint(?string $value): self
     {
-        $config = $this->getConfigByKey(Config::PAYMENT_SPLIT_CHECKPOINT);
+        $config = $this->getConfigByKey(Config::PRODUCT_PAYMENT_SPLIT_CHECKPOINT);
+        $config->setValue($value);
+        return $this->save();
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getServicePaymentSplitCheckpoint(): ?string
+    {
+        $config = $this->getConfigByKey(Config::SERVICE_PAYMENT_SPLIT_CHECKPOINT);
+        return $config->getValue();
+    }
+
+    /**
+     * @param string|null $value
+     * @return self
+     */
+    public function setServicePaymentSplitCheckpoint(?string $value): self
+    {
+        $config = $this->getConfigByKey(Config::SERVICE_PAYMENT_SPLIT_CHECKPOINT);
         $config->setValue($value);
         return $this->save();
     }

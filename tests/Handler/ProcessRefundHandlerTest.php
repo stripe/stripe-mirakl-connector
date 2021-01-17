@@ -63,6 +63,7 @@ class ProcessRefundHandlerTest extends KernelTestCase
 				$orderId = MiraklMock::getOrderIdFromRefundId($refundId);
 
         $refund = new StripeRefund();
+				$refund->setType(StripeRefund::REFUND_PRODUCT_ORDER);
 				$refund->setMiraklOrderId($orderId);
 				$refund->setMiraklRefundId($refundId);
 				$refund->setTransactionId($transactionId);

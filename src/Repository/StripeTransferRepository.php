@@ -67,7 +67,7 @@ class StripeTransferRepository extends ServiceEntityRepository
     public function findTransfersByOrderIds(array $orderIds)
     {
         return $this->mapTransfersByMiraklId($this->findBy([
-            'type' => StripeTransfer::TRANSFER_ORDER,
+            'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER,
             'miraklId' => $orderIds
         ]));
     }
@@ -80,10 +80,18 @@ class StripeTransferRepository extends ServiceEntityRepository
         ]));
     }
 
-    public function findRetriableOrderTransfers()
+    public function findRetriableProductOrderTransfers()
     {
         return $this->mapTransfersByMiraklId($this->findBy([
-            'type' => StripeTransfer::TRANSFER_ORDER,
+            'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER,
+            'status' => StripeTransfer::getRetriableStatus()
+        ]));
+    }
+
+    public function findRetriableServiceOrderTransfers()
+    {
+        return $this->mapTransfersByMiraklId($this->findBy([
+            'type' => StripeTransfer::TRANSFER_SERVICE_ORDER,
             'status' => StripeTransfer::getRetriableStatus()
         ]));
     }

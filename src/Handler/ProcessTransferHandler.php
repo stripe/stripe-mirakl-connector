@@ -50,7 +50,7 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
         try {
             $metadata = [ 'miraklId' => $transfer->getMiraklId() ];
             switch ($type) {
-                case StripeTransfer::TRANSFER_ORDER:
+                case StripeTransfer::TRANSFER_PRODUCT_ORDER:
                 case StripeTransfer::TRANSFER_EXTRA_CREDITS:
                     $accountMapping = $transfer->getAccountMapping();
                     assert(null !== $accountMapping);

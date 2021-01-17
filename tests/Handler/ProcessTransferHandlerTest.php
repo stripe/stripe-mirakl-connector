@@ -76,7 +76,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testOrderTransfer()
     {
-				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_ORDER);
+				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_PRODUCT_ORDER);
 				$this->executeHandler($transfer->getId());
 
 				$transfer = $this->stripeTransferRepository->findOneBy([
@@ -90,7 +90,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
     public function testOrderTransferWithTransactionId()
     {
 				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_ORDER,
+						StripeTransfer::TRANSFER_PRODUCT_ORDER,
 						StripeMock::CHARGE_BASIC
 				);
 				$this->executeHandler($transfer->getId());
@@ -106,7 +106,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
     public function testOrderTransferWithApiError()
     {
 				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_ORDER,
+						StripeTransfer::TRANSFER_PRODUCT_ORDER,
 						StripeMock::CHARGE_WITH_TRANSFER
 				);
 				$this->executeHandler($transfer->getId());
@@ -123,7 +123,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
                 'type' => 'transfer.failed',
                 'payload' => [
                     'internalId' => $transfer->getId(),
-                    'type' => StripeTransfer::TRANSFER_ORDER,
+                    'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER,
                     'miraklId' => 'random',
                     'stripeAccountId' => StripeMock::ACCOUNT_BASIC,
                     'miraklShopId' => 1,

@@ -44,21 +44,24 @@ class StripeRefundFactory implements LoggerAwareInterface
     }
 
     /**
-     * @param array $order
-     * @param int $lineOffset
-     * @param int $refundOffset
+     * @param array $orderRefund
+     * @param string $orderType
      * @return StripeRefund
      */
-    public function createFromOrderRefund(array $order, int $lineOffset, int $refundOffset): StripeRefund
+    public function createFromOrderRefund(array $orderRefund, string $orderType): StripeRefund
     {
-        $orderLine = $order['order_lines']['order_line'][$lineOffset];
-        $orderRefund = $orderLine['refunds']['refund'][$refundOffset];
+        if (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
+            $type = StripeRefund::REFUND_PRODUCT_ORDER;
+        } else {
+            $type = StripeRefund::REFUND_SERVICE_ORDER;
+        }
 
         $refund = new StripeRefund();
-        $refund->setMiraklOrderId($order['order_id']);
-        $refund->setMiraklOrderLineId($orderLine['order_line_id']);
+        $refund->setType($type);
+        $refund->setMiraklOrderId($orderRefund['order_id']);
+        $refund->setMiraklOrderLineId($orderRefund['order_line_id'] ?? null);
         $refund->setAmount(gmp_intval((string) ($orderRefund['amount'] * 100)));
-        $refund->setCurrency(strtolower($order['currency_iso_code']));
+        $refund->setCurrency(strtolower($orderRefund['currency_code']));
         $refund->setMiraklRefundId($orderRefund['id']);
 
         return $this->updateRefund($refund);
@@ -117,22 +120,18 @@ class StripeRefundFactory implements LoggerAwareInterface
     private function findTransactionId(StripeRefund $refund): string
     {
         // Check for a transfer from the payment split workflow
-        $transfer = current(
-            $this->stripeTransferRepository->findTransfersByOrderIds([
-                                $refund->getMiraklOrderId()
-                        ])
-        );
+        $transfer = current($this->stripeTransferRepository->findTransfersByOrderIds(
+            [ $refund->getMiraklOrderId() ]
+        ));
 
         if ($transfer && $transfer->getTransactionId()) {
             return $transfer->getTransactionId();
         }
 
         // Check for a payment mapping
-        $paymentMapping = current(
-            $this->paymentMappingRepository->findPaymentsByOrderIds([
-                                $refund->getMiraklOrderId()
-                        ])
-        );
+        $paymentMapping = current($this->paymentMappingRepository->findPaymentsByOrderIds(
+            [ $refund->getMiraklOrderId() ]
+        ));
 
         if ($paymentMapping && $paymentMapping->getStripeChargeId()) {
             return $paymentMapping->getStripeChargeId();

@@ -75,58 +75,13 @@ class PaymentSplitCommandTest extends KernelTestCase
 
 		private function getTransfersFromRepository() {
 				return $this->stripeTransferRepository->findBy([
-            'type' => StripeTransfer::TRANSFER_ORDER
+            'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER
         ]);
 		}
 
-    public function testByOrderIds()
-    {
-				// 2 eligible orders
-        $this->executeCommand([
-						'mirakl_order_ids' => [
-								MiraklMockedHttpClient::ORDER_STATUS_SHIPPING,
-								MiraklMockedHttpClient::ORDER_STATUS_SHIPPED
-						]
-        ]);
-
-				// Both dispatched
-        $this->assertCount(2, $this->doctrineReceiver->getSent());
-        $this->assertCount(2, $this->getTransfersFromRepository());
-
-				// 1 eligible order
-        $this->executeCommand([
-						'mirakl_order_ids' => [
-								MiraklMockedHttpClient::ORDER_STATUS_WAITING_DEBIT_PAYMENT,
-								MiraklMockedHttpClient::ORDER_STATUS_RECEIVED
-						]
-        ]);
-
-				// Only RECEIVED is dispatched
-        $this->assertCount(1, $this->doctrineReceiver->getSent());
-        $this->assertCount(4, $this->getTransfersFromRepository());
-
-				// 0 eligible order
-				$this->mockAbortedTransfer($this->stripeTransferRepository->findOneBy([
-            'miraklId' => MiraklMockedHttpClient::ORDER_STATUS_SHIPPING
-        ]));
-				$this->mockCreatedTransfer($this->stripeTransferRepository->findOneBy([
-            'miraklId' => MiraklMockedHttpClient::ORDER_STATUS_RECEIVED
-        ]));
-        $this->executeCommand([
-						'mirakl_order_ids' => [
-								MiraklMockedHttpClient::ORDER_STATUS_SHIPPING,
-								MiraklMockedHttpClient::ORDER_STATUS_RECEIVED
-						]
-        ]);
-
-				// None dispatched
-        $this->assertCount(0, $this->doctrineReceiver->getSent());
-        $this->assertCount(4, $this->getTransfersFromRepository());
-    }
-
     public function testFirstExecution()
     {
-				$this->configService->setPaymentSplitCheckpoint(null);
+				$this->configService->setProductPaymentSplitCheckpoint(null);
         $this->executeCommand();
         $this->assertCount(0, $this->doctrineReceiver->getSent());
         $this->assertCount(0, $this->getTransfersFromRepository());
@@ -134,7 +89,7 @@ class PaymentSplitCommandTest extends KernelTestCase
 
     public function testNoNewOrders()
     {
-				$this->configService->setPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_NO_NEW_ORDERS);
+				$this->configService->setProductPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_NO_NEW_ORDERS);
         $this->executeCommand();
         $this->assertCount(0, $this->doctrineReceiver->getSent());
         $this->assertCount(0, $this->getTransfersFromRepository());
@@ -143,25 +98,25 @@ class PaymentSplitCommandTest extends KernelTestCase
     public function testNewOrders()
     {
 				// 3 new orders, one dispatchable
-				$this->configService->setPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_3_NEW_ORDERS_1_READY);
+				$this->configService->setProductPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_3_NEW_ORDERS_1_READY);
         $this->executeCommand();
         $this->assertCount(1, $this->doctrineReceiver->getSent());
         $this->assertCount(3, $this->getTransfersFromRepository());
 
 				// 14 new orders, all dispatchable
-				$this->configService->setPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_14_NEW_ORDERS_ALL_READY);
+				$this->configService->setProductPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_14_NEW_ORDERS_ALL_READY);
         $this->executeCommand();
         $this->assertCount(14, $this->doctrineReceiver->getSent());
         $this->assertCount(17, $this->getTransfersFromRepository());
 
-				$checkpoint = $this->configService->getPaymentSplitCheckpoint();
+				$checkpoint = $this->configService->getProductPaymentSplitCheckpoint();
         $this->assertEquals(MiraklMockedHttpClient::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_DATE, $checkpoint);
     }
 
     public function testBacklog()
     {
 				// 14 new orders, all dispatchable
-				$this->configService->setPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_14_NEW_ORDERS_ALL_READY);
+				$this->configService->setProductPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_14_NEW_ORDERS_ALL_READY);
         $this->executeCommand();
         $this->assertCount(14, $this->doctrineReceiver->getSent());
         $this->assertCount(14, $this->getTransfersFromRepository());

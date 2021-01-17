@@ -59,7 +59,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
         // validate payment to mirakl when we have a charge/paymentIntent
-        $ordersByCommercialId = $this->miraklClient->listPendingDebits();
+        $ordersByCommercialId = $this->miraklClient->listProductPendingDebits();
         if (!empty($ordersByCommercialId)) {
             $this->validateOrders($ordersByCommercialId);
         } else {
@@ -114,7 +114,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         }
 
         // List all orders with the same commercial id as those previously validated
-        $ordersByCommercialId = $this->miraklClient->listOrdersByCommercialId(
+        $ordersByCommercialId = $this->miraklClient->listProductOrdersByCommercialId(
             array_keys($paymentMappings)
         );
 

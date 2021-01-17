@@ -72,7 +72,7 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $this
             ->miraklClient
             ->expects($this->once())
-             ->method('validatePayments');
+             ->method('validateProductPendingDebits');
 
         $this->executeHandler($orders, $paymentMappings);
     }
@@ -89,7 +89,7 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $this
             ->miraklClient
             ->expects($this->never())
-            ->method('validatePayments');
+            ->method('validateProductPendingDebits');
 
         $this->executeHandler([], $paymentMappings);
     }

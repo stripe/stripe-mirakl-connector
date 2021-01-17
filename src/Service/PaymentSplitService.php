@@ -28,38 +28,39 @@ class PaymentSplitService
     }
 
     /**
+     * @param string $orderType
      * @return array App\Entity\StripeTransfer[]
      */
-    public function getRetriableTransfers(): array
+    public function getRetriableTransfers(string $orderType): array
     {
-        return $this->stripeTransferRepository->findRetriableOrderTransfers();
+        $method = "findRetriable{$orderType}OrderTransfers";
+        return $this->stripeTransferRepository->$method();
     }
 
     /**
      * @param array $orders
+     * @param string $orderType
      * @return array App\Entity\StripeTransfer[]
      */
-    public function getTransfersFromOrders(array $orders): array
+    public function getTransfersFromOrders(array $orders, string $orderType): array
     {
         // Retrieve existing StripeTransfers with provided order IDs
         $existingTransfers = $this->stripeTransferRepository
             ->findTransfersByOrderIds(array_keys($orders));
 
         $transfers = [];
-        foreach ($orders as $order) {
-            if (isset($existingTransfers[$order['order_id']])) {
-                $transfer = $existingTransfers[$order['order_id']];
+        foreach ($orders as $orderId => $order) {
+            if (isset($existingTransfers[$orderId])) {
+                $transfer = $existingTransfers[$orderId];
                 if (!$transfer->isRetriable()) {
                     continue;
                 }
 
                 // Use existing transfer
-                $transfer = $this->stripeTransferFactory
-                                        ->updateFromOrder($transfer, $order);
+                $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
             } else {
                 // Create new transfer
-                $transfer = $this->stripeTransferFactory
-                                        ->createFromOrder($order);
+                $transfer = $this->stripeTransferFactory->createFromOrder($order, $orderType);
                 $this->stripeTransferRepository->persist($transfer);
             }
 

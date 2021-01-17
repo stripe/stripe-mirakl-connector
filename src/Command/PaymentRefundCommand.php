@@ -30,7 +30,12 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
     /**
      * @var bool
      */
-    private $enablesAutoRefundCreation;
+    private $enableProductPaymentRefund;
+
+    /**
+     * @var bool
+     */
+    private $enableServicePaymentRefund;
 
     /**
      * @var MiraklClient
@@ -51,39 +56,40 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         MessageBusInterface $bus,
         MiraklClient $miraklClient,
         PaymentRefundService $paymentRefundService,
-        bool $enablesAutoRefundCreation
+        bool $enableProductPaymentRefund,
+        bool $enableServicePaymentRefund
     ) {
         $this->bus = $bus;
         $this->miraklClient = $miraklClient;
         $this->paymentRefundService = $paymentRefundService;
-        $this->enablesAutoRefundCreation = $enablesAutoRefundCreation;
+        $this->enableProductPaymentRefund = $enableProductPaymentRefund;
+        $this->enableServicePaymentRefund = $enableServicePaymentRefund;
         parent::__construct();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
-        if (!$this->enablesAutoRefundCreation) {
-            $output->writeln('Refund creation is disabled.');
-            $output->writeln('You can enable it by setting the environment variable ENABLES_AUTOMATIC_REFUND_CREATION to true.');
+        if ($this->enableProductPaymentRefund || $this->enableServicePaymentRefund) {
+            $this->processBacklog();
 
-            return 0;
+            if ($this->enableProductPaymentRefund) {
+                $this->processPendingRefunds(MiraklClient::ORDER_TYPE_PRODUCT);
+            }
+
+            if ($this->enableServicePaymentRefund) {
+                $this->processPendingRefunds(MiraklClient::ORDER_TYPE_SERVICE);
+            }
         }
-
-        // Start with transfers that couldn't be completed before
-        $this->processBacklog();
-
-        // Now pending refunds
-        $this->processPendingRefunds();
 
         return 0;
     }
 
     private function processBacklog()
     {
-        $this->logger->info('Executing backlog');
+        $this->logger->info("Processing backlog.");
         $backlog = $this->paymentRefundService->getRetriableTransfers();
         if (empty($backlog)) {
-            $this->logger->info('No backlog');
+            $this->logger->info("No backlog.");
             return;
         }
 
@@ -92,21 +98,25 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         );
     }
 
-    private function processPendingRefunds(): void
+    private function processPendingRefunds(string $orderType): void
     {
-        $orderRefunds = $this->miraklClient->listPendingRefunds();
+        $this->logger->info("Processing $orderType pending refunds.");
+        $method = "list{$orderType}PendingRefunds";
+        $orderRefunds = $this->miraklClient->$method();
         if (empty($orderRefunds)) {
-            $this->logger->info('No pending refund');
+            $this->logger->info("No $orderType pending refund.");
             return;
         }
 
-        $refunds = $this->paymentRefundService
-                                    ->getRefundsFromOrderRefunds($orderRefunds);
-        $transfers = $this->paymentRefundService
-                                    ->getTransfersFromOrderRefunds($orderRefunds);
+        $this->dispatchRefunds($this->paymentRefundService->getRefundsFromOrderRefunds(
+            $orderRefunds,
+            $orderType
+        ));
 
-        $this->dispatchRefunds($refunds);
-        $this->dispatchTransfers($transfers);
+        $this->dispatchTransfers($this->paymentRefundService->getTransfersFromOrderRefunds(
+            $orderRefunds,
+            $orderType
+        ));
     }
 
     private function dispatchRefunds(array $refunds): void

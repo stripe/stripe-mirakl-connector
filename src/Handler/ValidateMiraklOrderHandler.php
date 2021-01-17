@@ -48,6 +48,6 @@ class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAware
         }
 
         $this->logger->info('Validate ' . count($orders) . ' Mirakl order(s)');
-        $this->miraklClient->validatePayments($orders);
+        $this->miraklClient->validateProductPendingDebits($orders);
     }
 }

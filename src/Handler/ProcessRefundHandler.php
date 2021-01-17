@@ -61,15 +61,26 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 $refund->setStripeRefundId($response->id);
             }
 
-            $this->miraklClient->validateRefunds([[
-                'amount' => $refund->getAmount() / 100,
-                'currency_iso_code' => strtoupper($refund->getCurrency()),
-                'payment_status' => 'OK',
-                'refund_id' => $refund->getMiraklRefundId(),
-                'transaction_number' => $refund->getStripeRefundId(),
-            ]]);
-            $refund->setMiraklValidationTime(new \DateTime());
+            if (StripeRefund::REFUND_SERVICE_ORDER === $refund->getType()) {
+                $this->miraklClient->validateServicePendingRefunds([[
+                    'id' => $refund->getMiraklRefundId(),
+                    'order_id' => $refund->getMiraklOrderId(),
+                    'amount' => $refund->getAmount() / 100,
+                    'currency_code' => strtoupper($refund->getCurrency()),
+                    'state' => 'OK',
+                    'transaction_number' => $refund->getStripeRefundId()
+                ]]);
+            } else {
+                $this->miraklClient->validateProductPendingRefunds([[
+                    'refund_id' => $refund->getMiraklRefundId(),
+                    'amount' => $refund->getAmount() / 100,
+                    'currency_iso_code' => strtoupper($refund->getCurrency()),
+                    'payment_status' => 'OK',
+                    'transaction_number' => $refund->getStripeRefundId()
+                ]]);
+            }
 
+            $refund->setMiraklValidationTime(new \DateTime());
             $refund->setStatus(StripeRefund::REFUND_CREATED);
             $refund->setStatusReason(null);
         } catch (ApiErrorException $e) {

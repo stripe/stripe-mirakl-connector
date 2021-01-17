@@ -29,7 +29,12 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
     /**
      * @var bool
      */
-    private $enablesAutoTransferCreation;
+    private $enableProductPaymentSplit;
+
+    /**
+     * @var bool
+     */
+    private $enableServicePaymentSplit;
 
     /**
      * @var ConfigService
@@ -48,116 +53,98 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
 
     public function __construct(
         MessageBusInterface $bus,
-        bool $enablesAutoTransferCreation,
+        bool $enableProductPaymentSplit,
+        bool $enableServicePaymentSplit,
         ConfigService $configService,
         MiraklClient $miraklClient,
         PaymentSplitService $paymentSplitService
     ) {
         $this->bus = $bus;
-        $this->enablesAutoTransferCreation = $enablesAutoTransferCreation;
+        $this->enableProductPaymentSplit = $enableProductPaymentSplit;
+        $this->enableServicePaymentSplit = $enableServicePaymentSplit;
         $this->configService = $configService;
         $this->miraklClient = $miraklClient;
         $this->paymentSplitService = $paymentSplitService;
         parent::__construct();
     }
 
-    protected function configure()
-    {
-        $this->addArgument('mirakl_order_ids', InputArgument::IS_ARRAY);
-    }
-
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
-        if (!$this->enablesAutoTransferCreation) {
-            $output->writeln('Transfer creation is disabled.');
-            $output->writeln('You can enable it by setting the environement variable ENABLES_AUTOMATIC_TRANSFER_CREATION to true.');
-
-            return 0;
+        if ($this->enableProductPaymentSplit) {
+            $this->processBacklog(MiraklClient::ORDER_TYPE_PRODUCT);
+            $this->processNewOrders(MiraklClient::ORDER_TYPE_PRODUCT);
         }
 
-        // Order IDs passed as argument
-        $orderIds = (array) $input->getArgument('mirakl_order_ids');
-        if (!empty($orderIds)) {
-            $this->processProvidedOrderIds($orderIds);
-            return 0;
+        if ($this->enableServicePaymentSplit) {
+            $this->processBacklog(MiraklClient::ORDER_TYPE_SERVICE);
+            $this->processNewOrders(MiraklClient::ORDER_TYPE_SERVICE);
         }
-
-        // Start with transfers that couldn't be completed before
-        $this->processBacklog();
-
-        // Now new orders
-        $this->processNewOrders();
 
         return 0;
     }
 
-    private function processProvidedOrderIds($orderIds)
+    private function processBacklog(string $orderType)
     {
-        $this->logger->info('Executing provided orders', [ 'order_ids' => $orderIds ]);
-        $transfers = $this->paymentSplitService->getTransfersFromOrders(
-            $this->miraklClient->listOrdersById($orderIds)
-        );
-        $this->dispatchTransfers($transfers);
-    }
-
-    private function processBacklog()
-    {
-        $this->logger->info('Executing backlog');
-        $backlog = $this->paymentSplitService->getRetriableTransfers();
+        $this->logger->info("Processing $orderType backlog.");
+        $backlog = $this->paymentSplitService->getRetriableTransfers($orderType);
         if (empty($backlog)) {
-            $this->logger->info('No backlog');
+            $this->logger->info("No backlog.");
             return;
         }
 
         $chunks = array_chunk($backlog, 10, true);
+        $method = "list{$orderType}OrdersById";
         foreach ($chunks as $chunk) {
             $this->dispatchTransfers(
                 $this->paymentSplitService->updateTransfersFromOrders(
                     $chunk,
-                    $this->miraklClient->listOrdersById(array_keys($chunk))
+                    $this->miraklClient->$method(array_keys($chunk))
                 )
             );
         }
     }
 
-    private function processNewOrders()
+    private function processNewOrders(string $orderType)
     {
-        $checkpoint = $this->configService->getPaymentSplitCheckpoint() ?? '';
-        $this->logger->info('Executing for recent orders, checkpoint: ' . $checkpoint);
+        $method = "get{$orderType}PaymentSplitCheckpoint";
+        $checkpoint = $this->configService->$method() ?? '';
+
+        $this->logger->info("Processing recent $orderType orders, checkpoint: $checkpoint.");
+        $method = "list{$orderType}Orders";
         if ($checkpoint) {
-            $orders = $this->miraklClient->listOrdersByDate($checkpoint);
+            $method .= 'ByDate';
+            $orders = $this->miraklClient->$method($checkpoint);
         } else {
-            $orders = $this->miraklClient->listOrders();
+            $orders = $this->miraklClient->$method();
         }
 
         if (empty($orders)) {
-            $this->logger->info('No new order');
+            $this->logger->info("No new $orderType order.");
             return;
         }
 
-        $this->dispatchTransfers(
-            $this->paymentSplitService->getTransfersFromOrders($orders)
-        );
+        $this->dispatchTransfers($this->paymentSplitService->getTransfersFromOrders(
+            $orders,
+            $orderType
+        ));
 
-        $checkpoint = $this->updateCheckpoint($orders, $checkpoint);
-        $this->configService->setPaymentSplitCheckpoint($checkpoint);
-        $this->logger->info('Setting new checkpoint: ' . $checkpoint);
+        $newCheckpoint = $this->updateCheckpoint($orders, $checkpoint);
+        if ($checkpoint !== $newCheckpoint) {
+            $method = "set{$orderType}PaymentSplitCheckpoint";
+            $this->configService->$method($newCheckpoint);
+            $this->logger->info("Setting new $orderType checkpoint:  . $newCheckpoint.");
+        }
     }
 
-    // Return the last valid created_date or the current checkpoint
+    // Return the last creation date
     private function updateCheckpoint(array $orders, ?string $checkpoint): ?string
     {
-        $orders = array_reverse($orders);
-        foreach ($orders as $order) {
-            try {
-                MiraklClient::getDatetimeFromString($order['created_date']);
-                return $order['created_date'];
-            } catch (InvalidArgumentException $e) {
-                // Shouldn't happen, see MiraklClient::getDatetimeFromString
-            }
+        if (empty($orders)) {
+            return $checkpoint;
         }
 
-        return $checkpoint;
+        $lastOrder = current(array_reverse($orders));
+        return $lastOrder['created_date'] ?? $lastOrder['date_created'];
     }
 
     private function dispatchTransfers(array $transfers): void

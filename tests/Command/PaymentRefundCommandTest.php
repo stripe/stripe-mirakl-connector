@@ -95,7 +95,7 @@ class PaymentRefundCommandTest extends KernelTestCase
     private function mockOrderTransfer(array $order, string $transactionId)
     {
         $transfer = new StripeTransfer();
-				$transfer->setType(StripeTransfer::TRANSFER_ORDER);
+				$transfer->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
 				$transfer->setMiraklId($order['order_id']);
         $transfer->setAmount(gmp_intval((string) ($order['amount'] * 100)));
         $transfer->setCurrency(strtolower($order['currency_iso_code']));
@@ -126,7 +126,7 @@ class PaymentRefundCommandTest extends KernelTestCase
         $this->assertCount(14, $this->getTransfersFromRepository());
 
 				// Mock ORDER_REFUND_BASIC now has a payment ID
-				$orders = $this->miraklClient->listPendingRefunds();
+				$orders = $this->miraklClient->listProductPendingRefunds();
 				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklMock::ORDER_REFUND_BASIC);
 				$this->mockOrderTransfer($orders[$orderId],	StripeMock::CHARGE_BASIC);
 

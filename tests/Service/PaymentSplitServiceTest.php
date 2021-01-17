@@ -60,19 +60,20 @@ class PaymentSplitServiceTest extends KernelTestCase
 
 		private function getTransfersFromRepository() {
 				return $this->stripeTransferRepository->findBy([
-            'type' => StripeTransfer::TRANSFER_ORDER
+            'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER
         ]);
 		}
 
     public function testGetRetriableTransfers()
     {
         $transfers = $this->paymentSplitService->getTransfersFromOrders(
-						$this->miraklClient->listOrdersById([
+						$this->miraklClient->listProductOrdersById([
 								MiraklMockedHttpClient::ORDER_STATUS_STAGING,
 								MiraklMockedHttpClient::ORDER_STATUS_WAITING_DEBIT_PAYMENT,
 								MiraklMockedHttpClient::ORDER_STATUS_REFUSED,
 								MiraklMockedHttpClient::ORDER_STATUS_RECEIVED
-						])
+						]),
+						MiraklClient::ORDER_TYPE_PRODUCT
 				);
         $this->assertCount(4, $transfers);
 
@@ -80,34 +81,37 @@ class PaymentSplitServiceTest extends KernelTestCase
         $this->assertCount(4, $transfers);
 
 				// Only STAGING and WAITING_DEBIT_PAYMENT are retriable
-        $transfers = $this->paymentSplitService->getRetriableTransfers();
+        $transfers = $this->paymentSplitService->getRetriableTransfers(MiraklClient::ORDER_TYPE_PRODUCT);
         $this->assertCount(2, $transfers);
     }
 
     public function testGetTransfersFromOrders()
     {
         $transfers = $this->paymentSplitService->getTransfersFromOrders(
-						$this->miraklClient->listOrdersById([
+						$this->miraklClient->listProductOrdersById([
 								MiraklMockedHttpClient::ORDER_STATUS_SHIPPING,
 								MiraklMockedHttpClient::ORDER_STATUS_REFUSED
-						])
+						]),
+						MiraklClient::ORDER_TYPE_PRODUCT
 				);
         $this->assertCount(2, $transfers);
 
         $transfers = $this->paymentSplitService->getTransfersFromOrders(
-						$this->miraklClient->listOrdersById([
+						$this->miraklClient->listProductOrdersById([
 								MiraklMockedHttpClient::ORDER_STATUS_SHIPPING,
 								MiraklMockedHttpClient::ORDER_STATUS_RECEIVED
-						])
+						]),
+						MiraklClient::ORDER_TYPE_PRODUCT
 				);
 				// SHIPPING is already pending
         $this->assertCount(1, $transfers);
 
         $transfers = $this->paymentSplitService->getTransfersFromOrders(
-						$this->miraklClient->listOrdersById([
+						$this->miraklClient->listProductOrdersById([
 								MiraklMockedHttpClient::ORDER_STATUS_SHIPPING,
 								MiraklMockedHttpClient::ORDER_STATUS_RECEIVED
-						])
+						]),
+						MiraklClient::ORDER_TYPE_PRODUCT
 				);
 				// Both are already pending
         $this->assertCount(0, $transfers);
@@ -118,18 +122,20 @@ class PaymentSplitServiceTest extends KernelTestCase
 
     public function testUpdateTransfersFromOrders()
     {
-				$orders = $this->miraklClient->listOrdersById([
+				$orders = $this->miraklClient->listProductOrdersById([
 						MiraklMockedHttpClient::ORDER_STATUS_STAGING,
 						MiraklMockedHttpClient::ORDER_STATUS_WAITING_DEBIT_PAYMENT,
 						MiraklMockedHttpClient::ORDER_STATUS_REFUSED,
 						MiraklMockedHttpClient::ORDER_STATUS_RECEIVED
 				]);
-        $transfers = $this->paymentSplitService
-						->getTransfersFromOrders($orders);
+        $transfers = $this->paymentSplitService->getTransfersFromOrders(
+						$orders,
+						MiraklClient::ORDER_TYPE_PRODUCT
+				);
         $this->assertCount(4, $transfers);
 
 				// Only STAGING and WAITING_DEBIT_PAYMENT are retriable
-        $transfers = $this->paymentSplitService->getRetriableTransfers();
+        $transfers = $this->paymentSplitService->getRetriableTransfers(MiraklClient::ORDER_TYPE_PRODUCT);
         $this->assertCount(2, $transfers);
 				unset($orders[MiraklMockedHttpClient::ORDER_STATUS_REFUSED]);
 				unset($orders[MiraklMockedHttpClient::ORDER_STATUS_RECEIVED]);

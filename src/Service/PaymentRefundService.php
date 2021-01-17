@@ -55,33 +55,31 @@ class PaymentRefundService
      * @param array $orders
      * @return array App\Entity\StripeRefund[]
      */
-    public function getRefundsFromOrderRefunds(array $orders): array
+    public function getRefundsFromOrderRefunds(array $orders, string $orderType): array
     {
         // Retrieve existing StripeRefunds with provided refund IDs
-        $refundIds = $this->getRefundIdsFromOrders($orders);
-        $existingRefunds = $this->stripeRefundRepository->findRefundsByRefundIds($refundIds);
+        $orderRefunds = self::parseOrderRefunds($orders, $orderType);
+        $existingRefunds = $this->stripeRefundRepository->findRefundsByRefundIds(
+            array_keys($orderRefunds)
+        );
 
         $refunds = [];
-        foreach ($orders as $order) {
-            foreach ($order['order_lines']['order_line'] as $i => $orderLine) {
-                foreach ($orderLine['refunds']['refund'] as $j => $orderRefund) {
-                    if (isset($existingRefunds[$orderRefund['id']])) {
-                        $refund = $existingRefunds[$orderRefund['id']];
-                        if (!$refund->isRetriable()) {
-                            continue;
-                        }
-
-                        $refund = $this->stripeRefundFactory->updateRefund($refund);
-                    } else {
-                        // Create new refund
-                        $refund = $this->stripeRefundFactory->createFromOrderRefund($order, $i, $j);
-
-                        $this->stripeRefundRepository->persist($refund);
-                    }
-
-                    $refunds[] = $refund;
+        foreach ($orderRefunds as $refundId => $orderRefund) {
+            if (isset($existingRefunds[$refundId])) {
+                $refund = $existingRefunds[$refundId];
+                if (!$refund->isRetriable()) {
+                    continue;
                 }
+
+                $refund = $this->stripeRefundFactory->updateRefund($refund);
+            } else {
+                // Create new refund
+                $refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, $orderType);
+
+                $this->stripeRefundRepository->persist($refund);
             }
+
+            $refunds[] = $refund;
         }
 
         // Save
@@ -94,33 +92,31 @@ class PaymentRefundService
      * @param array $orders
      * @return array App\Entity\StripeRefund[]
      */
-    public function getTransfersFromOrderRefunds(array $orders): array
+    public function getTransfersFromOrderRefunds(array $orders, string $orderType): array
     {
         // Retrieve existing StripeTransfers with provided refund IDs
-        $refundIds = $this->getRefundIdsFromOrders($orders);
-        $existingTransfers = $this->stripeTransferRepository->findTransfersByRefundIds($refundIds);
+        $orderRefunds = $this->parseOrderRefunds($orders, $orderType);
+        $existingTransfers = $this->stripeTransferRepository->findTransfersByRefundIds(
+            array_keys($orderRefunds)
+        );
 
         $transfers = [];
-        foreach ($orders as $order) {
-            foreach ($order['order_lines']['order_line'] as $orderLine) {
-                foreach ($orderLine['refunds']['refund'] as $orderRefund) {
-                    if (isset($existingTransfers[$orderRefund['id']])) {
-                        $transfer = $existingTransfers[$orderRefund['id']];
-                        if (!$transfer->isRetriable()) {
-                            continue;
-                        }
-
-                        $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
-                    } else {
-                        // Create new transfer
-                        $transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
-
-                        $this->stripeTransferRepository->persist($transfer);
-                    }
-
-                    $transfers[] = $transfer;
+        foreach ($orderRefunds as $refundId => $orderRefund) {
+            if (isset($existingTransfers[$refundId])) {
+                $transfer = $existingTransfers[$refundId];
+                if (!$transfer->isRetriable()) {
+                    continue;
                 }
+
+                $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
+            } else {
+                // Create new transfer
+                $transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
+
+                $this->stripeTransferRepository->persist($transfer);
             }
+
+            $transfers[] = $transfer;
         }
 
         // Save
@@ -133,7 +129,7 @@ class PaymentRefundService
      * @param array $transfers
      * @return array [ refund_id => App\Entity\StripeTransfer ]
      */
-    public function updateTransfers(array $transfers)
+    public function updateTransfers(array $transfers): array
     {
         $updated = [];
         foreach ($transfers as $refundId => $transfer) {
@@ -148,19 +144,29 @@ class PaymentRefundService
 
     /**
      * @param array $orders
-     * @return array string[]
+     * @param string $orderType
+     * @return array
      */
-    private function getRefundIdsFromOrders(array $orders)
+    public static function parseOrderRefunds(array $orders, string $orderType): array
     {
-        $refundIds = [];
-        foreach ($orders as $order) {
-            foreach ($order['order_lines']['order_line'] as $orderLine) {
-                foreach ($orderLine['refunds']['refund'] as $orderRefund) {
-                    $refundIds[] = (string) $orderRefund['id'];
+        $refunds = [];
+        if (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
+            foreach ($orders as $order) {
+                foreach ($order['order_lines']['order_line'] as $orderLine) {
+                    foreach ($orderLine['refunds']['refund'] as $orderRefund) {
+                        $orderRefund['currency_code'] = $order['currency_iso_code'];
+                        $orderRefund['order_id'] = $order['order_id'];
+                        $orderRefund['order_line_id'] = $orderLine['order_line_id'];
+                        $refunds[$orderRefund['id']] = $orderRefund;
+                    }
                 }
+            }
+        } elseif (MiraklClient::ORDER_TYPE_SERVICE === $orderType) {
+            foreach ($orders as $orderRefund) {
+                $refunds[$orderRefund['id']] = $orderRefund;
             }
         }
 
-        return $refundIds;
+        return $refunds;
     }
 }

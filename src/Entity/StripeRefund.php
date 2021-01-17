@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use ApiPlatform\Core\Annotation\ApiResource;
+use App\Exception\InvalidArgumentException;
 use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 
@@ -38,12 +39,21 @@ class StripeRefund
     public const REFUND_STATUS_REASON_PAYMENT_CANCELED = 'Payment %s has been canceled';
     public const REFUND_STATUS_REASON_PAYMENT_REFUNDED = 'Payment %s has been fully refunded';
 
+    // Refund types
+    public const REFUND_PRODUCT_ORDER = 'REFUND_PRODUCT_ORDER';
+    public const REFUND_SERVICE_ORDER = 'REFUND_SERVICE_ORDER';
+
     /**
      * @ORM\Id()
      * @ORM\GeneratedValue()
      * @ORM\Column(type="integer")
      */
     private $id;
+
+    /**
+     * @ORM\Column(name="type", type="string")
+     */
+    private $type;
 
     /**
      * @ORM\Column(type="integer")
@@ -133,6 +143,14 @@ class StripeRefund
         ];
     }
 
+    public static function getAvailableTypes(): array
+    {
+        return [
+            self::REFUND_PRODUCT_ORDER,
+            self::REFUND_SERVICE_ORDER
+        ];
+    }
+
     public function isRetriable(): bool
     {
         return in_array($this->getStatus(), self::getRetriableStatus());
@@ -146,6 +164,21 @@ class StripeRefund
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): self
+    {
+        if (!in_array($type, self::getAvailableTypes())) {
+            throw new InvalidArgumentException('Invalid refund type');
+        }
+        $this->type = $type;
+
+        return $this;
     }
 
     public function getAmount(): int

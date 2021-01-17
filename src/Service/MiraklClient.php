@@ -11,6 +11,9 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 class MiraklClient
 {
+    const ORDER_TYPE_PRODUCT = 'Product';
+    const ORDER_TYPE_SERVICE = 'Service';
+
     const DATE_FORMAT = \DateTime::ISO8601;
     const DATE_FORMAT_INVALID_MESSAGE = 'Unexpected date format, expecting %s, input was %s';
 
@@ -28,7 +31,11 @@ class MiraklClient
     {
         $res = json_decode($response->getContent(), true);
         foreach ($attributes as $attr) {
-            $res = $res[$attr] ?? $res;
+            if (isset($res[$attr])) {
+                $res = $res[$attr];
+            } else {
+                break;
+            }
         }
 
         return $res;
@@ -39,10 +46,10 @@ class MiraklClient
         $options = [ 'query' => array_merge([ 'max' => 10 ], $params) ];
 
         $response = $this->client->request('GET', $endpoint, $options);
-        $agg = $this->parseResponse($response, $attributes) ?? [];
+        $agg = $this->parseResponse($response, $attributes);
         while ($next = $this->getNextLink($response)) {
             $response = $this->client->request('GET', $next);
-            $objects = $this->parseResponse($response, $attributes) ?? [];
+            $objects = $this->parseResponse($response, $attributes);
             if (empty($objects)) {
                 break;
             }
@@ -69,6 +76,32 @@ class MiraklClient
         return null;
     }
 
+    private function paginateByPage(string $endpoint, array $attributes, array $params = [])
+    {
+        $options = [ 'query' => array_merge([ 'limit' => 10 ], $params) ];
+
+        $response = $this->client->request('GET', $endpoint, $options);
+        $agg = $this->parseResponse($response, $attributes);
+        while ($next = $this->getNextPage($response)) {
+            $options = [ 'query' => [ 'page_token' => $next ] ];
+            $response = $this->client->request('GET', $endpoint, $options);
+            $objects = $this->parseResponse($response, $attributes);
+            if (empty($objects)) {
+                break;
+            }
+
+            $agg = array_merge($agg, $objects);
+        }
+
+        return $agg;
+    }
+
+    private function getNextPage(ResponseInterface $response)
+    {
+        $body = $this->parseResponse($response);
+        return $body['next_page_token'] ?? null;
+    }
+
     // return [ order_id => order ]
     private function mapByOrderId(array $orders)
     {
@@ -76,8 +109,15 @@ class MiraklClient
         return array_combine($orderIds, $orders);
     }
 
+    // return [ id => order ]
+    private function mapById(array $orders)
+    {
+        $orderIds = array_column($orders, 'id');
+        return array_combine($orderIds, $orders);
+    }
+
     // return [ order_commercial_id => [ order_id => order] ]
-    private function mapByCommercialAndOrderId(array $orders)
+    private function mapByCommercialIdAndOrderId(array $orders)
     {
         $map = [];
         foreach ($orders as $order) {
@@ -92,6 +132,22 @@ class MiraklClient
         return $map;
     }
 
+    // return [ order_commercial_id => [ id => order] ]
+    private function mapByCommercialIdAndId(array $orders)
+    {
+        $map = [];
+        foreach ($orders as $order) {
+            $commercialId = $order['commercial_id'] ?? $order['order_commercial_id'];
+            if (!isset($map[$commercialId])) {
+                $map[$commercialId] = [];
+            }
+
+            $map[$commercialId][$order['id']] = $order;
+        }
+
+        return $map;
+    }
+
     // return [ invoice_id => invoice ]
     private function mapByInvoiceId(array $invoices)
     {
@@ -100,7 +156,7 @@ class MiraklClient
     }
 
     // OR11
-    public function listOrders()
+    public function listProductOrders()
     {
         return $this->mapByOrderId($this->paginateByOffset(
             '/api/orders',
@@ -109,7 +165,7 @@ class MiraklClient
     }
 
     // OR11 by date
-    public function listOrdersByDate(string $datetime)
+    public function listProductOrdersByDate(string $datetime)
     {
         return $this->mapByOrderId($this->paginateByOffset(
             '/api/orders',
@@ -119,7 +175,7 @@ class MiraklClient
     }
 
     // OR11 by order_id
-    public function listOrdersById(array $orderIds)
+    public function listProductOrdersById(array $orderIds)
     {
         return $this->mapByOrderId($this->paginateByOffset(
             '/api/orders',
@@ -129,9 +185,9 @@ class MiraklClient
     }
 
     // OR11 by commercial_id
-    public function listOrdersByCommercialId(array $commercialIds)
+    public function listProductOrdersByCommercialId(array $commercialIds)
     {
-        return $this->mapByCommercialAndOrderId($this->paginateByOffset(
+        return $this->mapByCommercialIdAndOrderId($this->paginateByOffset(
             '/api/orders',
             [ 'orders' ],
             [ 'commercial_ids' => implode(',', $commercialIds) ]
@@ -139,18 +195,16 @@ class MiraklClient
     }
 
     // PA11
-    public function listPendingDebits()
+    public function listProductPendingDebits()
     {
-        return $this->mapByCommercialAndOrderId($this->paginateByOffset(
+        return $this->mapByCommercialIdAndOrderId($this->paginateByOffset(
             '/api/payment/debit',
             [ 'orders', 'order' ]
         ));
-        $response = $this->client->request('GET', '/api/payment/debit');
-        return $this->parseResponse($response)['orders']['order'];
     }
 
     // PA01
-    public function validatePayments(array $orders)
+    public function validateProductPendingDebits(array $orders)
     {
         $this->client->request('PUT', '/api/payment/debit', [
             'json' => [ 'orders' => $orders ]
@@ -158,7 +212,7 @@ class MiraklClient
     }
 
     // PA12
-    public function listPendingRefunds()
+    public function listProductPendingRefunds()
     {
         return $this->mapByOrderId($this->paginateByOffset(
             '/api/payment/refund',
@@ -167,9 +221,82 @@ class MiraklClient
     }
 
     // PA02
-    public function validateRefunds(array $refunds)
+    public function validateProductPendingRefunds(array $refunds)
     {
         $this->client->request('PUT', '/api/payment/refund', [
+            'json' => [ 'refunds' => $refunds ]
+        ]);
+    }
+
+    // SOR11
+    public function listServiceOrders()
+    {
+        return $this->mapById($this->paginateByPage(
+            '/api/mms/orders',
+            [ 'data' ]
+        ));
+    }
+
+    // SOR11 by date
+    public function listServiceOrdersByDate(string $datetime)
+    {
+        return $this->mapById($this->paginateByPage(
+            '/api/mms/orders',
+            [ 'data' ],
+            [ 'date_created_start' => $datetime ]
+        ));
+    }
+
+    // SOR11 by order_id
+    public function listServiceOrdersById(array $orderIds)
+    {
+        return $this->mapById($this->paginateByPage(
+            '/api/mms/orders',
+            [ 'data' ],
+            [ 'order_id' => $orderIds ]
+        ));
+    }
+
+    // SOR11 by commercial_id
+    public function listServiceOrdersByCommercialId(array $commercialIds)
+    {
+        return $this->mapByCommercialIdAndId($this->paginateByPage(
+            '/api/mms/orders',
+            [ 'data' ],
+            [ 'commercial_order_id' => $commercialIds ]
+        ));
+    }
+
+    // SPA11
+    public function listServicePendingDebits()
+    {
+        return $this->mapByOrderId($this->paginateByPage(
+            '/api/mms/debits',
+            [ 'data' ]
+        ));
+    }
+
+    // SPA01
+    public function validateServicePendingDebits(array $orders)
+    {
+        $this->client->request('PUT', '/api/mms/debits', [
+            'json' => [ 'orders' => $orders ]
+        ]);
+    }
+
+    // SPA12
+    public function listServicePendingRefunds()
+    {
+        return $this->mapByOrderId($this->paginateByPage(
+            '/api/mms/refunds',
+            [ 'data' ]
+        ));
+    }
+
+    // SPA02
+    public function validateServicePendingRefunds(array $refunds)
+    {
+        $this->client->request('PUT', '/api/mms/refunds', [
             'json' => [ 'refunds' => $refunds ]
         ]);
     }

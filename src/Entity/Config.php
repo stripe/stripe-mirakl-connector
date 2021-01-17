@@ -11,8 +11,9 @@ use Gedmo\Mapping\Annotation as Gedmo;
  */
 class Config
 {
-    public const PAYMENT_SPLIT_CHECKPOINT = 'process_transfer_checkpoint';
-    public const SELLER_SETTLEMENT_CHECKPOINT = 'process_payout_checkpoint';
+    public const PRODUCT_PAYMENT_SPLIT_CHECKPOINT = 'product_payment_split_checkpoint';
+    public const SERVICE_PAYMENT_SPLIT_CHECKPOINT = 'service_payment_split_checkpoint';
+    public const SELLER_SETTLEMENT_CHECKPOINT = 'seller_settlement_checkpoint';
 
     /**
      * @ORM\Id()
@@ -34,7 +35,8 @@ class Config
     public static function getAvailableKeys(): array
     {
         return [
-            self::PAYMENT_SPLIT_CHECKPOINT,
+            self::PRODUCT_PAYMENT_SPLIT_CHECKPOINT,
+            self::SERVICE_PAYMENT_SPLIT_CHECKPOINT,
             self::SELLER_SETTLEMENT_CHECKPOINT,
         ];
     }

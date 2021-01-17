@@ -54,11 +54,12 @@ class StripeTransfer
     public const TRANSFER_STATUS_REASON_PAYMENT_CANCELED = 'Payment %s has been canceled';
     public const TRANSFER_STATUS_REASON_PAYMENT_REFUNDED = 'Payment %s has been fully refunded';
     public const TRANSFER_STATUS_REASON_NO_SHOP_ID = 'No shop ID provided';
-    public const TRANSFER_STATUS_REASON_ORDER_REFUND_AMOUNT_NOT_FOUND = 'Cannot find amount with order line ID %s and refund ID %s';
+    public const TRANSFER_STATUS_REASON_ORDER_REFUND_AMOUNT_NOT_FOUND = 'Cannot find amount for refund ID %s';
     public const TRANSFER_STATUS_REASON_ORDER_REFUND_ABORTED = 'Refund %s has been aborted';
 
     // Transfer types
-    public const TRANSFER_ORDER = 'TRANSFER_ORDER';
+    public const TRANSFER_PRODUCT_ORDER = 'TRANSFER_PRODUCT_ORDER';
+    public const TRANSFER_SERVICE_ORDER = 'TRANSFER_SERVICE_ORDER';
     public const TRANSFER_REFUND = 'TRANSFER_REFUND';
     public const TRANSFER_SUBSCRIPTION = 'TRANSFER_SUBSCRIPTION';
     public const TRANSFER_EXTRA_CREDITS = 'TRANSFER_EXTRA_CREDITS';
@@ -162,7 +163,8 @@ class StripeTransfer
     public static function getAvailableTypes(): array
     {
         return [
-            self::TRANSFER_ORDER,
+            self::TRANSFER_PRODUCT_ORDER,
+            self::TRANSFER_SERVICE_ORDER,
             self::TRANSFER_REFUND,
             self::TRANSFER_SUBSCRIPTION,
             self::TRANSFER_EXTRA_CREDITS,

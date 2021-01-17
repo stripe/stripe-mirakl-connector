@@ -25,7 +25,6 @@ class MiraklMockedHttpClient extends MockHttpClient
 		public const ORDER_STATUS_CANCELED = 'order_status_canceled';
 		public const ORDER_STATUS_PARTIALLY_ACCEPTED = 'order_status_partially_accepted';
 		public const ORDER_STATUS_PARTIALLY_REFUSED = 'order_status_partially_refused';
-		public const ORDER_INVALID_DATE = 'order_invalid_date';
 		public const ORDER_INVALID_AMOUNT = 'order_invalid_amount';
 		public const ORDER_INVALID_SHOP = 'order_invalid_shop';
 		public const ORDER_AMOUNT_NO_COMMISSION = 'order_no_commission';
@@ -107,7 +106,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 										]);
 								}
 						} catch (InvalidArgumentException $e) {
-								throw new \Exception('Unpexpected URL: ' . $url);
+								throw new \Exception("Unpexpected URL: {$url}. Method: {$method}.");
 						} catch (\Exception $e) {
 								return new MockResponse(
 										[ 'message' => $e->getMessage() ],
@@ -260,8 +259,11 @@ class MiraklMockedHttpClient extends MockHttpClient
 												self::ORDER_STATUS_SHIPPED,
 												self::ORDER_STATUS_RECEIVED,
 										]);
-										$newOrders[self::ORDER_STATUS_SHIPPED]['total_price'] *= 2;
-										$newOrders[self::ORDER_STATUS_RECEIVED]['total_price'] *= 2;
+
+										foreach ($newOrders as $i => $newOrder) {
+												$newOrders[$i]['total_price'] *= 2;
+										}
+
 										$orders = array_merge($orders, $newOrders);
 										break;
 								case self::ORDER_COMMERCIAL_NONE_VALIDATED:
@@ -346,9 +348,6 @@ class MiraklMockedHttpClient extends MockHttpClient
 										break;
 								case self::ORDER_STATUS_PARTIALLY_REFUSED:
 										$order = $this->getOrder($orderId, 'SHIPPING', 'REFUSED');
-										break;
-								case self::ORDER_INVALID_DATE:
-										$order['created_date'] = 'invalid';
 										break;
 								case self::ORDER_INVALID_AMOUNT:
 						        $order['total_commission'] = '100';
