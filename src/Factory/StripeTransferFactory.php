@@ -345,21 +345,21 @@ class StripeTransferFactory implements LoggerAwareInterface
     private function checkOrderState(string $state)
     {
         static $tooSoon = [
-                        'WAITING_ACCEPTANCE', 'WAITING_DEBIT', 'WAITING_DEBIT_PAYMENT',
+            'WAITING_ACCEPTANCE', 'WAITING_DEBIT', 'WAITING_DEBIT_PAYMENT',
 
-                        // Product order states
+            // Product order states
             'STAGING',
 
-                        // Service order states
-                        'WAITING_SCORING'
+            // Service order states
+            'WAITING_SCORING'
         ];
 
         static $tooLate = [
-                        // Product order states
+            // Product order states
             'REFUSED', 'CANCELED',
 
-                        // Service order states
-                        'ORDER_REFUSED', 'ORDER_EXPIRED', 'ORDER_CANCELLED'
+            // Service order states
+            'ORDER_REFUSED', 'ORDER_EXPIRED', 'ORDER_CANCELLED'
         ];
 
         if (in_array($state, $tooSoon)) {
@@ -456,22 +456,18 @@ class StripeTransferFactory implements LoggerAwareInterface
      */
     private function getOrderTransactionId(string $trid): ?string
     {
-        // Transaction number is a PaymentIntent
+        $transactionId = null;
         if (0 === strpos($trid, 'pi_')) {
+            // Transaction number is a PaymentIntent
             $pi = $this->stripeClient->paymentIntentRetrieve($trid);
             switch ($pi->status) {
                 case 'succeeded':
                     // Still have to check if it has been refunded
                     $ch = $pi->charges->data[0] ?? null;
                     if ($ch instanceof Charge) {
-                        return $this->getOrderTransactionIdFromCharge($ch);
+                        $transactionId = $this->getOrderTransactionIdFromCharge($ch);
                     }
-
-                    // Should not happen
-                    throw new InvalidArgumentException(sprintf(
-                        StripeTransfer::TRANSFER_STATUS_REASON_PAID_NO_CHARGE,
-                        $trid
-                    ), 20);
+                    break;
                 case 'canceled':
                     throw new InvalidArgumentException(sprintf(
                         StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_CANCELED,
@@ -484,15 +480,13 @@ class StripeTransferFactory implements LoggerAwareInterface
                         $pi->status
                     ), 20);
             }
-        }
-
-        // Transaction number is a Charge
-        if (0 === strpos($trid, 'ch_') || 0 === strpos($trid, 'py_')) {
+        } elseif (0 === strpos($trid, 'ch_') || 0 === strpos($trid, 'py_')) {
+            // Transaction number is a Charge
             $ch = $this->stripeClient->chargeRetrieve($trid);
-            return $this->getOrderTransactionIdFromCharge($ch);
+            $transactionId = $this->getOrderTransactionIdFromCharge($ch);
         }
 
-        return null;
+        return $transactionId;
     }
 
     /**
@@ -539,9 +533,9 @@ class StripeTransferFactory implements LoggerAwareInterface
      */
     private function findRefundFromRefundId(string $refundId): StripeRefund
     {
-        $refund = current($this->stripeRefundRepository->findRefundsByRefundIds([
-                        $refundId
-                ]));
+        $refund = current($this->stripeRefundRepository->findRefundsByRefundIds(
+            [ $refundId ]
+        ));
 
         if (!$refund) {
             throw new InvalidArgumentException(sprintf(
@@ -551,20 +545,20 @@ class StripeTransferFactory implements LoggerAwareInterface
         }
 
         switch ($refund->getStatus()) {
-                        case StripeRefund::REFUND_CREATED:
-                                // Perfect
-                                return $refund;
-                        case StripeRefund::REFUND_ABORTED:
-                                throw new InvalidArgumentException(sprintf(
-                                    StripeTransfer::TRANSFER_STATUS_REASON_ORDER_REFUND_ABORTED,
-                                    $refundId
-                                ), 10);
-                        default:
-                                throw new InvalidArgumentException(sprintf(
-                                    StripeTransfer::TRANSFER_STATUS_REASON_REFUND_NOT_VALIDATED,
-                                    $refundId
-                                ), 20);
-                }
+            case StripeRefund::REFUND_CREATED:
+                // Perfect
+                return $refund;
+            case StripeRefund::REFUND_ABORTED:
+                throw new InvalidArgumentException(sprintf(
+                    StripeTransfer::TRANSFER_STATUS_REASON_ORDER_REFUND_ABORTED,
+                    $refundId
+                ), 10);
+            default:
+                throw new InvalidArgumentException(sprintf(
+                    StripeTransfer::TRANSFER_STATUS_REASON_REFUND_NOT_VALIDATED,
+                    $refundId
+                ), 20);
+        }
     }
 
     /**

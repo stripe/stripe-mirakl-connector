@@ -76,10 +76,9 @@ class OnboardingAccountFactory
         ];
 
         if ($this->stripePrefillOnboarding) {
+            $businessType = null;
             if (array_key_exists('is_professional', $miraklShop)) {
                 $businessType = $miraklShop['is_professional'] ? 'company' : 'individual';
-            } else {
-                $businessType = null;
             }
 
             $queryParams = array_merge(array_filter([

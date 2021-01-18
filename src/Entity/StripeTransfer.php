@@ -42,7 +42,6 @@ class StripeTransfer
     public const TRANSFER_STATUS_REASON_ORDER_NOT_READY = 'Order is not ready yet, status is %s';
     public const TRANSFER_STATUS_REASON_LINE_ITEM_NOT_READY = 'One of the line items is not ready yet, status is %s';
     public const TRANSFER_STATUS_REASON_PAYMENT_NOT_READY = 'Payment %s is not ready yet, status is %s';
-    public const TRANSFER_STATUS_REASON_PAID_NO_CHARGE = 'Payment %s succeeded but no charge is attached';
     public const TRANSFER_STATUS_REASON_REFUND_NOT_FOUND = 'Cannot find StripeRefund with ID %s';
     public const TRANSFER_STATUS_REASON_REFUND_NOT_VALIDATED = 'Refund %s has yet to be validated';
     public const TRANSFER_STATUS_REASON_TRANSFER_NOT_READY = 'Payment split has to occur before the transfer can be reversed for a refund';

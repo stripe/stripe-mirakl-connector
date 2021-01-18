@@ -159,12 +159,7 @@ class StripeRefundFactory implements LoggerAwareInterface
                         $this->checkChargeStatus($ch);
                         return;
                     }
-
-                    // Should not happen
-                    throw new InvalidArgumentException(sprintf(
-                        StripeRefund::REFUND_STATUS_REASON_PAID_NO_CHARGE,
-                        $trid
-                    ), 20);
+                                        break;
                 case 'canceled':
                     throw new InvalidArgumentException(sprintf(
                         StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED,
@@ -185,11 +180,6 @@ class StripeRefundFactory implements LoggerAwareInterface
             $this->checkChargeStatus($ch);
             return;
         }
-
-        throw new InvalidArgumentException(sprintf(
-            StripeRefund::REFUND_STATUS_REASON_PAYMENT_TYPE_UNRECOGNIZED,
-            $trid
-        ), 20);
     }
 
     /**

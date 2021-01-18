@@ -29,10 +29,8 @@ class StripeRefund
     // Refund status reasons: on hold
     public const REFUND_STATUS_REASON_NO_CHARGE_ID = 'Cannot find the ID of the payment to be refunded';
     public const REFUND_STATUS_REASON_PAYMENT_NOT_READY = 'Payment %s is not ready yet, status is %s';
-    public const REFUND_STATUS_REASON_PAID_NO_CHARGE = 'Payment %s succeeded but no charge is attached';
     public const REFUND_STATUS_REASON_REFUND_NOT_FOUND = 'Cannot find StripeRefund with ID %s';
     public const REFUND_STATUS_REASON_REFUND_NOT_VALIDATED = 'Refund %s has yet to be validated';
-    public const REFUND_STATUS_REASON_PAYMENT_TYPE_UNRECOGNIZED = 'Cannot deduce type from %s';
 
     // Refund status reasons: aborted
     public const REFUND_STATUS_REASON_PAYMENT_FAILED = 'Payment %s failed';

@@ -3,6 +3,7 @@
 namespace App\Validator;
 
 use App\Service\MiraklClient;
+use App\Validator\MiraklShopId;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 
@@ -20,14 +21,12 @@ class MiraklShopIdValidator extends ConstraintValidator
 
     public function validate($miraklShopId, Constraint $constraint)
     {
-        if (!($constraint instanceof \App\Validator\MiraklShopId)) {
-            return true;
-        }
-
-        $miraklShop = $this->miraklClient->fetchShops([ $miraklShopId ]);
-        if (1 !== count($miraklShop)) {
-            $this->context->buildViolation($constraint->message)->addViolation();
-            return false;
+        if ($constraint instanceof \App\Validator\MiraklShopId) {
+            $miraklShop = $this->miraklClient->fetchShops([ $miraklShopId ]);
+            if (1 !== count($miraklShop)) {
+                $this->context->buildViolation($constraint->message)->addViolation();
+                return false;
+            }
         }
 
         return true;
