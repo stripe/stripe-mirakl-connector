@@ -86,7 +86,7 @@ class StripePayoutFactoryTest extends KernelTestCase
 				foreach ($invoices as $invoiceId => $invoice) {
 		        $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
 						switch ($invoiceId) {
-								case MiraklMockedHttpClient::INVOICE_INVALID_DATE:
+								case MiraklMockedHttpClient::INVOICE_INVALID_NO_SHOP:
 					        	$this->assertEquals(StripePayout::PAYOUT_ABORTED, $payout->getStatus());
 						        $this->assertNotNull($payout->getStatusReason());
 										break;

@@ -362,17 +362,7 @@ class MiraklClient
     // parse a date based on the format used by Mirakl
     public static function getDatetimeFromString(string $date): \DateTimeInterface
     {
-        $dt = \DateTime::createFromFormat(self::DATE_FORMAT, $date);
-        if (!$dt) {
-            // Shouldn't happen unless Mirakl changed the date format
-            throw new InvalidArgumentException(sprintf(
-                self::DATE_FORMAT_INVALID_MESSAGE,
-                self::DATE_FORMAT,
-                $date
-            ));
-        }
-
-        return $dt;
+        return new \DateTime($date);
     }
 
     // parse a date based on the format used by Mirakl

@@ -606,10 +606,10 @@ class StripeTransferFactoryTest extends KernelTestCase
 				}
     }
 
-    public function testInvoiceInvalidDate()
+    public function testInvoiceNoShop()
     {
 				$invoice = current($this->miraklClient->listInvoicesByDate(
-						MiraklMock::INVOICE_DATE_1_INVALID_DATE
+						MiraklMock::INVOICE_DATE_1_INVALID_NO_SHOP
 				));
 
 				foreach (StripeTransfer::getInvoiceTypes() as $type) {

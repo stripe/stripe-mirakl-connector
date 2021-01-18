@@ -33,15 +33,9 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $payout = new StripePayout();
         $payout->setMiraklInvoiceId($invoice['invoice_id']);
-
-        try {
-            $payout->setMiraklCreatedDate(
-                MiraklClient::getDatetimeFromString($invoice['date_created'])
-            );
-        } catch (InvalidArgumentException $e) {
-            // Shouldn't happen, see MiraklClient::getDatetimeFromString
-            return $this->abortPayout($payout, $e->getMessage());
-        }
+        $payout->setMiraklCreatedDate(
+            MiraklClient::getDatetimeFromString($invoice['date_created'])
+        );
 
         return $this->updateFromInvoice($payout, $invoice);
     }

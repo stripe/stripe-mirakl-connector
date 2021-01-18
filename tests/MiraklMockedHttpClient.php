@@ -69,7 +69,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 		public const INVOICE_BASIC = 1;
 		public const INVOICE_INVALID_AMOUNT = 2;
-		public const INVOICE_INVALID_DATE = 3;
+		public const INVOICE_INVALID_NO_SHOP = 3;
 		public const INVOICE_INVALID_SHOP = 4;
 		public const INVOICE_PAYOUT_ONLY = 5;
 		public const INVOICE_SUBSCRIPTION_ONLY = 6;
@@ -83,7 +83,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 		public const INVOICE_DATE_NO_NEW_INVOICES = '2019-01-01T00:00:00+0100';
 		public const INVOICE_DATE_1_VALID = '2019-01-02T00:00:00+0100';
 		public const INVOICE_DATE_1_INVALID_SHOP = '2019-01-03T00:00:00+0100';
-		public const INVOICE_DATE_1_INVALID_DATE = '2019-01-04T00:00:00+0100';
+		public const INVOICE_DATE_1_INVALID_NO_SHOP = '2019-01-04T00:00:00+0100';
 		public const INVOICE_DATE_1_INVALID_AMOUNT = '2019-01-05T00:00:00+0100';
 		public const INVOICE_DATE_1_PAYOUT_ONLY = '2019-01-06T00:00:00+0100';
 		public const INVOICE_DATE_1_SUBSCRIPTION_ONLY = '2019-01-07T00:00:00+0100';
@@ -560,7 +560,7 @@ class MiraklMockedHttpClient extends MockHttpClient
         return [
             'id' => $orderId,
             'commercial_order_id' => $orderId,
-            'date_created' => date_format(new \Datetime(), MiraklClient::DATE_FORMAT),
+            'date_created' => date_format(new \Datetime(), \Datetime::RFC3339_EXTENDED),
             'currency_code' => 'EUR',
             'state' => $status,
 						'workflow' => [ 'type' => 'PAY_ON_ACCEPTANCE' ],
@@ -769,11 +769,11 @@ class MiraklMockedHttpClient extends MockHttpClient
 						case self::INVOICE_DATE_1_VALID:
 								$invoices = $this->mockInvoicesById([ self::INVOICE_BASIC ]);
 								break;
+						case self::INVOICE_DATE_1_INVALID_NO_SHOP:
+								$invoices = $this->mockInvoicesById([ self::INVOICE_INVALID_NO_SHOP ]);
+								break;
 						case self::INVOICE_DATE_1_INVALID_SHOP:
 								$invoices = $this->mockInvoicesById([ self::INVOICE_INVALID_SHOP ]);
-								break;
-						case self::INVOICE_DATE_1_INVALID_DATE:
-								$invoices = $this->mockInvoicesById([ self::INVOICE_INVALID_DATE ]);
 								break;
 						case self::INVOICE_DATE_1_INVALID_AMOUNT:
 								$invoices = $this->mockInvoicesById([ self::INVOICE_INVALID_AMOUNT ]);
@@ -793,7 +793,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 						case self::INVOICE_DATE_3_INVOICES_ALL_INVALID:
 								$invoices = $this->mockInvoicesById([
 										self::INVOICE_INVALID_AMOUNT,
-										self::INVOICE_INVALID_DATE,
+										self::INVOICE_INVALID_NO_SHOP,
 										self::INVOICE_INVALID_SHOP
 								]);
 								break;
@@ -849,8 +849,8 @@ class MiraklMockedHttpClient extends MockHttpClient
 									foreach ($invoice['summary'] as $key => $value)
 											$invoice['summary'][$key] = 0;
 									break;
-							case self::INVOICE_INVALID_DATE:
-									$invoice['date_created'] = '09-2019-24T14:00:40Z';
+							case self::INVOICE_INVALID_NO_SHOP:
+									unset($invoice['shop_id']);
 									break;
 							case self::INVOICE_INVALID_SHOP:
 									$invoice['shop_id'] = self::SHOP_NOT_READY;
