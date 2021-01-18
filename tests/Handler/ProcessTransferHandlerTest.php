@@ -74,7 +74,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
 				return $transfer;
     }
 
-    public function testOrderTransfer()
+    public function testProductOrderTransfer()
     {
 				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_PRODUCT_ORDER);
 				$this->executeHandler($transfer->getId());
@@ -87,7 +87,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
     }
 
-    public function testOrderTransferWithTransactionId()
+    public function testProductOrderTransferWithTransactionId()
     {
 				$transfer = $this->mockTransfer(
 						StripeTransfer::TRANSFER_PRODUCT_ORDER,
@@ -103,7 +103,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
     }
 
-    public function testOrderTransferWithApiError()
+    public function testProductOrderTransferWithApiError()
     {
 				$transfer = $this->mockTransfer(
 						StripeTransfer::TRANSFER_PRODUCT_ORDER,
@@ -124,6 +124,70 @@ class ProcessTransferHandlerTest extends KernelTestCase
                 'payload' => [
                     'internalId' => $transfer->getId(),
                     'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER,
+                    'miraklId' => 'random',
+                    'stripeAccountId' => StripeMock::ACCOUNT_BASIC,
+                    'miraklShopId' => 1,
+                    'transferId' => null,
+                    'transactionId' => StripeMock::CHARGE_WITH_TRANSFER,
+                    'amount' => 1234,
+                    'status' => 'TRANSFER_FAILED',
+                    'failedReason' => 'Transfer with source_transaction and charge has no more funds left.',
+                    'currency' => 'eur',
+                ]
+            ]
+        ));
+    }
+
+    public function testServiceOrderTransfer()
+    {
+				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_SERVICE_ORDER);
+				$this->executeHandler($transfer->getId());
+
+				$transfer = $this->stripeTransferRepository->findOneBy([
+						'id' => $transfer->getId()
+				]);
+
+        $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
+        $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
+    }
+
+    public function testServiceOrderTransferWithTransactionId()
+    {
+				$transfer = $this->mockTransfer(
+						StripeTransfer::TRANSFER_SERVICE_ORDER,
+						StripeMock::CHARGE_BASIC
+				);
+				$this->executeHandler($transfer->getId());
+
+				$transfer = $this->stripeTransferRepository->findOneBy([
+						'id' => $transfer->getId()
+				]);
+
+        $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
+        $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
+    }
+
+    public function testServiceOrderTransferWithApiError()
+    {
+				$transfer = $this->mockTransfer(
+						StripeTransfer::TRANSFER_SERVICE_ORDER,
+						StripeMock::CHARGE_WITH_TRANSFER
+				);
+				$this->executeHandler($transfer->getId());
+
+				$transfer = $this->stripeTransferRepository->findOneBy([
+						'id' => $transfer->getId()
+				]);
+
+        $this->assertEquals(StripeTransfer::TRANSFER_FAILED, $transfer->getStatus());
+        $this->assertNotNull($transfer->getStatusReason());
+        $this->assertTrue($this->hasNotification(
+            TransferFailedMessage::class,
+            [
+                'type' => 'transfer.failed',
+                'payload' => [
+                    'internalId' => $transfer->getId(),
+                    'type' => StripeTransfer::TRANSFER_SERVICE_ORDER,
                     'miraklId' => 'random',
                     'stripeAccountId' => StripeMock::ACCOUNT_BASIC,
                     'miraklShopId' => 1,

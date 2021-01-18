@@ -9,6 +9,7 @@ use App\Message\ProcessRefundMessage;
 use App\Message\RefundFailedMessage;
 use App\Repository\StripeTransferRepository;
 use App\Repository\StripeRefundRepository;
+use App\Service\MiraklClient;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
@@ -59,11 +60,15 @@ class ProcessRefundHandlerTest extends KernelTestCase
 				($this->handler)(new ProcessRefundMessage($stripeRefundId));
 		}
 
-		private function mockRefund($refundId, $transactionId) {
-				$orderId = MiraklMock::getOrderIdFromRefundId($refundId);
+		private function mockRefund($type, $refundId, $transactionId) {
+				if (StripeRefund::REFUND_PRODUCT_ORDER === $type) {
+						$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId);
+				} else {
+						$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_SERVICE, $refundId);
+				}
 
         $refund = new StripeRefund();
-				$refund->setType(StripeRefund::REFUND_PRODUCT_ORDER);
+				$refund->setType($type);
 				$refund->setMiraklOrderId($orderId);
 				$refund->setMiraklRefundId($refundId);
 				$refund->setTransactionId($transactionId);
@@ -76,10 +81,11 @@ class ProcessRefundHandlerTest extends KernelTestCase
 				return $refund;
 		}
 
-    public function testValidRefund()
+    public function testValidProductRefund()
     {
 				$refund = $this->mockRefund(
-						MiraklMock::ORDER_REFUND_BASIC,
+						StripeRefund::REFUND_PRODUCT_ORDER,
+						MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
 						StripeMock::CHARGE_BASIC
 				);
 				$this->executeHandler($refund->getId());
@@ -93,10 +99,11 @@ class ProcessRefundHandlerTest extends KernelTestCase
 				$this->assertNotNull($refund->getMiraklValidationTime());
     }
 
-    public function testRefundWithStripeError()
+    public function testProductRefundWithStripeError()
     {
 				$refund = $this->mockRefund(
-						MiraklMock::ORDER_REFUND_BASIC,
+						StripeRefund::REFUND_PRODUCT_ORDER,
+						MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
 						StripeMock::CHARGE_REFUNDED
 				);
 				$this->executeHandler($refund->getId());
@@ -116,19 +123,21 @@ class ProcessRefundHandlerTest extends KernelTestCase
                     'currency' => $refund->getCurrency(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
                     'transactionId' => StripeMock::CHARGE_REFUNDED,
-                    'miraklRefundId' => MiraklMock::ORDER_REFUND_BASIC,
+                    'miraklRefundId' => MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
                     'stripeRefundId' => null,
                     'status' => StripeRefund::REFUND_FAILED,
                     'failedReason' => StripeMock::CHARGE_REFUNDED . ' already refunded',
+                    'type' => StripeRefund::REFUND_PRODUCT_ORDER,
                 ]
             ]
         ));
     }
 
-    public function testRefundWithMiraklError()
+    public function testProductRefundWithMiraklError()
     {
 				$refund = $this->mockRefund(
-						MiraklMock::ORDER_REFUND_VALIDATED,
+						StripeRefund::REFUND_PRODUCT_ORDER,
+						MiraklMock::PRODUCT_ORDER_REFUND_VALIDATED,
 						StripeMock::CHARGE_BASIC
 				);
 				$this->executeHandler($refund->getId());
@@ -148,10 +157,97 @@ class ProcessRefundHandlerTest extends KernelTestCase
                     'currency' => $refund->getCurrency(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
                     'transactionId' => StripeMock::CHARGE_BASIC,
-                    'miraklRefundId' => MiraklMock::ORDER_REFUND_VALIDATED,
+                    'miraklRefundId' => MiraklMock::PRODUCT_ORDER_REFUND_VALIDATED,
                     'stripeRefundId' => StripeMock::REFUND_BASIC,
                     'status' => StripeRefund::REFUND_FAILED,
-                    'failedReason' => MiraklMock::ORDER_REFUND_VALIDATED . ' already validated',
+                    'failedReason' => MiraklMock::PRODUCT_ORDER_REFUND_VALIDATED . ' already validated',
+                    'type' => StripeRefund::REFUND_PRODUCT_ORDER,
+                ]
+            ]
+        ));
+    }
+
+    public function testValidServiceRefund()
+    {
+				$refund = $this->mockRefund(
+						StripeRefund::REFUND_SERVICE_ORDER,
+						MiraklMock::SERVICE_ORDER_REFUND_BASIC,
+						StripeMock::CHARGE_BASIC
+				);
+				$this->executeHandler($refund->getId());
+
+				$refund = $this->stripeRefundRepository->findOneBy([
+						'id' => $refund->getId()
+				]);
+
+				$this->assertEquals(StripeRefund::REFUND_CREATED, $refund->getStatus());
+				$this->assertEquals(StripeMock::REFUND_BASIC, $refund->getStripeRefundId());
+				$this->assertNotNull($refund->getMiraklValidationTime());
+    }
+
+    public function testServiceRefundWithStripeError()
+    {
+				$refund = $this->mockRefund(
+						StripeRefund::REFUND_SERVICE_ORDER,
+						MiraklMock::SERVICE_ORDER_REFUND_BASIC,
+						StripeMock::CHARGE_REFUNDED
+				);
+				$this->executeHandler($refund->getId());
+
+				$refund = $this->stripeRefundRepository->findOneBy([
+						'id' => $refund->getId()
+				]);
+
+				$this->assertEquals(StripeRefund::REFUND_FAILED, $refund->getStatus());
+        $this->assertTrue($this->hasNotification(
+            RefundFailedMessage::class,
+            [
+                'type' => 'refund.failed',
+                'payload' => [
+                    'internalId' => $refund->getId(),
+                    'amount' => $refund->getAmount(),
+                    'currency' => $refund->getCurrency(),
+                    'miraklOrderId' => $refund->getMiraklOrderId(),
+                    'transactionId' => StripeMock::CHARGE_REFUNDED,
+                    'miraklRefundId' => MiraklMock::SERVICE_ORDER_REFUND_BASIC,
+                    'stripeRefundId' => null,
+                    'status' => StripeRefund::REFUND_FAILED,
+                    'failedReason' => StripeMock::CHARGE_REFUNDED . ' already refunded',
+                    'type' => StripeRefund::REFUND_SERVICE_ORDER,
+                ]
+            ]
+        ));
+    }
+
+    public function testServiceRefundWithMiraklError()
+    {
+				$refund = $this->mockRefund(
+						StripeRefund::REFUND_SERVICE_ORDER,
+						MiraklMock::SERVICE_ORDER_REFUND_VALIDATED,
+						StripeMock::CHARGE_BASIC
+				);
+				$this->executeHandler($refund->getId());
+
+				$refund = $this->stripeRefundRepository->findOneBy([
+						'id' => $refund->getId()
+				]);
+
+				$this->assertEquals(StripeRefund::REFUND_FAILED, $refund->getStatus());
+        $this->assertTrue($this->hasNotification(
+            RefundFailedMessage::class,
+            [
+                'type' => 'refund.failed',
+                'payload' => [
+                    'internalId' => $refund->getId(),
+                    'amount' => $refund->getAmount(),
+                    'currency' => $refund->getCurrency(),
+                    'miraklOrderId' => $refund->getMiraklOrderId(),
+                    'transactionId' => StripeMock::CHARGE_BASIC,
+                    'miraklRefundId' => MiraklMock::SERVICE_ORDER_REFUND_VALIDATED,
+                    'stripeRefundId' => StripeMock::REFUND_BASIC,
+                    'status' => StripeRefund::REFUND_FAILED,
+                    'failedReason' => MiraklMock::SERVICE_ORDER_REFUND_VALIDATED . ' already validated',
+                    'type' => StripeRefund::REFUND_SERVICE_ORDER,
                 ]
             ]
         ));

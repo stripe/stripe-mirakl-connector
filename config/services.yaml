@@ -25,6 +25,9 @@ parameters:
   deprecated_enable_product_payment_split: "%env(default:default_enable_product_payment_split:bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
   deprecated_enable_product_payment_refund: "%env(default:default_enable_product_payment_refund:bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
 
+  router.request_context.host: "%env(BASE_HOST)%"
+  router.request_context.scheme: 'https'
+
   app.base_host: "%env(BASE_HOST)%"
   app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
   app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"
@@ -42,8 +45,6 @@ parameters:
   app.operator.notification_url: "%env(default::OPERATOR_NOTIFICATION_URL)%"
   app.mailer.technical: "%env(default::TECHNICAL_ALERT_EMAIL)%"
   app.mailer.technical_from: "%env(default::TECHNICAL_ALERT_EMAIL_FROM)%"
-  router.request_context.host: "%env(BASE_HOST)%"
-  router.request_context.scheme: 'https'
   app.endpoint_down.mail_notification: "%env(default:default_mail_on_notification_endpoint_down:bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
   app.endpoint_down.mail_notification_throttle: "%env(default:default_mail_on_notification_endpoint_down_cooldown:int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
   app.mirakl.metadata_order_id_field_name: "%env(default:default_mirakl_metadata_order_id:MIRAKL_METADATA_ORDER_ID)%"

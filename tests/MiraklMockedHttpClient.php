@@ -12,10 +12,10 @@ class MiraklMockedHttpClient extends MockHttpClient
 		public const MIRAKL_BASE_URL = 'https://mirakl.net';
 
 		public const ORDER_BASIC = 'order_basic';
-		public const ORDER_STATUS_STAGING = 'order_status_staging';
 		public const ORDER_STATUS_WAITING_ACCEPTANCE = 'order_status_waiting_acceptance';
 		public const ORDER_STATUS_WAITING_DEBIT = 'order_status_waiting_debit';
 		public const ORDER_STATUS_WAITING_DEBIT_PAYMENT = 'order_status_waiting_debit_payment';
+		public const ORDER_STATUS_STAGING = 'order_status_staging';
 		public const ORDER_STATUS_SHIPPING = 'order_status_shipping';
 		public const ORDER_STATUS_SHIPPED = 'order_status_shipped';
 		public const ORDER_STATUS_TO_COLLECT = 'order_status_to_collect';
@@ -25,6 +25,13 @@ class MiraklMockedHttpClient extends MockHttpClient
 		public const ORDER_STATUS_CANCELED = 'order_status_canceled';
 		public const ORDER_STATUS_PARTIALLY_ACCEPTED = 'order_status_partially_accepted';
 		public const ORDER_STATUS_PARTIALLY_REFUSED = 'order_status_partially_refused';
+		public const ORDER_STATUS_WAITING_SCORING = 'order_status_waiting_scoring';
+		public const ORDER_STATUS_ORDER_PENDING = 'order_status_order_pending';
+		public const ORDER_STATUS_ORDER_ACCEPTED = 'order_status_order_accepted';
+		public const ORDER_STATUS_ORDER_REFUSED = 'order_status_order_refused';
+		public const ORDER_STATUS_ORDER_EXPIRED = 'order_status_order_expired';
+		public const ORDER_STATUS_ORDER_CLOSED = 'order_status_order_closed';
+		public const ORDER_STATUS_ORDER_CANCELLED = 'order_status_order_cancelled';
 		public const ORDER_INVALID_AMOUNT = 'order_invalid_amount';
 		public const ORDER_INVALID_SHOP = 'order_invalid_shop';
 		public const ORDER_AMOUNT_NO_COMMISSION = 'order_no_commission';
@@ -45,9 +52,12 @@ class MiraklMockedHttpClient extends MockHttpClient
 		public const ORDER_COMMERCIAL_PARTIALLY_REFUSED = 'order_commercial_partially_refused';
 		public const ORDER_COMMERCIAL_CANCELED = 'order_commercial_canceled';
 
-		public const ORDER_PENDING_REFUND = 'order_pending_refund';
-		public const ORDER_REFUND_BASIC = 1000;
-		public const ORDER_REFUND_VALIDATED = 1001;
+		public const PRODUCT_ORDER_PENDING_REFUND = 'product_order_pending_refund';
+		public const SERVICE_ORDER_PENDING_REFUND = 'service_order_pending_refund';
+		public const PRODUCT_ORDER_REFUND_BASIC = 1000;
+		public const PRODUCT_ORDER_REFUND_VALIDATED = 1001;
+		public const SERVICE_ORDER_REFUND_BASIC = 2000;
+		public const SERVICE_ORDER_REFUND_VALIDATED = 2001;
 
 		public const TRANSFER_BASIC = 'tr_basic';
 
@@ -96,11 +106,15 @@ class MiraklMockedHttpClient extends MockHttpClient
 						parse_str(parse_url($url, PHP_URL_QUERY), $params);
 		        $requestBody = json_decode($options['body'] ?? '', true);
 						try {
-								$responseBody = json_encode($this->mockResponse($method, $path, $params, $requestBody));
-								if ('PUT' === $method && empty($responseBody)) {
+								$response = $this->mockResponse($method, $path, $params, $requestBody);
+								if ($nextPage = $this->getNextPageToken($path, $params)) {
+										$response['next_page_token'] = $nextPage;
+								}
+
+								if ('PUT' === $method && empty($responseJson)) {
 										return new MockResponse([], [ 'http_code' => 204 ]);
 								} else {
-										return new MockResponse($responseBody, [
+										return new MockResponse(json_encode($response), [
 												'http_code' => 200,
 												'response_headers' => $this->getLinkHeader($path, $params)
 										]);
@@ -118,7 +132,7 @@ class MiraklMockedHttpClient extends MockHttpClient
         parent::__construct($responseFactory, self::MIRAKL_BASE_URL);
     }
 
-		private function isPaginated($path, $params)
+		private function isOffsetPagination($path, $params)
 		{
 				switch ($path) {
 					case '/api/payment/debit':
@@ -135,7 +149,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 		private function getLinkHeader($path, $params)
 		{
-				if ($this->isPaginated($path, $params) && 0 === ($params['offset'] ?? 0)) {
+				if ($this->isOffsetPagination($path, $params) && 0 === ($params['offset'] ?? 0)) {
 						$previous = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params);
 						$params['offset'] = 10;
 						$next = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params);
@@ -146,48 +160,83 @@ class MiraklMockedHttpClient extends MockHttpClient
 				return null;
 		}
 
+		private function isSeekPagination($path, $params)
+		{
+				switch ($path) {
+					case '/api/mms/debits':
+					case '/api/mms/refunds':
+							return true;
+					case '/api/mms/orders':
+							return self::ORDER_DATE_14_NEW_ORDERS_ALL_READY === ($params['date_created_start'] ?? '');
+					default:
+							return false;
+				}
+    }
+
+		private function getNextPageToken($path, $params)
+		{
+				if ($this->isSeekPagination($path, $params) && !isset($params['page_token'])) {
+						return 'random_page_token';
+				}
+
+				return null;
+		}
+
 		private function mockResponse(string $method, string $path, array $params, ?array $body): array
 		{
 				$offset = $params['offset'] ?? 0;
+				$pageToken = $params['page_token'] ?? null;
+				$page = ($offset === 0 && !$pageToken) ? 1 : 2;
+
 				switch ($path) {
+						case '/api/mms/orders':
+								$isService = true;
 						case '/api/orders':
+								$isService = $isService ?? false;
+								$key = $isService ? 'data' : 'orders';
 								switch (true) {
-										case isset($params['start_date']):
-												$date = $params['start_date'];
-												if (empty($date)) {
-								            throw new \Exception("Invalid start date", 400);
+										case isset($params['start_date']): // Product
+										case isset($params['date_created_start']): // Service
+										case null !== $pageToken: // Service
+												if (null !== $pageToken) {
+														$date = self::ORDER_DATE_14_NEW_ORDERS_ALL_READY;
+												} else {
+														$date = $params['start_date'] ?? $params['date_created_start'];
 												}
-												return [ 'orders' => $this->mockOrdersByStartDate($date, $offset) ];
-										case isset($params['order_ids']):
-												$orderIds = explode(',', $params['order_ids']);
-												return [ 'orders' => $this->mockOrdersById($orderIds) ];
-										case isset($params['commercial_ids']):
-												$commercialIds = explode(',', $params['commercial_ids']);
-												return [ 'orders' => $this->mockOrdersByCommercialId($commercialIds) ];
+
+												return [ $key => $this->mockOrdersByStartDate($isService, $date, $page) ];
+										case isset($params['order_ids']): // Product
+										case isset($params['order_id']): // Service
+												$orderIds = $params['order_id'] ?? explode(',', $params['order_ids']);
+												return [ $key => $this->mockOrdersById($isService, $orderIds) ];
+										case isset($params['commercial_ids']): // Product
+										case isset($params['commercial_order_id']): // Service
+												$commercialIds = $params['commercial_order_id'] ?? explode(',', $params['commercial_ids']);
+												return [ $key => $this->mockOrdersByCommercialId($isService, $commercialIds) ];
 										default:
-												return [ 'orders' => [] ];
+												return [ $key => [] ];
 								}
 								break;
 						case '/api/payment/debit':
 								switch ($method) {
 										case 'GET':
-												return [
-														'orders' => [
-																'order' => $this->mockPendingDebits($offset)
-														]
-												];
+												return [ 'orders' => [ 'order' => $this->mockPendingDebits($page) ] ];
 										case 'PUT':
 												return $this->mockDebitValidation($body);
 								}
 								break;
+						case '/api/mms/refunds':
+								$isService = true;
 						case '/api/payment/refund':
+								$isService = $isService ?? false;
 								switch ($method) {
 										case 'GET':
-												return [
-														'orders' => [
-																'order' => $this->mockPendingRefunds($offset)
-														]
-												];
+												$pendingRefunds = $this->mockPendingRefunds($isService, $page);
+												if ($isService) {
+														return [ 'data' => $pendingRefunds ];
+												} else {
+														return [ 'orders' => [ 'order' => $pendingRefunds ] ];
+												}
 										case 'PUT':
 												return $this->mockRefundValidation($body);
 								}
@@ -210,10 +259,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 								switch (true) {
 										case isset($params['start_date']):
 												$date = $params['start_date'];
-												if (empty($date)) {
-								            throw new \Exception("Invalid start date", 400);
-												}
-												return [ 'invoices' => $this->mockInvoicesByStartDate($date, $offset) ];
+												return [ 'invoices' => $this->mockInvoicesByStartDate($date, $page) ];
 										case isset($params['shop']):
 												return [ 'invoices' => $this->mockInvoicesByShop($params['shop']) ];
 										default:
@@ -225,37 +271,45 @@ class MiraklMockedHttpClient extends MockHttpClient
 				throw new InvalidArgumentException();
 		}
 
-		private function mockOrdersByStartDate($date, $offset)
+		private function mockOrdersByStartDate($isService, $date, $page)
 		{
 				switch ($date) {
 						case self::ORDER_DATE_3_NEW_ORDERS_1_READY:
-								return $this->mockOrdersById([
-										self::ORDER_STATUS_STAGING,
-										self::ORDER_STATUS_SHIPPING,
-										self::ORDER_STATUS_REFUSED
-								]);
+								if ($isService) {
+										return $this->mockOrdersById($isService, [
+												self::ORDER_STATUS_WAITING_SCORING,
+												self::ORDER_STATUS_ORDER_PENDING,
+												self::ORDER_STATUS_ORDER_REFUSED
+										]);
+								} else {
+										return $this->mockOrdersById($isService, [
+												self::ORDER_STATUS_STAGING,
+												self::ORDER_STATUS_SHIPPING,
+												self::ORDER_STATUS_REFUSED
+										]);
+								}
 						case self::ORDER_DATE_14_NEW_ORDERS_ALL_READY:
 								$ids = [];
-								if (0 === $offset) {
-										for ($i = 0; $i < 10; $ids[] = 'random_order_' . ++$i);
-								} else {
+								if (2 === $page) {
 										for ($i = 10; $i < 13; $ids[] = 'random_order_' . ++$i);
 										$ids[] = self::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_ID;
+								} else {
+										for ($i = 0; $i < 10; $ids[] = 'random_order_' . ++$i);
 								}
-								return $this->mockOrdersById($ids);
+								return $this->mockOrdersById($isService, $ids);
 						case self::ORDER_DATE_NO_NEW_ORDERS:
 						default:
 								return [];
 				}
     }
 
-		private function mockOrdersByCommercialId($commercialIds)
+		private function mockOrdersByCommercialId($isService, $commercialIds)
 		{
 				$orders = [];
 				foreach ($commercialIds as $commercialId) {
 						switch ($commercialId) {
 								case self::ORDER_COMMERCIAL_ALL_VALIDATED:
-										$newOrders = $this->mockOrdersById([
+										$newOrders = $this->mockOrdersById($isService, [
 												self::ORDER_STATUS_SHIPPED,
 												self::ORDER_STATUS_RECEIVED,
 										]);
@@ -267,25 +321,25 @@ class MiraklMockedHttpClient extends MockHttpClient
 										$orders = array_merge($orders, $newOrders);
 										break;
 								case self::ORDER_COMMERCIAL_NONE_VALIDATED:
-										$orders = array_merge($orders, $this->mockOrdersById([
+										$orders = array_merge($orders, $this->mockOrdersById($isService, [
 												self::ORDER_STATUS_WAITING_ACCEPTANCE,
 												self::ORDER_STATUS_WAITING_DEBIT
 										]));
 										break;
 								case self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED:
-										$orders = array_merge($orders, $this->mockOrdersById([
+										$orders = array_merge($orders, $this->mockOrdersById($isService, [
 												self::ORDER_STATUS_WAITING_DEBIT_PAYMENT,
 												self::ORDER_STATUS_SHIPPING
 										]));
 										break;
 								case self::ORDER_COMMERCIAL_PARTIALLY_REFUSED:
-										$orders = array_merge($orders, $this->mockOrdersById([
+										$orders = array_merge($orders, $this->mockOrdersById($isService, [
 												self::ORDER_STATUS_CLOSED,
 												self::ORDER_STATUS_REFUSED
 										]));
 										break;
 								case self::ORDER_COMMERCIAL_CANCELED:
-										$orders = array_merge($orders, $this->mockOrdersById([
+										$orders = array_merge($orders, $this->mockOrdersById($isService, [
 												self::ORDER_STATUS_CANCELED
 										]));
 										break;
@@ -295,78 +349,120 @@ class MiraklMockedHttpClient extends MockHttpClient
 				return $orders;
     }
 
-		private function mockOrdersById($orderIds)
+		private function mockOrdersById($isService, $orderIds)
 		{
 				$orders = [];
 				foreach ($orderIds as $orderId) {
-						$order = $this->getOrder($orderId);
+						$method = $isService ? 'getServiceOrder' : 'getProductOrder';
+						$order = $this->$method($orderId);
 						switch ($orderId) {
-								case self::ORDER_STATUS_STAGING:
-										$order = $this->getOrder($orderId, 'STAGING');
-										break;
 								case self::ORDER_STATUS_WAITING_ACCEPTANCE:
-										$order = $this->getOrder($orderId, 'WAITING_ACCEPTANCE');
+										$order = $this->$method($orderId, 'WAITING_ACCEPTANCE');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
 										break;
 								case self::ORDER_STATUS_WAITING_DEBIT:
-										$order = $this->getOrder($orderId, 'WAITING_DEBIT');
+										$order = $this->$method($orderId, 'WAITING_DEBIT');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
 										break;
 								case self::ORDER_STATUS_WAITING_DEBIT_PAYMENT:
-										$order = $this->getOrder($orderId, 'WAITING_DEBIT_PAYMENT');
+										$order = $this->$method($orderId, 'WAITING_DEBIT_PAYMENT');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED;
 										break;
+								case self::ORDER_STATUS_STAGING:
+										$order = $this->getProductOrder($orderId, 'STAGING');
+										break;
 								case self::ORDER_STATUS_SHIPPING:
-										$order = $this->getOrder($orderId, 'SHIPPING');
+										$order = $this->getProductOrder($orderId, 'SHIPPING');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED;
 										break;
 								case self::ORDER_STATUS_SHIPPED:
-										$order = $this->getOrder($orderId, 'SHIPPED');
+										$order = $this->getProductOrder($orderId, 'SHIPPED');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_ALL_VALIDATED;
 										break;
 								case self::ORDER_STATUS_TO_COLLECT:
-										$order = $this->getOrder($orderId, 'TO_COLLECT');
+										$order = $this->getProductOrder($orderId, 'TO_COLLECT');
 										break;
 								case self::ORDER_STATUS_RECEIVED:
-										$order = $this->getOrder($orderId, 'RECEIVED');
+										$order = $this->getProductOrder($orderId, 'RECEIVED');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_ALL_VALIDATED;
 										break;
 								case self::ORDER_STATUS_CLOSED:
-										$order = $this->getOrder($orderId, 'CLOSED');
+										$order = $this->getProductOrder($orderId, 'CLOSED');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_REFUSED;
 										break;
 								case self::ORDER_STATUS_REFUSED:
-										$order = $this->getOrder($orderId, 'REFUSED');
+										$order = $this->getProductOrder($orderId, 'REFUSED');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_REFUSED;
 										break;
 								case self::ORDER_STATUS_CANCELED:
-										$order = $this->getOrder($orderId, 'CANCELED');
+										$order = $this->getProductOrder($orderId, 'CANCELED');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_CANCELED;
 										break;
 								case self::ORDER_STATUS_PARTIALLY_ACCEPTED:
-										$order = $this->getOrder($orderId, 'SHIPPING', 'WAITING_DEBIT_PAYMENT');
+										$order = $this->getProductOrder($orderId, 'SHIPPING', 'WAITING_DEBIT_PAYMENT');
 										break;
 								case self::ORDER_STATUS_PARTIALLY_REFUSED:
-										$order = $this->getOrder($orderId, 'SHIPPING', 'REFUSED');
+										$order = $this->getProductOrder($orderId, 'SHIPPING', 'REFUSED');
+										break;
+								case self::ORDER_STATUS_WAITING_SCORING:
+										$order = $this->getServiceOrder($orderId, 'WAITING_SCORING');
+										break;
+								case self::ORDER_STATUS_ORDER_PENDING:
+										$order = $this->getServiceOrder($orderId, 'ORDER_PENDING');
+										break;
+								case self::ORDER_STATUS_ORDER_ACCEPTED:
+										$order = $this->getServiceOrder($orderId, 'ORDER_ACCEPTED');
+										break;
+								case self::ORDER_STATUS_ORDER_REFUSED:
+										$order = $this->getServiceOrder($orderId, 'ORDER_REFUSED');
+										break;
+								case self::ORDER_STATUS_ORDER_EXPIRED:
+										$order = $this->getServiceOrder($orderId, 'ORDER_EXPIRED');
+										break;
+								case self::ORDER_STATUS_ORDER_CLOSED:
+										$order = $this->getServiceOrder($orderId, 'ORDER_CLOSED');
+										break;
+								case self::ORDER_STATUS_ORDER_CANCELLED:
+										$order = $this->getServiceOrder($orderId, 'ORDER_CANCELLED');
 										break;
 								case self::ORDER_INVALID_AMOUNT:
-						        $order['total_commission'] = '100';
+										if ($isService) {
+												$order['commission']['amount_including_taxes'] = 100;
+										} else {
+												$order['total_commission'] = 100;
+										}
 										break;
 								case self::ORDER_INVALID_SHOP:
-						        $order['shop_id'] = self::SHOP_NOT_READY;
+										if ($isService) {
+						        		$order['shop']['id'] = self::SHOP_NOT_READY;
+										} else {
+						        		$order['shop_id'] = self::SHOP_NOT_READY;
+										}
 										break;
 								case self::ORDER_AMOUNT_NO_COMMISSION:
-						        $order['total_commission'] = 0;
+										if ($isService) {
+												$order['commission']['amount_including_taxes'] = 0;
+										} else {
+												$order['total_commission'] = 0;
+										}
 										break;
 								case self::ORDER_AMOUNT_NO_TAX:
-						        unset($order['order_lines'][0]['shipping_taxes']);
-						        unset($order['order_lines'][0]['taxes']);
-						        unset($order['order_lines'][1]['shipping_taxes']);
-						        unset($order['order_lines'][1]['taxes']);
+										if ($isService) {
+								        unset($order['price']['taxes']);
+										} else {
+								        unset($order['order_lines'][0]['shipping_taxes']);
+								        unset($order['order_lines'][0]['taxes']);
+								        unset($order['order_lines'][1]['shipping_taxes']);
+								        unset($order['order_lines'][1]['taxes']);
+										}
 										break;
 								case self::ORDER_AMOUNT_PARTIAL_TAX:
-						        unset($order['order_lines'][0]['shipping_taxes']);
-						        unset($order['order_lines'][1]['taxes']);
+										if ($isService) {
+								        unset($order['price']['taxes'][1]);
+										} else {
+								        unset($order['order_lines'][0]['shipping_taxes']);
+								        unset($order['order_lines'][1]['taxes']);
+										}
 										break;
 								case self::ORDER_AMOUNT_NO_SALES_TAX:
 						        unset($order['order_lines'][0]['taxes']);
@@ -377,12 +473,27 @@ class MiraklMockedHttpClient extends MockHttpClient
 						        unset($order['order_lines'][1]['shipping_taxes']);
 										break;
 								case self::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_ID:
-										$order['created_date'] = self::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_DATE;
+										$key = $isService ? 'date_created' : 'created_date';
+										$order[$key] = self::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_DATE;
 										break;
 						}
 
-						if (0 === strpos($orderId, self::ORDER_PENDING_REFUND)) {
-								$refundIds = str_replace(self::ORDER_PENDING_REFUND . '_', '', $orderId);
+						if (0 === strpos($orderId, self::SERVICE_ORDER_PENDING_REFUND)) {
+								$refundIds = str_replace(self::SERVICE_ORDER_PENDING_REFUND . '_', '', $orderId);
+								$order['refunds'] = [];
+								foreach (explode('_', $refundIds) as $refundId) {
+										$order['refunds'][] = [
+												'id' => $refundId,
+												'amount' => 12.34,
+												'commission' => [
+														'amount_including_taxes' => 1.23
+												]
+										];
+								}
+						}
+
+						if (0 === strpos($orderId, self::PRODUCT_ORDER_PENDING_REFUND)) {
+								$refundIds = str_replace(self::PRODUCT_ORDER_PENDING_REFUND . '_', '', $orderId);
 								$order['order_lines'][0]['refunds'] = [];
 								foreach (explode('_', $refundIds) as $refundId) {
 										$order['order_lines'][0]['refunds'][] = [
@@ -399,7 +510,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 				return $orders;
 		}
 
-    private function getOrder($orderId, $status = 'SHIPPING', $partialStatus = null)
+    private function getProductOrder($orderId, $status = 'SHIPPING', $partialStatus = null)
     {
         return [
             'id' => rand(1, 1000),
@@ -444,7 +555,32 @@ class MiraklMockedHttpClient extends MockHttpClient
         ];
     }
 
-    private function mockPendingDebits($offset)
+    private function getServiceOrder($orderId, $status = 'ORDER_PENDING')
+    {
+        return [
+            'id' => $orderId,
+            'commercial_order_id' => $orderId,
+            'date_created' => date_format(new \Datetime(), MiraklClient::DATE_FORMAT),
+            'currency_code' => 'EUR',
+            'state' => $status,
+						'workflow' => [ 'type' => 'PAY_ON_ACCEPTANCE' ],
+            'shop' => [ 'id' => self::SHOP_BASIC ],
+            'commission' => [ 'amount_including_taxes' => 3.99 ],
+            'price' => [
+								'amount' => 12.34,
+								'options' => [
+										[ 'type' => 'BOOLEAN', 'amount' => 1.12 ],
+										[ 'type' => 'VALUE_LIST', 'values' => [ [ 'amount' => 1.34 ] ] ]
+								],
+								'taxes' => [
+										[ 'amount' => 1.56, 'code' => 'ECO_TAX' ],
+										[ 'amount' => 1.78, 'code' => 'EXP_TAX' ]
+								]
+						]
+        ];
+    }
+
+    private function mockPendingDebits($page)
     {
 				$orders = [
 						$this->getPendingDebit(
@@ -482,20 +618,34 @@ class MiraklMockedHttpClient extends MockHttpClient
         return [];
     }
 
-    private function mockPendingRefunds($offset)
+    private function mockPendingRefunds($isService, $page)
     {
+				$method = $isService ? '' : '';
 				$orders = [];
-				switch ($offset) {
-						case 0:
-								for ($i = self::ORDER_REFUND_BASIC; $i < 1010; $i++) {
-										$orders[] = $this->getPendingRefund($i);
+				if ($isService) {
+						if ($page === 1) {
+								for ($i = 0; $i < 10; $i++) {
+										$refundId = self::SERVICE_ORDER_REFUND_BASIC + $i;
+										$orders[] = $this->getServicePendingRefund($refundId);
 								}
-								break;
-						case 10:
-								for ($i = self::ORDER_REFUND_BASIC + 10; $i < 1014; $i++) {
-										$orders[] = $this->getPendingRefund($i);
+						} elseif ($page === 2) {
+								for ($i = 0; $i < 4; $i++) {
+										$refundId = self::SERVICE_ORDER_REFUND_BASIC + 10 + $i;
+										$orders[] = $this->getServicePendingRefund($refundId);
 								}
-								break;
+						}
+				} else {
+						if ($page === 1) {
+								for ($i = 0; $i < 10; $i++) {
+										$refundId = self::PRODUCT_ORDER_REFUND_BASIC + $i;
+										$orders[] = $this->getProductPendingRefund($refundId);
+								}
+						} elseif ($page === 2) {
+								for ($i = 0; $i < 4; $i++) {
+										$refundId = self::PRODUCT_ORDER_REFUND_BASIC + 10 + $i;
+										$orders[] = $this->getProductPendingRefund($refundId);
+								}
+						}
 				}
 
 				return $orders;
@@ -503,23 +653,29 @@ class MiraklMockedHttpClient extends MockHttpClient
 
     private function mockRefundValidation($body)
     {
-				$id = $body['refunds'][0]['refund_id'];
+				$id = $body['refunds'][0]['refund_id'] ?? $body['refunds'][0]['id'];
         switch ($id) {
-						case self::ORDER_REFUND_BASIC:
+						case self::PRODUCT_ORDER_REFUND_BASIC:
+						case self::SERVICE_ORDER_REFUND_BASIC:
 								return [];
-						case self::ORDER_REFUND_VALIDATED:
+						case self::PRODUCT_ORDER_REFUND_VALIDATED:
+						case self::SERVICE_ORDER_REFUND_VALIDATED:
 								throw new \Exception("$id already validated", 400);;
         }
     }
 
-    public static function getOrderIdFromRefundId($refundId)
+    public static function getOrderIdFromRefundId($orderType, $refundId)
     {
-				return self::ORDER_PENDING_REFUND . "_$refundId";
+				if (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
+						return self::PRODUCT_ORDER_PENDING_REFUND . "_$refundId";
+				} else {
+						return self::SERVICE_ORDER_PENDING_REFUND . "_$refundId";
+				}
     }
 
-    private function getPendingRefund($refundId)
+    private function getProductPendingRefund($refundId)
     {
-				$orderId = self::getOrderIdFromRefundId($refundId);
+				$orderId = self::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId);
         return [
             'currency_iso_code' => 'EUR',
             'order_id' => $orderId,
@@ -538,6 +694,16 @@ class MiraklMockedHttpClient extends MockHttpClient
 										]
                 ]]
             ]
+        ];
+    }
+
+    private function getServicePendingRefund($refundId)
+    {
+        return [
+            'id' => $refundId,
+            'order_id' => self::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_SERVICE, $refundId),
+            'amount' => 12.34,
+            'currency_code' => 'EUR'
         ];
     }
 
@@ -597,7 +763,7 @@ class MiraklMockedHttpClient extends MockHttpClient
         ];
     }
 
-		private function mockInvoicesByStartDate($date, $offset) {
+		private function mockInvoicesByStartDate($date, $page) {
 				$invoices = [];
 				switch ($date) {
 						case self::INVOICE_DATE_1_VALID:
@@ -640,7 +806,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 								break;
 						case self::INVOICE_DATE_14_NEW_INVOICES_ALL_READY:
 								$ids = [];
-								if (0 === $offset) {
+								if (1 === $page) {
 										for ($i = 1000; $i < 1010; $ids[] = ++$i);
 								} else {
 										for ($i = 1010; $i < 1013; $ids[] = ++$i);

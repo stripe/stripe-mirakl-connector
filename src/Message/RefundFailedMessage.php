@@ -30,6 +30,7 @@ class RefundFailedMessage implements NotifiableMessageInterface
                 'transactionId' => $refund->getTransactionId(),
                 'status' => $refund->getStatus(),
                 'failedReason' => $refund->getStatusReason(),
+                'type' => $refund->getType(),
             ],
         ];
     }

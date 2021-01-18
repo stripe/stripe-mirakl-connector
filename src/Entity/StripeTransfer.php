@@ -172,6 +172,14 @@ class StripeTransfer
         ];
     }
 
+    public static function getOrderTypes(): array
+    {
+        return [
+            self::TRANSFER_PRODUCT_ORDER,
+            self::TRANSFER_SERVICE_ORDER,
+        ];
+    }
+
     public static function getInvoiceTypes(): array
     {
         return [

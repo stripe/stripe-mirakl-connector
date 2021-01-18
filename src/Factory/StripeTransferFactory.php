@@ -96,7 +96,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             $orderState = $order['order_state'];
             $currencyCode = $order['currency_iso_code'];
         } else {
-            $shopId = $order['shop'];
+            $shopId = $order['shop']['id'];
             $orderState = $order['state'];
             $currencyCode = $order['currency_code'];
         }
@@ -150,6 +150,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         }
 
         // Save charge ID to be used in source_transaction
+        // TODO: fetch payment ID from PaymentMapping
         $trid = $order['transaction_number'] ?? '';
         if (!empty($trid)) {
             try {
@@ -203,11 +204,9 @@ class StripeTransferFactory implements LoggerAwareInterface
             $refund = $this->findRefundFromRefundId($transfer->getMiraklId());
 
             // Fetch transfer to be reversed
-            $orderTransfer = current(
-                $this->stripeTransferRepository->findTransfersByOrderIds([
-                                        $refund->getMiraklOrderId()
-                                ])
-            );
+            $orderTransfer = current($this->stripeTransferRepository->findTransfersByOrderIds(
+                [ $refund->getMiraklOrderId() ]
+            ));
 
             // Check order transfer status
             if (!$orderTransfer || StripeTransfer::TRANSFER_CREATED !== $orderTransfer->getStatus()) {
@@ -439,7 +438,7 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         $commission = $order['commission']['amount_including_taxes'] ?? 0;
 
-        $amount = $order['amount'] + $options + $taxes - $commission;
+        $amount = $order['price']['amount'] + $options + $taxes - $commission;
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(

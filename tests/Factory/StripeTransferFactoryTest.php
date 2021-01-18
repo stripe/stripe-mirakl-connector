@@ -57,13 +57,21 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->stripeTransferFactory->setLogger(new NullLogger());
     }
 
-    private function mockOrderTransfer(array $order)
+    private function mockOrderTransfer(string $orderType, array $order)
     {
+				if (MiraklClient::ORDER_TYPE_SERVICE === $orderType) {
+						$type = StripeTransfer::TRANSFER_SERVICE_ORDER;
+						$currency = $order['currency_code'];
+				} elseif (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
+						$type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
+						$currency = $order['currency_iso_code'];
+				}
+
         $transfer = new StripeTransfer();
-				$transfer->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+				$transfer->setType($type);
 				$transfer->setMiraklId($order['order_id']);
         $transfer->setAmount(gmp_intval((string) ($order['amount'] * 100)));
-        $transfer->setCurrency(strtolower($order['currency_iso_code']));
+        $transfer->setCurrency(strtolower($currency));
 				$transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
 
 				$this->stripeTransferRepository->persistAndFlush($transfer);
@@ -82,17 +90,29 @@ class StripeTransferFactoryTest extends KernelTestCase
 				return $transfer;
     }
 
-    private function mockStripeRefund(array $order)
+    private function mockStripeRefund(string $orderType, array $order)
     {
-				$orderLine = $order['order_lines']['order_line'][0];
-				$orderRefund = $orderLine['refunds']['refund'][0];
+				if (MiraklClient::ORDER_TYPE_SERVICE === $orderType) {
+						$orderRefund = $order;
+
+						$type = StripeRefund::REFUND_SERVICE_ORDER;
+						$orderLineId = null;
+						$currency = $order['currency_code'];
+				} elseif (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
+						$orderLine = $order['order_lines']['order_line'][0];
+						$orderRefund = $orderLine['refunds']['refund'][0];
+
+						$type = StripeRefund::REFUND_PRODUCT_ORDER;
+						$orderLineId = $orderLine['order_line_id'];
+						$currency = $order['currency_iso_code'];
+				}
 
         $refund = new StripeRefund();
-				$refund->setType(StripeRefund::REFUND_PRODUCT_ORDER);
+				$refund->setType($type);
 				$refund->setMiraklOrderId($order['order_id']);
-				$refund->setMiraklOrderLineId($orderLine['order_line_id']);
+				$refund->setMiraklOrderLineId($orderLineId);
 				$refund->setAmount(gmp_intval((string) ($orderRefund['amount'] * 100)));
-				$refund->setCurrency(strtolower($order['currency_iso_code']));
+				$refund->setCurrency(strtolower($currency));
 				$refund->setTransactionId(StripeMock::CHARGE_BASIC);
 				$refund->setMiraklRefundId($orderRefund['id']);
 				$refund->setStatus(StripeRefund::REFUND_PENDING);
@@ -102,7 +122,7 @@ class StripeTransferFactoryTest extends KernelTestCase
 				return $refund;
     }
 
-    private function mockStripeRefundCreated(StripeRefund $refund)
+    private function mockRefundCreated(StripeRefund $refund)
     {
 				$refund->setStripeRefundId(StripeMock::REFUND_BASIC);
 				$refund->setMiraklValidationTime(new \Datetime());
@@ -114,7 +134,7 @@ class StripeTransferFactoryTest extends KernelTestCase
 				return $refund;
     }
 
-    public function testCreateFromOrder()
+    public function testCreateFromProductOrder()
     {
         $transfer = $this->stripeTransferFactory->createFromOrder(
 						current($this->miraklClient->listProductOrdersById([
@@ -135,7 +155,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getMiraklCreatedDate());
     }
 
-    public function testUpdateFromOrder()
+    public function testUpdateFromProductOrder()
     {
         $order = current($this->miraklClient->listProductOrdersById([
 						MiraklMock::ORDER_STATUS_STAGING
@@ -153,7 +173,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
     }
 
-    public function testOrderWithTransfer()
+    public function testProductOrderWithTransfer()
     {
         $order = current($this->miraklClient->listProductOrdersById([
 						MiraklMock::ORDER_BASIC
@@ -167,7 +187,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
     }
 
-    public function testOrderStatuses()
+    public function testProductOrderStatuses()
     {
 				$orderStatuses = [
 						StripeTransfer::TRANSFER_ON_HOLD => [
@@ -200,7 +220,7 @@ class StripeTransferFactoryTest extends KernelTestCase
 				}
     }
 
-    public function testOrderInvalidShop()
+    public function testProductOrderInvalidShop()
     {
         $transfer = $this->stripeTransferFactory->createFromOrder(
 						current($this->miraklClient->listProductOrdersById([
@@ -212,7 +232,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getStatusReason());
     }
 
-    public function testOrderInvalidAmount()
+    public function testProductOrderInvalidAmount()
     {
         $transfer = $this->stripeTransferFactory->createFromOrder(
 						current($this->miraklClient->listProductOrdersById([
@@ -224,7 +244,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getStatusReason());
     }
 
-    public function testOrderDifferentAmounts()
+    public function testProductOrderDifferentAmounts()
     {
 				$amounts = [
 						'NO_COMMISSION' => 8472,
@@ -249,7 +269,7 @@ class StripeTransferFactoryTest extends KernelTestCase
 				}
     }
 
-    public function testOrderWithCharge()
+    public function testProductOrderWithCharge()
     {
 				$chargeStatuses = [
 						StripeTransfer::TRANSFER_ON_HOLD => [
@@ -279,7 +299,7 @@ class StripeTransferFactoryTest extends KernelTestCase
 				}
     }
 
-    public function testOrderWithPaymentIntent()
+    public function testProductOrderWithPaymentIntent()
     {
 				$chargeStatuses = [
 						StripeTransfer::TRANSFER_ON_HOLD => [
@@ -315,25 +335,157 @@ class StripeTransferFactoryTest extends KernelTestCase
 				}
     }
 
-    public function testCreateFromOrderRefund()
+
+    public function testCreateFromServiceOrder()
+    {
+        $transfer = $this->stripeTransferFactory->createFromOrder(
+						current($this->miraklClient->listServiceOrdersById([
+								MiraklMock::ORDER_BASIC
+						])),
+						MiraklClient::ORDER_TYPE_SERVICE
+				);
+
+        $this->assertEquals(StripeTransfer::TRANSFER_SERVICE_ORDER, $transfer->getType());
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertNull($transfer->getStatusReason());
+        $this->assertEquals(MiraklMock::ORDER_BASIC, $transfer->getMiraklId());
+        $this->assertNotNull($transfer->getAccountMapping());
+        $this->assertNull($transfer->getTransferId());
+        $this->assertNull($transfer->getTransactionId());
+        $this->assertEquals(1415, $transfer->getAmount());
+        $this->assertEquals('eur', $transfer->getCurrency());
+        $this->assertNotNull($transfer->getMiraklCreatedDate());
+    }
+
+    public function testUpdateFromServiceOrder()
+    {
+        $order = current($this->miraklClient->listServiceOrdersById([
+						MiraklMock::ORDER_STATUS_WAITING_SCORING
+				]));
+				$orderId = $order['id'];
+
+        $transfer = $this->stripeTransferFactory->createFromOrder($order, MiraklClient::ORDER_TYPE_SERVICE);
+        $this->assertEquals(StripeTransfer::TRANSFER_ON_HOLD, $transfer->getStatus());
+
+				$order = current($this->miraklClient->listServiceOrdersById([
+						MiraklMock::ORDER_STATUS_ORDER_ACCEPTED
+				]));
+				$order['id'] = $orderId;
+        $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+    }
+
+    public function testServiceOrderWithTransfer()
+    {
+        $order = current($this->miraklClient->listServiceOrdersById([
+						MiraklMock::ORDER_BASIC
+				]));
+
+        $transfer = $this->stripeTransferFactory->createFromOrder($order, MiraklClient::ORDER_TYPE_SERVICE);
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+
+				$transfer->setTransferId(StripeMock::TRANSFER_BASIC);
+        $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
+        $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
+    }
+
+    public function testServiceOrderStatuses()
+    {
+				$orderStatuses = [
+						StripeTransfer::TRANSFER_ON_HOLD => [
+								'WAITING_SCORING', 'WAITING_ACCEPTANCE', 'WAITING_DEBIT', 'WAITING_DEBIT_PAYMENT'
+						],
+						StripeTransfer::TRANSFER_PENDING => [
+								'ORDER_ACCEPTED', 'ORDER_PENDING', 'ORDER_CLOSED'
+						],
+						StripeTransfer::TRANSFER_ABORTED => [
+								'ORDER_REFUSED', 'ORDER_CANCELLED', 'ORDER_EXPIRED'
+						]
+				];
+
+				foreach ($orderStatuses as $expectedTransferStatus => $consts) {
+						foreach ($consts as $const) {
+				        $transfer = $this->stripeTransferFactory->createFromOrder(
+										current($this->miraklClient->listServiceOrdersById([
+												constant("App\Tests\MiraklMockedHttpClient::ORDER_STATUS_$const")
+										])),
+										MiraklClient::ORDER_TYPE_SERVICE
+								);
+				        $this->assertEquals(
+										$expectedTransferStatus,
+										$transfer->getStatus(),
+										'Expected ' . $expectedTransferStatus . ' for ' . $const
+								);
+						}
+				}
+    }
+
+    public function testServiceOrderInvalidShop()
+    {
+        $transfer = $this->stripeTransferFactory->createFromOrder(
+						current($this->miraklClient->listServiceOrdersById([
+								MiraklMock::ORDER_INVALID_SHOP
+						])),
+						MiraklClient::ORDER_TYPE_SERVICE
+				);
+        $this->assertEquals(StripeTransfer::TRANSFER_ON_HOLD, $transfer->getStatus());
+        $this->assertNotNull($transfer->getStatusReason());
+    }
+
+    public function testServiceOrderInvalidAmount()
+    {
+        $transfer = $this->stripeTransferFactory->createFromOrder(
+						current($this->miraklClient->listServiceOrdersById([
+								MiraklMock::ORDER_INVALID_AMOUNT
+						])),
+						MiraklClient::ORDER_TYPE_SERVICE
+				);
+        $this->assertEquals(StripeTransfer::TRANSFER_ABORTED, $transfer->getStatus());
+        $this->assertNotNull($transfer->getStatusReason());
+    }
+
+    public function testServiceOrderDifferentAmounts()
+    {
+				$amounts = [
+						'NO_COMMISSION' => 1814,
+						'NO_TAX' => 1081,
+						'PARTIAL_TAX' => 1237,
+				];
+
+				foreach ($amounts as $const => $expectedAmount) {
+						$transfer = $this->stripeTransferFactory->createFromOrder(
+								current($this->miraklClient->listServiceOrdersById([
+										constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
+								])),
+								MiraklClient::ORDER_TYPE_SERVICE
+						);
+						$this->assertEquals(
+								$expectedAmount,
+								$transfer->getAmount(),
+								'Expected ' . $expectedAmount . ' for ' . $const
+						);
+				}
+    }
+
+    public function testCreateFromProductOrderRefund()
     {
 				$pendingRefunds = $this->miraklClient->listProductPendingRefunds();
 
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklMock::ORDER_REFUND_BASIC);
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, MiraklMock::PRODUCT_ORDER_REFUND_BASIC);
 				$order = $pendingRefunds[$orderId];
 				$orderRefund = $order['order_lines']['order_line'][0]['refunds']['refund'][0];
 
 				$orderTransfer = $this->mockOrderTransferCreated(
-						$this->mockOrderTransfer($order),
+						$this->mockOrderTransfer(MiraklClient::ORDER_TYPE_PRODUCT, $order),
 						MiraklMock::TRANSFER_BASIC
 				);
-				$this->mockStripeRefundCreated($this->mockStripeRefund($order));
+				$this->mockRefundCreated($this->mockStripeRefund(MiraklClient::ORDER_TYPE_PRODUCT, $order));
 				$transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
 
         $this->assertEquals(StripeTransfer::TRANSFER_REFUND, $transfer->getType());
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
         $this->assertNull($transfer->getStatusReason());
-        $this->assertEquals(MiraklMock::ORDER_REFUND_BASIC, $transfer->getMiraklId());
+        $this->assertEquals(MiraklMock::PRODUCT_ORDER_REFUND_BASIC, $transfer->getMiraklId());
         $this->assertNull($transfer->getAccountMapping());;
         $this->assertNull($transfer->getTransferId());
         $this->assertEquals(MiraklMock::TRANSFER_BASIC, $transfer->getTransactionId());
@@ -342,17 +494,63 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNull($transfer->getMiraklCreatedDate());
     }
 
-    public function testUpdateOrderRefundTransfer()
+    public function testUpdateProductOrderRefundTransfer()
     {
 				$pendingRefunds = $this->miraklClient->listProductPendingRefunds();
 
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklMock::ORDER_REFUND_BASIC);
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, MiraklMock::PRODUCT_ORDER_REFUND_BASIC);
 				$order = $pendingRefunds[$orderId];
 				$orderRefund = $order['order_lines']['order_line'][0]['refunds']['refund'][0];
 
-				$orderTransfer = $this->mockOrderTransfer($order);
-				$this->mockStripeRefundCreated($this->mockStripeRefund($order));
+				$orderTransfer = $this->mockOrderTransfer(MiraklClient::ORDER_TYPE_PRODUCT, $order);
+				$this->mockRefundCreated($this->mockStripeRefund(MiraklClient::ORDER_TYPE_PRODUCT, $order));
 				$transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
+
+        $this->assertEquals(StripeTransfer::TRANSFER_ON_HOLD, $transfer->getStatus());
+
+				// Order transfer has been processed
+				$this->mockOrderTransferCreated($orderTransfer, StripeMock::TRANSFER_BASIC);
+
+				$transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+    }
+
+    public function testCreateFromServiceOrderRefund()
+    {
+				$pendingRefunds = $this->miraklClient->listServicePendingRefunds();
+
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_SERVICE, MiraklMock::SERVICE_ORDER_REFUND_BASIC);
+				$order = $pendingRefunds[$orderId];
+
+				$orderTransfer = $this->mockOrderTransferCreated(
+						$this->mockOrderTransfer(MiraklClient::ORDER_TYPE_SERVICE, $order),
+						MiraklMock::TRANSFER_BASIC
+				);
+				$this->mockRefundCreated($this->mockStripeRefund(MiraklClient::ORDER_TYPE_SERVICE, $order));
+				$transfer = $this->stripeTransferFactory->createFromOrderRefund($order);
+
+        $this->assertEquals(StripeTransfer::TRANSFER_REFUND, $transfer->getType());
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertNull($transfer->getStatusReason());
+        $this->assertEquals(MiraklMock::SERVICE_ORDER_REFUND_BASIC, $transfer->getMiraklId());
+        $this->assertNull($transfer->getAccountMapping());;
+        $this->assertNull($transfer->getTransferId());
+        $this->assertEquals(MiraklMock::TRANSFER_BASIC, $transfer->getTransactionId());
+        $this->assertEquals(1111, $transfer->getAmount());
+        $this->assertEquals('eur', $transfer->getCurrency());
+        $this->assertNull($transfer->getMiraklCreatedDate());
+    }
+
+    public function testUpdateServiceOrderRefundTransfer()
+    {
+				$pendingRefunds = $this->miraklClient->listServicePendingRefunds();
+
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_SERVICE, MiraklMock::SERVICE_ORDER_REFUND_BASIC);
+				$order = $pendingRefunds[$orderId];
+
+				$orderTransfer = $this->mockOrderTransfer(MiraklClient::ORDER_TYPE_SERVICE, $order);
+				$this->mockRefundCreated($this->mockStripeRefund(MiraklClient::ORDER_TYPE_SERVICE, $order));
+				$transfer = $this->stripeTransferFactory->createFromOrderRefund($order);
 
         $this->assertEquals(StripeTransfer::TRANSFER_ON_HOLD, $transfer->getStatus());
 

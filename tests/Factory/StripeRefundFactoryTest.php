@@ -64,13 +64,23 @@ class StripeRefundFactoryTest extends KernelTestCase
         $this->miraklClient = $container->get('App\Service\MiraklClient');
     }
 
-    private function mockOrderTransfer(array $order, ?string $transactionId)
+    private function mockServiceOrderTransfer(array $order, ?string $transactionId)
+    {
+				$transfer = $this->mockProductOrderTransfer($order, $transactionId);
+				$transfer->setType(StripeTransfer::TRANSFER_SERVICE_ORDER);
+
+				$this->stripeTransferRepository->flush();
+
+				return $transfer;
+    }
+
+    private function mockProductOrderTransfer(array $order, ?string $transactionId)
     {
         $transfer = new StripeTransfer();
 				$transfer->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
 				$transfer->setMiraklId($order['order_id']);
         $transfer->setAmount(gmp_intval((string) ($order['amount'] * 100)));
-        $transfer->setCurrency(strtolower($order['currency_iso_code']));
+        $transfer->setCurrency(strtolower($order['currency_iso_code'] ?? $order['currency_code']));
 				$transfer->setTransactionId($transactionId);
 				$transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
 
@@ -102,20 +112,21 @@ class StripeRefundFactoryTest extends KernelTestCase
 				return $orderRefund;
     }
 
-    public function testCreateFromOrderRefund()
+    public function testCreateFromProductOrderRefund()
     {
 				$pendingRefunds = $this->miraklClient->listProductPendingRefunds();
 
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklMock::ORDER_REFUND_BASIC);
-				$this->mockOrderTransfer($pendingRefunds[$orderId], StripeMock::CHARGE_BASIC);
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, MiraklMock::PRODUCT_ORDER_REFUND_BASIC);
+				$this->mockProductOrderTransfer($pendingRefunds[$orderId], StripeMock::CHARGE_BASIC);
 
 				$orderRefund = $this->parseProductOrderRefund($pendingRefunds[$orderId], 0, 0);
 				$refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, MiraklClient::ORDER_TYPE_PRODUCT);
 
+        $this->assertEquals(StripeRefund::REFUND_PRODUCT_ORDER, $refund->getType());
         $this->assertEquals(StripeRefund::REFUND_PENDING, $refund->getStatus());
         $this->assertNull($refund->getStatusReason());
         $this->assertEquals($orderId, $refund->getMiraklOrderId());
-        $this->assertEquals(MiraklMock::ORDER_REFUND_BASIC, $refund->getMiraklRefundId());
+        $this->assertEquals(MiraklMock::PRODUCT_ORDER_REFUND_BASIC, $refund->getMiraklRefundId());
         $this->assertEquals($orderId . '-1', $refund->getMiraklOrderLineId());
         $this->assertEquals(1234, $refund->getAmount());
         $this->assertEquals('eur', $refund->getCurrency());
@@ -123,15 +134,53 @@ class StripeRefundFactoryTest extends KernelTestCase
         $this->assertNull($refund->getMiraklValidationTime());
     }
 
-    public function testUpdateRefund()
+    public function testUpdateProductRefund()
     {
 				$pendingRefunds = $this->miraklClient->listProductPendingRefunds();
 
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklMock::ORDER_REFUND_BASIC);
-				$this->mockOrderTransfer($pendingRefunds[$orderId], null);
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, MiraklMock::PRODUCT_ORDER_REFUND_BASIC);
+				$this->mockProductOrderTransfer($pendingRefunds[$orderId], null);
 
 				$orderRefund = $this->parseProductOrderRefund($pendingRefunds[$orderId], 0, 0);
 				$refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, MiraklClient::ORDER_TYPE_PRODUCT);
+
+        $this->assertEquals(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
+
+				$this->mockPaymentMapping($orderId, StripeMock::CHARGE_BASIC);
+				$refund = $this->stripeRefundFactory->updateRefund($refund);
+
+        $this->assertEquals(StripeRefund::REFUND_PENDING, $refund->getStatus());
+    }
+
+    public function testCreateFromServiceOrderRefund()
+    {
+				$pendingRefunds = $this->miraklClient->listServicePendingRefunds();
+
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_SERVICE, MiraklMock::SERVICE_ORDER_REFUND_BASIC);
+				$this->mockServiceOrderTransfer($pendingRefunds[$orderId], StripeMock::CHARGE_BASIC);
+
+				$refund = $this->stripeRefundFactory->createFromOrderRefund($pendingRefunds[$orderId], MiraklClient::ORDER_TYPE_SERVICE);
+
+        $this->assertEquals(StripeRefund::REFUND_SERVICE_ORDER, $refund->getType());
+        $this->assertEquals(StripeRefund::REFUND_PENDING, $refund->getStatus());
+        $this->assertNull($refund->getStatusReason());
+        $this->assertEquals($orderId, $refund->getMiraklOrderId());
+        $this->assertEquals(MiraklMock::SERVICE_ORDER_REFUND_BASIC, $refund->getMiraklRefundId());
+        $this->assertNull($refund->getMiraklOrderLineId());
+        $this->assertEquals(1234, $refund->getAmount());
+        $this->assertEquals('eur', $refund->getCurrency());
+        $this->assertNull($refund->getStripeRefundId());
+        $this->assertNull($refund->getMiraklValidationTime());
+    }
+
+    public function testUpdateServiceRefund()
+    {
+				$pendingRefunds = $this->miraklClient->listServicePendingRefunds();
+
+				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_SERVICE, MiraklMock::SERVICE_ORDER_REFUND_BASIC);
+				$this->mockServiceOrderTransfer($pendingRefunds[$orderId], null);
+
+				$refund = $this->stripeRefundFactory->createFromOrderRefund($pendingRefunds[$orderId], MiraklClient::ORDER_TYPE_SERVICE);
 
         $this->assertEquals(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
 
@@ -155,28 +204,40 @@ class StripeRefundFactoryTest extends KernelTestCase
 						]
 				];
 
-				$pendingRefunds = $this->miraklClient->listProductPendingRefunds();
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklMock::ORDER_REFUND_BASIC);
-				$pendingRefund = $pendingRefunds[$orderId];
-				$i = 0;
-				foreach ($chargeStatuses as $expectedRefundStatus => $consts) {
-						foreach ($consts as $const) {
-								$i++;
+				$types = [
+						MiraklClient::ORDER_TYPE_PRODUCT => MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
+						MiraklClient::ORDER_TYPE_SERVICE => MiraklMock::SERVICE_ORDER_REFUND_BASIC
+				];
+				foreach ($types as $type => $refundId) {
+						$orderId = MiraklMock::getOrderIdFromRefundId($type, $refundId);
+						$pendingRefunds = $this->miraklClient->{"list{$type}PendingRefunds"}();
+						$pendingRefund = $pendingRefunds[$orderId];
 
-								$order = $pendingRefund;
-								$order['order_id'] .= "_$i";
+						$i = 0;
+						foreach ($chargeStatuses as $expectedRefundStatus => $consts) {
+								foreach ($consts as $const) {
+										$i++;
 
-								$chargeId = constant("App\Tests\StripeMockedHttpClient::$const");
-								$this->mockOrderTransfer($order, $chargeId);
+										$order = $pendingRefund;
+										$order['order_id'] .= "_{$type}_$i";
 
-								$orderRefund = $this->parseProductOrderRefund($order, 0, 0);
-								$refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, MiraklClient::ORDER_TYPE_PRODUCT);
+										$chargeId = constant("App\Tests\StripeMockedHttpClient::$const");
+										$this->{"mock{$type}OrderTransfer"}($order, $chargeId);
 
-				        $this->assertEquals(
-										$expectedRefundStatus,
-										$refund->getStatus(),
-										'Expected ' . $expectedRefundStatus . ' for ' . $const
-								);
+										if (MiraklClient::ORDER_TYPE_PRODUCT === $type) {
+												$orderRefund = $this->parseProductOrderRefund($order, 0, 0);
+										} else {
+												$orderRefund = $order;
+										}
+
+										$refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, $type);
+
+						        $this->assertEquals(
+												$expectedRefundStatus,
+												$refund->getStatus(),
+												"Expected $expectedRefundStatus for $const ($type): " . $refund->getStatusReason()
+										);
+								}
 						}
 				}
     }
@@ -201,28 +262,40 @@ class StripeRefundFactoryTest extends KernelTestCase
 						]
 				];
 
-				$pendingRefunds = $this->miraklClient->listProductPendingRefunds();
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklMock::ORDER_REFUND_BASIC);
-				$pendingRefund = $pendingRefunds[$orderId];
-				$i = 0;
-				foreach ($chargeStatuses as $expectedRefundStatus => $consts) {
-						foreach ($consts as $const) {
-								$i++;
+				$types = [
+						MiraklClient::ORDER_TYPE_PRODUCT => MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
+						MiraklClient::ORDER_TYPE_SERVICE => MiraklMock::SERVICE_ORDER_REFUND_BASIC
+				];
+				foreach ($types as $type => $refundId) {
+						$orderId = MiraklMock::getOrderIdFromRefundId($type, $refundId);
+						$pendingRefunds = $this->miraklClient->{"list{$type}PendingRefunds"}();
+						$pendingRefund = $pendingRefunds[$orderId];
 
-								$order = $pendingRefund;
-								$order['order_id'] .= "_$i";
+						$i = 0;
+						foreach ($chargeStatuses as $expectedRefundStatus => $consts) {
+								foreach ($consts as $const) {
+										$i++;
 
-								$chargeId = constant("App\Tests\StripeMockedHttpClient::$const");
-								$this->mockOrderTransfer($order, $chargeId);
+										$order = $pendingRefund;
+										$order['order_id'] .= "_{$type}_$i";
 
-								$orderRefund = $this->parseProductOrderRefund($order, 0, 0);
-								$refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, MiraklClient::ORDER_TYPE_PRODUCT);
+										$chargeId = constant("App\Tests\StripeMockedHttpClient::$const");
+										$this->{"mock{$type}OrderTransfer"}($order, $chargeId);
 
-				        $this->assertEquals(
-										$expectedRefundStatus,
-										$refund->getStatus(),
-										'Expected ' . $expectedRefundStatus . ' for ' . $const . ' / ' . $refund->getStatusReason()
-								);
+										if (MiraklClient::ORDER_TYPE_PRODUCT === $type) {
+												$orderRefund = $this->parseProductOrderRefund($order, 0, 0);
+										} else {
+												$orderRefund = $order;
+										}
+
+										$refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, MiraklClient::ORDER_TYPE_PRODUCT);
+
+						        $this->assertEquals(
+												$expectedRefundStatus,
+												$refund->getStatus(),
+												"Expected $expectedRefundStatus for $const ($type): " . $refund->getStatusReason()
+										);
+								}
 						}
 				}
     }

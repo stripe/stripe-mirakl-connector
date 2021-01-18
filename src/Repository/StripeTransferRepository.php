@@ -67,7 +67,7 @@ class StripeTransferRepository extends ServiceEntityRepository
     public function findTransfersByOrderIds(array $orderIds)
     {
         return $this->mapTransfersByMiraklId($this->findBy([
-            'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER,
+            'type' => StripeTransfer::getOrderTypes(),
             'miraklId' => $orderIds
         ]));
     }
