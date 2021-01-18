@@ -6,6 +6,11 @@
 parameters:
   env(CORS_ALLOW_ORIGIN): "^https?://localhost(:[0-9]+)?$"
   env(MAILER_DSN): "smtp://null"
+  env(TECHNICAL_ALERT_EMAIL): ""
+  env(TECHNICAL_ALERT_EMAIL_FROM): ""
+  env(OPERATOR_NOTIFICATION_URL): ""
+  env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
+  env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
 
   default_mirakl_custom_field_code: "stripe-url"
   default_stripe_prefill_onboarding: false
@@ -17,9 +22,6 @@ parameters:
 
   default_enable_product_payment_refund: false
   default_enable_service_payment_refund: false
-
-  default_mail_on_notification_endpoint_down: true
-  default_mail_on_notification_endpoint_down_cooldown: 10
 
   deprecated_webhook_secret: "%env(default::STRIPE_WEBHOOK_SECRET)%"
   deprecated_enable_product_payment_split: "%env(default:default_enable_product_payment_split:bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
@@ -42,11 +44,11 @@ parameters:
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
   app.mirakl.stripe_custom_field_code: "%env(default:default_mirakl_custom_field_code:MIRAKL_CUSTOM_FIELD_CODE)%"
   app.redirect.onboarding: "%env(default:default_redirect_onboarding:REDIRECT_ONBOARDING)%"
-  app.operator.notification_url: "%env(default::OPERATOR_NOTIFICATION_URL)%"
-  app.mailer.technical: "%env(default::TECHNICAL_ALERT_EMAIL)%"
-  app.mailer.technical_from: "%env(default::TECHNICAL_ALERT_EMAIL_FROM)%"
-  app.endpoint_down.mail_notification: "%env(default:default_mail_on_notification_endpoint_down:bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
-  app.endpoint_down.mail_notification_throttle: "%env(default:default_mail_on_notification_endpoint_down_cooldown:int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
+  app.operator.notification_url: "%env(OPERATOR_NOTIFICATION_URL)%"
+  app.mailer.technical: "%env(TECHNICAL_ALERT_EMAIL)%"
+  app.mailer.technical_from: "%env(TECHNICAL_ALERT_EMAIL_FROM)%"
+  app.endpoint_down.mail_notification: "%env(bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
+  app.endpoint_down.mail_notification_throttle: "%env(int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
   app.mirakl.metadata_order_id_field_name: "%env(default:default_mirakl_metadata_order_id:MIRAKL_METADATA_ORDER_ID)%"
 
 services:
