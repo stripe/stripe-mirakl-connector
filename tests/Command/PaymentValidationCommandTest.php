@@ -102,9 +102,23 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertCount(0, $this->cancelReceiver->getSent());
     }
 
-    public function testCaptureFullAmount()
+    public function testCaptureForNonExistingOrder()
     {
 				// 1 payment mapped to a fully validated order
+				$this->mockPaymentMapping(
+						MiraklMock::ORDER_COMMERCIAL_NOT_FOUND,
+						StripeMock::CHARGE_STATUS_AUTHORIZED,
+						6922
+				);
+        $this->executeCommand();
+        $this->assertCount(0, $this->validateReceiver->getSent());
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureFullAmount()
+    {
+				// 1 payment mapped to an order not created yet
 				$this->mockPaymentMapping(
 						MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
 						StripeMock::CHARGE_STATUS_AUTHORIZED,
@@ -175,34 +189,4 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertCount(0, $this->captureReceiver->getSent());
         $this->assertCount(1, $this->cancelReceiver->getSent());
     }
-
-				//
-        // $ordersToValidate = ;
-        // $this->assertEquals(['Order_66', 'Order_42'], array_keys($ordersToValidate));
-        // $this->assertCount(2, $ordersToValidate['Order_66']);
-				//
-        // $captureMessage = $captureMessages[0]->getMessage();
-        // $this->assertEquals(1, $captureMessage->getstripeChargeId());
-        // $this->assertEquals(33000, $captureMessage->getAmount(), 'Invalid amount captured for Order_66');
-				//
-        // $captureMessage = $captureMessages[1]->getMessage();
-        // $this->assertEquals(3, $captureMessage->getstripeChargeId());
-        // $this->assertEquals(33000, $captureMessage->getAmount(), 'Invalid amount captured for Order_11');
-				//
-        // $captureMessage = $captureMessages[2]->getMessage();
-        // $this->assertEquals(5, $captureMessage->getstripeChargeId());
-        // $this->assertEquals(10000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_01');
-				//
-        // $captureMessage = $captureMessages[3]->getMessage();
-        // $this->assertEquals(6, $captureMessage->getstripeChargeId());
-        // $this->assertEquals(7000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_02');
-				//
-        // $captureMessage = $captureMessages[4]->getMessage();
-        // $this->assertEquals(7, $captureMessage->getstripeChargeId());
-        // $this->assertEquals(2000, $captureMessage->getAmount(), 'Invalid amount captured for Order_op_03');
-				//
-        // $cancelMessage = $cancelMessages[0]->getMessage();
-        // $this->assertEquals(2, $cancelMessage->getstripeChargeId());
-        // $this->assertEquals(66000, $cancelMessage->getAmount(), 'Invalid amount cancelled for Order_42');
-
 }

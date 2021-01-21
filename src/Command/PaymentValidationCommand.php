@@ -107,45 +107,43 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
      */
     protected function capturePayments(array $paymentMappings): void
     {
-        // Amount is initially set to the authorized amount
-        $amountByCommercialId = [];
-        foreach ($paymentMappings as $commercialId => $paymentMapping) {
-            $amountByCommercialId[$commercialId] = $paymentMapping->getStripeAmount();
-        }
-
-        // List all orders with the same commercial id as those previously validated
+        // List all orders using the provided commercial IDs
         $ordersByCommercialId = $this->miraklClient->listProductOrdersByCommercialId(
             array_keys($paymentMappings)
         );
 
-        // Calculate the right amount to be captured
-        foreach ($ordersByCommercialId as $commercialId => $ordersById) {
-            foreach ($ordersById as $orderId => $order) {
-                // This order is not fully validated yet
+        // Calculate the right amount to be captured for each commercial order
+        foreach ($paymentMappings as $commercialId => $paymentMapping) {
+            if (!isset($ordersByCommercialId[$commercialId])) {
+                // Order not created yet
+                continue;
+            }
+
+            // Amount is initially set to the authorized amount and we deduct refused/canceled orders
+            $finalAmount = $paymentMapping->getStripeAmount();
+            foreach ($ordersByCommercialId[$commercialId] as $orderId => $order) {
+                // Order not fully validated yet
+                // TODO: this check only works for PAY_ON_ACCEPTANCE
                 if (!in_array($order['order_state'], self::ORDER_STATUS_VALIDATED)) {
-                    unset($amountByCommercialId[$commercialId]);
                     continue 2;
                 }
 
                 // Deduct refused or canceled orders
                 if (!in_array($order['order_state'], self::ORDER_STATUS_TO_CAPTURE)) {
                     $amountToDeduct = gmp_intval((string) ($order['total_price'] * 100));
-                    $amountByCommercialId[$commercialId] -= $amountToDeduct;
+                    $finalAmount -= $amountToDeduct;
                 }
             }
-        }
 
-        foreach ($amountByCommercialId as $commercialId => $finalAmount) {
+            // Capture or cancel if nothing left to capture
+            $mappingId = $paymentMapping->getId();
             if ($finalAmount > 0) {
-                $this->bus->dispatch(new CapturePendingPaymentMessage(
-                    $paymentMappings[$commercialId]->getId(),
-                    $finalAmount
-                ));
+                $message = new CapturePendingPaymentMessage($mappingId, $finalAmount);
             } else {
-                $this->bus->dispatch(new CancelPendingPaymentMessage(
-                    $paymentMappings[$commercialId]->getId()
-                ));
+                $message = new CancelPendingPaymentMessage($mappingId);
             }
+
+            $this->bus->dispatch($message);
         }
     }
 }

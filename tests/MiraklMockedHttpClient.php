@@ -51,6 +51,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 		public const ORDER_COMMERCIAL_PARTIALLY_VALIDATED = 'order_commercial_partially_validated';
 		public const ORDER_COMMERCIAL_PARTIALLY_REFUSED = 'order_commercial_partially_refused';
 		public const ORDER_COMMERCIAL_CANCELED = 'order_commercial_canceled';
+		public const ORDER_COMMERCIAL_NOT_FOUND = 'order_commercial_not_found';
 
 		public const PRODUCT_ORDER_PENDING_REFUND = 'product_order_pending_refund';
 		public const SERVICE_ORDER_PENDING_REFUND = 'service_order_pending_refund';
@@ -342,6 +343,10 @@ class MiraklMockedHttpClient extends MockHttpClient
 										$orders = array_merge($orders, $this->mockOrdersById($isService, [
 												self::ORDER_STATUS_CANCELED
 										]));
+										break;
+								case self::ORDER_COMMERCIAL_NOT_FOUND:
+								default:
+										// No order
 										break;
 						}
 				}
