@@ -115,7 +115,10 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         // Calculate the right amount to be captured for each commercial order
         foreach ($paymentMappings as $commercialId => $paymentMapping) {
             if (!isset($ordersByCommercialId[$commercialId])) {
-                // Order not created yet
+                $this->logger->info(
+                    'Skipping payment capture for non-existing commercial order.',
+                    [ 'commercial_id' => $commercialId ]
+                );
                 continue;
             }
 
@@ -125,12 +128,20 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
                 // Order not fully validated yet
                 // TODO: this check only works for PAY_ON_ACCEPTANCE
                 if (!in_array($order['order_state'], self::ORDER_STATUS_VALIDATED)) {
+		                $this->logger->info(
+		                    'Skipping payment capture for non-validated logistical order.',
+		                    [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+		                );
                     continue 2;
                 }
 
                 // Deduct refused or canceled orders
                 if (!in_array($order['order_state'], self::ORDER_STATUS_TO_CAPTURE)) {
-                    $amountToDeduct = gmp_intval((string) ($order['total_price'] * 100));
+		                $this->logger->info(
+		                    "Deducting refused/canceled order amount {$order['total_price']} from final amount.",
+		                    [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+		                );
+										$amountToDeduct = gmp_intval((string) ($order['total_price'] * 100));
                     $finalAmount -= $amountToDeduct;
                 }
             }
