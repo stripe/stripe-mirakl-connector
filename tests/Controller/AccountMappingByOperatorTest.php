@@ -2,7 +2,7 @@
 
 namespace App\Tests\Controller;
 
-use App\Controller\SellerAccountMapping;
+use App\Controller\AccountMappingByOperator;
 use App\DTO\AccountMappingDTO;
 use App\Entity\AccountMapping;
 use App\Factory\AccountMappingFactory;
@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class SellerAccountMappingTest extends ConnectorWebTestCase
+class AccountMappingByOperatorTest extends ConnectorWebTestCase
 {
     protected $controller;
     protected $accountMappingRepository;
@@ -48,7 +48,7 @@ class SellerAccountMappingTest extends ConnectorWebTestCase
 
         $logger = new NullLogger();
 
-        $this->controller = new SellerAccountMapping(
+        $this->controller = new AccountMappingByOperator(
             $this->accountMappingFactory,
             $this->accountMappingRepository,
             $this->stripeClient,

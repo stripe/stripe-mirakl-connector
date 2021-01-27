@@ -8,7 +8,7 @@ use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Component\HttpFoundation\Response;
 
-class SellerAccountMappingWebTest extends ConnectorWebTestCase
+class AccountMappingByOperatorWebTest extends ConnectorWebTestCase
 {
     use RecreateDatabaseTrait;
 

@@ -2,9 +2,9 @@
 
 namespace App\Controller;
 
-use App\DTO\OnboardingAccountDTO;
+use App\DTO\AccountOnboardingDTO;
 use App\Exception\InvalidArgumentException;
-use App\Factory\OnboardingAccountFactory;
+use App\Factory\AccountOnboardingFactory;
 use Nelmio\ApiDocBundle\Annotation\Security;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -18,14 +18,14 @@ use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class OnboardingAccountGenerator extends AbstractController implements LoggerAwareInterface
+class AccountOnboardingGenerator extends AbstractController implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
     /**
-     * @var OnboardingAccountFactory
+     * @var AccountOnboardingFactory
      */
-    private $onboardingAccountFactory;
+    private $accountOnboardingFactory;
 
     /**
      * @var SerializerInterface
@@ -38,11 +38,11 @@ class OnboardingAccountGenerator extends AbstractController implements LoggerAwa
     private $validator;
 
     public function __construct(
-        OnboardingAccountFactory $onboardingAccountFactory,
+        AccountOnboardingFactory $accountOnboardingFactory,
         SerializerInterface $serializer,
         ValidatorInterface $validator
     ) {
-        $this->onboardingAccountFactory = $onboardingAccountFactory;
+        $this->accountOnboardingFactory = $accountOnboardingFactory;
         $this->serializer = $serializer;
         $this->validator = $validator;
     }
@@ -80,7 +80,7 @@ class OnboardingAccountGenerator extends AbstractController implements LoggerAwa
      *     response=401,
      *     description="Unauthorized access"
      * )
-     * @SWG\Tag(name="OnboardingAccount")
+     * @SWG\Tag(name="AccountOnboarding")
      * @Security(name="Bearer")
      *
      * @Route("/api/onboarding", methods={"POST"}, name="generate_stripe_onboarding_link")
@@ -88,19 +88,19 @@ class OnboardingAccountGenerator extends AbstractController implements LoggerAwa
     public function generateStripeOnboardingLink(Request $request): Response
     {
         $data = $request->getContent();
-        $onboardingAccountDTO = $this->serializer->deserialize($data, OnboardingAccountDTO::class, JsonEncoder::FORMAT);
+        $accountOnboardingDTO = $this->serializer->deserialize($data, AccountOnboardingDTO::class, JsonEncoder::FORMAT);
 
-        $errors = $this->validator->validate($onboardingAccountDTO);
+        $errors = $this->validator->validate($accountOnboardingDTO);
         if (count($errors) > 0) {
             $this->logger->error('Invalid Mirakl shop Id format');
 
             return new Response('Invalid Mirakl shop Id format', Response::HTTP_BAD_REQUEST);
         }
 
-        $miraklId = $onboardingAccountDTO->getMiraklShopId();
+        $miraklId = $accountOnboardingDTO->getMiraklShopId();
 
         try {
-            $stripeUrl = $this->onboardingAccountFactory->createFromMiraklShopId($miraklId);
+            $stripeUrl = $this->accountOnboardingFactory->createFromMiraklShopId($miraklId);
         } catch (InvalidArgumentException $e) {
             $this->logger->error($e->getMessage(), [
                 'miraklShopId' => $miraklId,

@@ -40,7 +40,6 @@ class StripeTransfer
     // Transfer status reasons: on hold
     public const TRANSFER_STATUS_REASON_SHOP_NOT_READY = 'Cannot find Stripe account for shop ID %s';
     public const TRANSFER_STATUS_REASON_ORDER_NOT_READY = 'Order is not ready yet, status is %s';
-    public const TRANSFER_STATUS_REASON_LINE_ITEM_NOT_READY = 'One of the line items is not ready yet, status is %s';
     public const TRANSFER_STATUS_REASON_PAYMENT_NOT_READY = 'Payment %s is not ready yet, status is %s';
     public const TRANSFER_STATUS_REASON_REFUND_NOT_FOUND = 'Cannot find StripeRefund with ID %s';
     public const TRANSFER_STATUS_REASON_REFUND_NOT_VALIDATED = 'Refund %s has yet to be validated';
@@ -53,7 +52,6 @@ class StripeTransfer
     public const TRANSFER_STATUS_REASON_PAYMENT_CANCELED = 'Payment %s has been canceled';
     public const TRANSFER_STATUS_REASON_PAYMENT_REFUNDED = 'Payment %s has been fully refunded';
     public const TRANSFER_STATUS_REASON_NO_SHOP_ID = 'No shop ID provided';
-    public const TRANSFER_STATUS_REASON_ORDER_REFUND_AMOUNT_NOT_FOUND = 'Cannot find amount for refund ID %s';
     public const TRANSFER_STATUS_REASON_ORDER_REFUND_ABORTED = 'Refund %s has been aborted';
 
     // Transfer types

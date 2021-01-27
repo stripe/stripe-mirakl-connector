@@ -4,7 +4,7 @@ namespace App\Command;
 
 use App\Exception\InvalidArgumentException;
 use App\Factory\MiraklPatchShopFactory;
-use App\Factory\OnboardingAccountFactory;
+use App\Factory\AccountOnboardingFactory;
 use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -13,7 +13,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class SellerAccountInitiationCommand extends Command implements LoggerAwareInterface
+class AccountOnboardingCommand extends Command implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
@@ -22,9 +22,9 @@ class SellerAccountInitiationCommand extends Command implements LoggerAwareInter
     protected const DELAY_ARGUMENT_NAME = 'delay';
 
     /**
-     * @var OnboardingAccountFactory
+     * @var AccountOnboardingFactory
      */
-    private $onboardingAccountFactory;
+    private $accountOnboardingFactory;
 
     /**
      * @var MiraklClient
@@ -42,12 +42,12 @@ class SellerAccountInitiationCommand extends Command implements LoggerAwareInter
     private $customFieldCode;
 
     public function __construct(
-        OnboardingAccountFactory $onboardingAccountFactory,
+        AccountOnboardingFactory $accountOnboardingFactory,
         MiraklClient $miraklClient,
         MiraklPatchShopFactory $patchFactory,
         string $customFieldCode
     ) {
-        $this->onboardingAccountFactory = $onboardingAccountFactory;
+        $this->accountOnboardingFactory = $accountOnboardingFactory;
         $this->miraklClient = $miraklClient;
         $this->patchFactory = $patchFactory;
         $this->customFieldCode = $customFieldCode;
@@ -113,7 +113,7 @@ class SellerAccountInitiationCommand extends Command implements LoggerAwareInter
         }
 
         try {
-            $stripeUrl = $this->onboardingAccountFactory->createFromMiraklShop($miraklShop);
+            $stripeUrl = $this->accountOnboardingFactory->createFromMiraklShop($miraklShop);
 
             return $this->patchFactory
                 ->setMiraklShopId($miraklShop['shop_id'])

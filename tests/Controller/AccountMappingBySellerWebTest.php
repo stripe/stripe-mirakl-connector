@@ -2,12 +2,12 @@
 
 namespace App\Tests\Controller;
 
-use App\Entity\OnboardingAccount;
+use App\Entity\AccountOnboarding;
 use App\Tests\ConnectorWebTestCase;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Component\HttpFoundation\Response;
 
-class SellerAccountInitiationWebTest extends ConnectorWebTestCase
+class AccountMappingBySellerWebTest extends ConnectorWebTestCase
 {
     use RecreateDatabaseTrait;
 
@@ -16,7 +16,7 @@ class SellerAccountInitiationWebTest extends ConnectorWebTestCase
     public function testLinkShop()
     {
         $client = static::createClient();
-        $repository = self::$container->get('doctrine')->getRepository(OnboardingAccount::class);
+        $repository = self::$container->get('doctrine')->getRepository(AccountOnboarding::class);
         $this->assertNotNull($repository->findOneByStripeState('state_11'));
 
         $client->request(

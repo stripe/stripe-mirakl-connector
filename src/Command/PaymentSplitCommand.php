@@ -86,7 +86,8 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
     private function processBacklog(string $orderType)
     {
         $this->logger->info("Processing $orderType backlog.");
-        $backlog = $this->paymentSplitService->getRetriableTransfers($orderType);
+        $method = "getRetriable{$orderType}Transfers";
+        $backlog = $this->paymentSplitService->$method();
         if (empty($backlog)) {
             $this->logger->info("No backlog.");
             return;
@@ -123,10 +124,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
             return;
         }
 
-        $this->dispatchTransfers($this->paymentSplitService->getTransfersFromOrders(
-            $orders,
-            $orderType
-        ));
+        $this->dispatchTransfers($this->paymentSplitService->getTransfersFromOrders($orders));
 
         $newCheckpoint = $this->updateCheckpoint($orders, $checkpoint);
         if ($checkpoint !== $newCheckpoint) {
@@ -144,7 +142,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         }
 
         $lastOrder = current(array_reverse($orders));
-        return $lastOrder['created_date'] ?? $lastOrder['date_created'];
+        return $lastOrder->getCreationDate();
     }
 
     private function dispatchTransfers(array $transfers): void

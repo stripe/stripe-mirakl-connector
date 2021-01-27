@@ -3,6 +3,8 @@
 namespace App\Factory;
 
 use App\Entity\AccountMapping;
+use App\Entity\MiraklPendingRefund;
+use App\Entity\MiraklServicePendingRefund;
 use App\Entity\StripeRefund;
 use App\Exception\InvalidArgumentException;
 use App\Repository\PaymentMappingRepository;
@@ -44,25 +46,24 @@ class StripeRefundFactory implements LoggerAwareInterface
     }
 
     /**
-     * @param array $orderRefund
-     * @param string $orderType
+     * @param MiraklPendingRefund $pendingRefund
      * @return StripeRefund
      */
-    public function createFromOrderRefund(array $orderRefund, string $orderType): StripeRefund
+    public function createFromOrderRefund(MiraklPendingRefund $pendingRefund): StripeRefund
     {
-        if (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
-            $type = StripeRefund::REFUND_PRODUCT_ORDER;
-        } else {
+        if (is_a($pendingRefund, MiraklServicePendingRefund::class)) {
             $type = StripeRefund::REFUND_SERVICE_ORDER;
+        } else {
+            $type = StripeRefund::REFUND_PRODUCT_ORDER;
         }
 
         $refund = new StripeRefund();
         $refund->setType($type);
-        $refund->setMiraklOrderId($orderRefund['order_id']);
-        $refund->setMiraklOrderLineId($orderRefund['order_line_id'] ?? null);
-        $refund->setAmount(gmp_intval((string) ($orderRefund['amount'] * 100)));
-        $refund->setCurrency(strtolower($orderRefund['currency_code']));
-        $refund->setMiraklRefundId($orderRefund['id']);
+        $refund->setMiraklOrderId($pendingRefund->getOrderId());
+        $refund->setMiraklOrderLineId($pendingRefund->getOrderLineId());
+        $refund->setAmount(gmp_intval((string) ($pendingRefund->getAmount() * 100)));
+        $refund->setCurrency(strtolower($pendingRefund->getCurrency()));
+        $refund->setMiraklRefundId($pendingRefund->getId());
 
         return $this->updateRefund($refund);
     }

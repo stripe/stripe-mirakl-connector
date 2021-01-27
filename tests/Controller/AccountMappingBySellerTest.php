@@ -2,11 +2,11 @@
 
 namespace App\Tests\Controller;
 
-use App\Controller\SellerAccountInitiation;
+use App\Controller\AccountMappingBySeller;
 use App\Entity\AccountMapping;
-use App\Entity\OnboardingAccount;
+use App\Entity\AccountOnboarding;
 use App\Repository\AccountMappingRepository;
-use App\Repository\OnboardingAccountRepository;
+use App\Repository\AccountOnboardingRepository;
 use App\Service\StripeClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -16,11 +16,11 @@ use Stripe\StripeObject;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class SellerAccountInitiationTest extends TestCase
+class AccountMappingBySellerTest extends TestCase
 {
     protected $controller;
     protected $accountMappingRepository;
-    protected $onboardingAccountRepository;
+    protected $accountOnboardingRepository;
     protected $stripeClient;
     protected $redirectOnboarding;
     protected $stripeApiErrorException;
@@ -36,7 +36,7 @@ class SellerAccountInitiationTest extends TestCase
             ->disableOriginalConstructor()
             ->setMethods(['findOneByMiraklShopId', 'persistAndFlush'])
             ->getMock();
-        $this->onboardingAccountRepository = $this->getMockBuilder(OnboardingAccountRepository::class)
+        $this->accountOnboardingRepository = $this->getMockBuilder(AccountOnboardingRepository::class)
             ->disableOriginalConstructor()
             ->setMethods(['findOneByStripeState', 'deleteAndFlush'])
             ->getMock();
@@ -46,11 +46,11 @@ class SellerAccountInitiationTest extends TestCase
             ->getMock();
         $logger = new NullLogger();
 
-        $this->controller = new SellerAccountInitiation(
+        $this->controller = new AccountMappingBySeller(
             $this->stripeClient,
             $this->redirectOnboarding,
             $this->accountMappingRepository,
-            $this->onboardingAccountRepository
+            $this->accountOnboardingRepository
         );
         $this->controller->setLogger($logger);
     }
@@ -67,8 +67,8 @@ class SellerAccountInitiationTest extends TestCase
 
         $queryParams = \http_build_query([
             'error' => 'true',
-            'error_code' => SellerAccountInitiation::ERROR_MISSING_CODE['code'],
-            'error_description' => SellerAccountInitiation::ERROR_MISSING_CODE['description'],
+            'error_code' => AccountMappingBySeller::ERROR_MISSING_CODE['code'],
+            'error_description' => AccountMappingBySeller::ERROR_MISSING_CODE['description'],
         ]);
         $redirectUrl = sprintf('%s?%s', $this->redirectOnboarding, $queryParams);
 
@@ -87,8 +87,8 @@ class SellerAccountInitiationTest extends TestCase
 
         $queryParams = \http_build_query([
             'error' => 'true',
-            'error_code' => SellerAccountInitiation::ERROR_MISSING_STATE['code'],
-            'error_description' => SellerAccountInitiation::ERROR_MISSING_STATE['description'],
+            'error_code' => AccountMappingBySeller::ERROR_MISSING_STATE['code'],
+            'error_description' => AccountMappingBySeller::ERROR_MISSING_STATE['description'],
         ]);
         $redirectUrl = sprintf('%s?%s', $this->redirectOnboarding, $queryParams);
 
@@ -103,7 +103,7 @@ class SellerAccountInitiationTest extends TestCase
             ['state' => 'unknown', 'code' => 'unused']
         );
         $this
-            ->onboardingAccountRepository
+            ->accountOnboardingRepository
             ->expects($this->once())
             ->method('findOneByStripeState')
             ->with('unknown')
@@ -112,8 +112,8 @@ class SellerAccountInitiationTest extends TestCase
         $response = $this->controller->linkShop($request);
         $queryParams = \http_build_query([
             'error' => 'true',
-            'error_code' => SellerAccountInitiation::ERROR_NO_MATCHING_STATE['code'],
-            'error_description' => SellerAccountInitiation::ERROR_NO_MATCHING_STATE['description'],
+            'error_code' => AccountMappingBySeller::ERROR_NO_MATCHING_STATE['code'],
+            'error_description' => AccountMappingBySeller::ERROR_NO_MATCHING_STATE['description'],
         ]);
         $redirectUrl = sprintf('%s?%s', $this->redirectOnboarding, $queryParams);
 
@@ -127,18 +127,18 @@ class SellerAccountInitiationTest extends TestCase
             'GET',
             ['state' => 'hash', 'code' => 'unused']
         );
-        $onboardingAccount = (new OnboardingAccount())->setMiraklShopId(4242);
+        $accountOnboarding = (new AccountOnboarding())->setMiraklShopId(4242);
         $this
-            ->onboardingAccountRepository
+            ->accountOnboardingRepository
             ->expects($this->once())
             ->method('findOneByStripeState')
             ->with('hash')
-            ->willReturn($onboardingAccount);
+            ->willReturn($accountOnboarding);
         $this
-            ->onboardingAccountRepository
+            ->accountOnboardingRepository
             ->expects($this->once())
             ->method('deleteAndFlush')
-            ->with($onboardingAccount);
+            ->with($accountOnboarding);
         $this
             ->accountMappingRepository
             ->expects($this->once())
@@ -149,8 +149,8 @@ class SellerAccountInitiationTest extends TestCase
         $response = $this->controller->linkShop($request);
         $queryParams = \http_build_query([
             'error' => 'true',
-            'error_code' => SellerAccountInitiation::ERROR_ALREADY_EXISTING_SHOP['code'],
-            'error_description' => SellerAccountInitiation::ERROR_ALREADY_EXISTING_SHOP['description'],
+            'error_code' => AccountMappingBySeller::ERROR_ALREADY_EXISTING_SHOP['code'],
+            'error_description' => AccountMappingBySeller::ERROR_ALREADY_EXISTING_SHOP['description'],
         ]);
         $redirectUrl = sprintf('%s?%s', $this->redirectOnboarding, $queryParams);
 
@@ -164,7 +164,7 @@ class SellerAccountInitiationTest extends TestCase
             'GET',
             ['state' => 'hash', 'code' => 'validCode']
         );
-        $onboardingAccount = (new OnboardingAccount())->setMiraklShopId(4242);
+        $accountOnboarding = (new AccountOnboarding())->setMiraklShopId(4242);
         $exceptionCode = 'stripe_error';
         $this
             ->stripeApiErrorException
@@ -172,16 +172,16 @@ class SellerAccountInitiationTest extends TestCase
             ->method('getStripeCode')
             ->willReturn($exceptionCode);
         $this
-            ->onboardingAccountRepository
+            ->accountOnboardingRepository
             ->expects($this->once())
             ->method('findOneByStripeState')
             ->with('hash')
-            ->willReturn($onboardingAccount);
+            ->willReturn($accountOnboarding);
         $this
-            ->onboardingAccountRepository
+            ->accountOnboardingRepository
             ->expects($this->once())
             ->method('deleteAndFlush')
-            ->with($onboardingAccount);
+            ->with($accountOnboarding);
         $this
             ->accountMappingRepository
             ->expects($this->once())
@@ -213,7 +213,7 @@ class SellerAccountInitiationTest extends TestCase
             'GET',
             ['state' => 'hash', 'code' => 'validCode']
         );
-        $onboardingAccount = (new OnboardingAccount())->setMiraklShopId(4242);
+        $accountOnboarding = (new AccountOnboarding())->setMiraklShopId(4242);
         $stripeLoginResponse = new StripeObject();
         $stripeLoginResponse->stripe_user_id = 'acct_valid';
 
@@ -232,16 +232,16 @@ class SellerAccountInitiationTest extends TestCase
             ->setDisabledReason('check in progress');
 
         $this
-            ->onboardingAccountRepository
+            ->accountOnboardingRepository
             ->expects($this->once())
             ->method('findOneByStripeState')
             ->with('hash')
-            ->willReturn($onboardingAccount);
+            ->willReturn($accountOnboarding);
         $this
-            ->onboardingAccountRepository
+            ->accountOnboardingRepository
             ->expects($this->once())
             ->method('deleteAndFlush')
-            ->with($onboardingAccount);
+            ->with($accountOnboarding);
         $this
             ->accountMappingRepository
             ->expects($this->once())

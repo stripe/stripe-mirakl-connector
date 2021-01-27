@@ -28,21 +28,26 @@ class PaymentSplitService
     }
 
     /**
-     * @param string $orderType
      * @return array App\Entity\StripeTransfer[]
      */
-    public function getRetriableTransfers(string $orderType): array
+    public function getRetriableProductTransfers(): array
     {
-        $method = "findRetriable{$orderType}OrderTransfers";
-        return $this->stripeTransferRepository->$method();
+        return $this->stripeTransferRepository->findRetriableProductOrderTransfers();
+    }
+
+    /**
+     * @return array App\Entity\StripeTransfer[]
+     */
+    public function getRetriableServiceTransfers(): array
+    {
+        return $this->stripeTransferRepository->findRetriableServiceOrderTransfers();
     }
 
     /**
      * @param array $orders
-     * @param string $orderType
      * @return array App\Entity\StripeTransfer[]
      */
-    public function getTransfersFromOrders(array $orders, string $orderType): array
+    public function getTransfersFromOrders(array $orders): array
     {
         // Retrieve existing StripeTransfers with provided order IDs
         $existingTransfers = $this->stripeTransferRepository
@@ -60,7 +65,7 @@ class PaymentSplitService
                 $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
             } else {
                 // Create new transfer
-                $transfer = $this->stripeTransferFactory->createFromOrder($order, $orderType);
+                $transfer = $this->stripeTransferFactory->createFromOrder($order);
                 $this->stripeTransferRepository->persist($transfer);
             }
 

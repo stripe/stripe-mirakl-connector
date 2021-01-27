@@ -11,9 +11,9 @@ use App\Repository\StripeTransferRepository;
 class PaymentRefundService
 {
 
-        /**
-         * @var StripeRefundFactory
-         */
+    /**
+     * @var StripeRefundFactory
+     */
     private $stripeRefundFactory;
 
     /**
@@ -52,13 +52,12 @@ class PaymentRefundService
     }
 
     /**
-     * @param array $orders
+     * @param array $orderRefunds
      * @return array App\Entity\StripeRefund[]
      */
-    public function getRefundsFromOrderRefunds(array $orders, string $orderType): array
+    public function getRefundsFromOrderRefunds(array $orderRefunds): array
     {
         // Retrieve existing StripeRefunds with provided refund IDs
-        $orderRefunds = self::parseOrderRefunds($orders, $orderType);
         $existingRefunds = $this->stripeRefundRepository->findRefundsByRefundIds(
             array_keys($orderRefunds)
         );
@@ -74,7 +73,7 @@ class PaymentRefundService
                 $refund = $this->stripeRefundFactory->updateRefund($refund);
             } else {
                 // Create new refund
-                $refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund, $orderType);
+                $refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund);
 
                 $this->stripeRefundRepository->persist($refund);
             }
@@ -89,13 +88,12 @@ class PaymentRefundService
     }
 
     /**
-     * @param array $orders
+     * @param array $orderRefunds
      * @return array App\Entity\StripeRefund[]
      */
-    public function getTransfersFromOrderRefunds(array $orders, string $orderType): array
+    public function getTransfersFromOrderRefunds(array $orderRefunds): array
     {
         // Retrieve existing StripeTransfers with provided refund IDs
-        $orderRefunds = $this->parseOrderRefunds($orders, $orderType);
         $existingTransfers = $this->stripeTransferRepository->findTransfersByRefundIds(
             array_keys($orderRefunds)
         );
@@ -140,33 +138,5 @@ class PaymentRefundService
         $this->stripeRefundRepository->flush();
 
         return $updated;
-    }
-
-    /**
-     * @param array $orders
-     * @param string $orderType
-     * @return array
-     */
-    public static function parseOrderRefunds(array $orders, string $orderType): array
-    {
-        $refunds = [];
-        if (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
-            foreach ($orders as $order) {
-                foreach ($order['order_lines']['order_line'] as $orderLine) {
-                    foreach ($orderLine['refunds']['refund'] as $orderRefund) {
-                        $orderRefund['currency_code'] = $order['currency_iso_code'];
-                        $orderRefund['order_id'] = $order['order_id'];
-                        $orderRefund['order_line_id'] = $orderLine['order_line_id'];
-                        $refunds[$orderRefund['id']] = $orderRefund;
-                    }
-                }
-            }
-        } elseif (MiraklClient::ORDER_TYPE_SERVICE === $orderType) {
-            foreach ($orders as $orderRefund) {
-                $refunds[$orderRefund['id']] = $orderRefund;
-            }
-        }
-
-        return $refunds;
     }
 }

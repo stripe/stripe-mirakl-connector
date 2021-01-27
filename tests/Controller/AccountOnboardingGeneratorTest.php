@@ -2,10 +2,10 @@
 
 namespace App\Tests\Controller;
 
-use App\Controller\OnboardingAccountGenerator;
-use App\DTO\OnboardingAccountDTO;
+use App\Controller\AccountOnboardingGenerator;
+use App\DTO\AccountOnboardingDTO;
 use App\Exception\InvalidArgumentException;
-use App\Factory\OnboardingAccountFactory;
+use App\Factory\AccountOnboardingFactory;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -15,25 +15,25 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class CreateOnboardingAccountTest extends TestCase
+class AccountOnboardingGeneratorTest extends TestCase
 {
     const STRIPE_CLIENT_ID = 'stripe-client';
 
     protected $controller;
-    protected $onboardingAccountFactory;
+    protected $accountOnboardingFactory;
     protected $serializer;
     protected $validator;
 
     protected function setUp(): void
     {
-        $this->onboardingAccountFactory = $this->createMock(OnboardingAccountFactory::class);
+        $this->accountOnboardingFactory = $this->createMock(AccountOnboardingFactory::class);
         $this->serializer = $this->createMock(SerializerInterface::class);
         $this->validator = $this->createMock(ValidatorInterface::class);
 
         $logger = new NullLogger();
 
-        $this->controller = new OnboardingAccountGenerator(
-            $this->onboardingAccountFactory,
+        $this->controller = new AccountOnboardingGenerator(
+            $this->accountOnboardingFactory,
             $this->serializer,
             $this->validator
         );
@@ -47,14 +47,14 @@ class CreateOnboardingAccountTest extends TestCase
             'POST',
             ['miraklShopId' => MiraklMock::SHOP_BASIC]
         );
-        $expectedOnboardingAccountDto = new OnboardingAccountDTO();
-        $expectedOnboardingAccountDto->setMiraklShopId(MiraklMock::SHOP_BASIC);
+        $expectedAccountOnboardingDto = new AccountOnboardingDTO();
+        $expectedAccountOnboardingDto->setMiraklShopId(MiraklMock::SHOP_BASIC);
 
         $this
             ->serializer
             ->expects($this->once())
             ->method('deserialize')
-            ->willReturn($expectedOnboardingAccountDto);
+            ->willReturn($expectedAccountOnboardingDto);
 
         $this
             ->validator
@@ -73,21 +73,21 @@ class CreateOnboardingAccountTest extends TestCase
             'POST',
             ['miraklShopId' => MiraklMock::SHOP_BASIC]
         );
-        $expectedOnboardingAccountDto = new OnboardingAccountDTO();
-        $expectedOnboardingAccountDto->setMiraklShopId(MiraklMock::SHOP_BASIC);
+        $expectedAccountOnboardingDto = new AccountOnboardingDTO();
+        $expectedAccountOnboardingDto->setMiraklShopId(MiraklMock::SHOP_BASIC);
 
         $this
             ->serializer
             ->expects($this->once())
             ->method('deserialize')
-            ->willReturn($expectedOnboardingAccountDto);
+            ->willReturn($expectedAccountOnboardingDto);
         $this
             ->validator
             ->expects($this->once())
             ->method('validate')
             ->willReturn([]);
         $this
-            ->onboardingAccountFactory
+            ->accountOnboardingFactory
             ->expects($this->once())
             ->method('createFromMiraklShopId')
             ->with(MiraklMock::SHOP_BASIC)
@@ -104,8 +104,8 @@ class CreateOnboardingAccountTest extends TestCase
             'POST',
             ['miraklShopId' => MiraklMock::SHOP_BASIC]
         );
-        $expectedOnboardingAccountDto = new OnboardingAccountDTO();
-        $expectedOnboardingAccountDto->setMiraklShopId(MiraklMock::SHOP_BASIC);
+        $expectedAccountOnboardingDto = new AccountOnboardingDTO();
+        $expectedAccountOnboardingDto->setMiraklShopId(MiraklMock::SHOP_BASIC);
 
         $miraklSeller = [
             'contact_informations' => [
@@ -123,7 +123,7 @@ class CreateOnboardingAccountTest extends TestCase
             ->serializer
             ->expects($this->once())
             ->method('deserialize')
-            ->willReturn($expectedOnboardingAccountDto);
+            ->willReturn($expectedAccountOnboardingDto);
 
         $this
             ->validator
@@ -131,7 +131,7 @@ class CreateOnboardingAccountTest extends TestCase
             ->method('validate')
             ->willReturn([]);
         $this
-            ->onboardingAccountFactory
+            ->accountOnboardingFactory
             ->expects($this->once())
             ->method('createFromMiraklShopId')
             ->with(MiraklMock::SHOP_BASIC)

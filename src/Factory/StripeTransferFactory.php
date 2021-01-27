@@ -3,6 +3,10 @@
 namespace App\Factory;
 
 use App\Entity\AccountMapping;
+use App\Entity\MiraklOrder;
+use App\Entity\MiraklProductOrder;
+use App\Entity\MiraklServiceOrder;
+use App\Entity\MiraklPendingRefund;
 use App\Entity\StripeRefund;
 use App\Entity\StripeTransfer;
 use App\Exception\InvalidArgumentException;
@@ -60,101 +64,100 @@ class StripeTransferFactory implements LoggerAwareInterface
     }
 
     /**
-     * @param array $order
-     * @param string $orderType
+     * @param MiraklOrder $order
      * @return StripeTransfer
      */
-    public function createFromOrder(array $order, string $orderType): StripeTransfer
+    public function createFromOrder(MiraklOrder $order): StripeTransfer
     {
-        if (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
-            $type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
-            $miraklId = $order['order_id'];
-            $date = $order['created_date'];
-        } else {
+        if (is_a($order, MiraklServiceOrder::class)) {
             $type = StripeTransfer::TRANSFER_SERVICE_ORDER;
-            $miraklId = $order['id'];
-            $date = $order['date_created'];
+        } else {
+            $type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
         }
 
         $transfer = new StripeTransfer();
         $transfer->setType($type);
-        $transfer->setMiraklId($miraklId);
-        $transfer->setMiraklCreatedDate(MiraklClient::getDatetimeFromString($date));
+        $transfer->setMiraklId($order->getId());
+        $transfer->setMiraklCreatedDate($order->getCreationDateAsDateTime());
 
         return $this->updateFromOrder($transfer, $order);
     }
 
     /**
      * @param StripeTransfer $transfer
-     * @param array $order
+     * @param MiraklOrder $order
      * @return StripeTransfer
      */
-    public function updateFromOrder(StripeTransfer $transfer, array $order): StripeTransfer
+    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order): StripeTransfer
     {
-        if (StripeTransfer::TRANSFER_PRODUCT_ORDER === $transfer->getType()) {
-            $shopId = $order['shop_id'];
-            $orderState = $order['order_state'];
-            $currencyCode = $order['currency_iso_code'];
-        } else {
-            $shopId = $order['shop']['id'];
-            $orderState = $order['state'];
-            $currencyCode = $order['currency_code'];
-        }
-
         // Transfer already created
         if ($transfer->getTransferId()) {
             return $this->markTransferAsCreated($transfer);
         }
 
-        // Save Stripe account corresponding with this shop
+        // Shop must have a Stripe account
         try {
-            $transfer->setAccountMapping(
-                $this->getAccountMapping($shopId)
-            );
+            $accountMapping = $this->getAccountMapping($order->getShopId());
+            $transfer->setAccountMapping($accountMapping);
         } catch (InvalidArgumentException $e) {
             // Onboarding still to be completed, let's wait
             return $this->putTransferOnHold($transfer, $e->getMessage());
         }
 
-        // Make sure we are ready to process this order
-        $ready = $this->checkOrderState($orderState);
-        if (-1 === $ready) {
-            return $this->putTransferOnHold(
-                $transfer,
-                sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_NOT_READY, $orderState)
-            );
-        } elseif (1 === $ready) {
+        // Order must not be refused or canceled
+        if ($order->isAborted()) {
             return $this->abortTransfer(
                 $transfer,
-                sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_ABORTED, $orderState)
+                sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_ABORTED, $order->getState())
+            );
+        }
+
+        // Order must be fully accepted
+        if (!$order->isValidated()) {
+            return $this->putTransferOnHold(
+                $transfer,
+                sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_NOT_READY, $order->getState())
+            );
+        }
+
+        // Order must be fully paid
+        // TODO: call SPA11 for service orders
+        if (is_a($order, MiraklProductOrder::class) && !$order->isPaid()) {
+            return $this->putTransferOnHold(
+                $transfer,
+                sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_NOT_READY, $order->getState())
             );
         }
 
         // Amount and currency
-        try {
-            if (StripeTransfer::TRANSFER_PRODUCT_ORDER === $transfer->getType()) {
-                $amount = $this->getProductOrderAmount($order);
-            } else {
-                $amount = $this->getServiceOrderAmount($order);
-            }
-
-            $transfer->setAmount($amount);
-            $transfer->setCurrency(strtolower($currencyCode));
-        } catch (InvalidArgumentException $e) {
-            switch ($e->getCode()) {
-                // Problem is final, let's abort
-                case 10: return $this->abortTransfer($transfer, $e->getMessage());
-                // Problem is just temporary, let's put on hold
-                case 20: return $this->putTransferOnHold($transfer, $e->getMessage());
-            }
+        $amount = $order->getAmountDue();
+        $commission = $order->getOperatorCommission();
+        $transferAmount = $amount - $commission;
+        if ($transferAmount <= 0) {
+            return $this->abortTransfer($transfer, sprintf(
+                StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
+                $transferAmount
+            ));
         }
 
+        $transfer->setAmount(gmp_intval((string) ($transferAmount * 100)));
+        $transfer->setCurrency(strtolower($order->getCurrency()));
+
         // Save charge ID to be used in source_transaction
-        // TODO: fetch payment ID from PaymentMapping
-        $trid = $order['transaction_number'] ?? '';
-        if (!empty($trid)) {
+        if (!$transfer->getTransactionId()) {
             try {
-                $transfer->setTransactionId($this->getOrderTransactionId($trid));
+                // TODO: fetch payment ID from PaymentMapping when possible
+                $paymentId = null;
+                if (is_a($order, MiraklProductOrder::class)) {
+                    $paymentId = $order->getTransactionNumber();
+                } else {
+                    // TODO: call SPA11 to get the transaction number for service orders
+                }
+
+                if ($paymentId) {
+                    $sourceTransaction = $this->getSourceTransactionId($paymentId);
+                    $transfer->setTransactionId($sourceTransaction);
+                }
             } catch (InvalidRequestException $e) {
                 return $this->abortTransfer(
                     $transfer,
@@ -175,14 +178,14 @@ class StripeTransferFactory implements LoggerAwareInterface
     }
 
     /**
-     * @param array $orderRefund
+     * @param MiraklPendingRefund $orderRefund
      * @return StripeTransfer
      */
-    public function createFromOrderRefund(array $orderRefund): StripeTransfer
+    public function createFromOrderRefund(MiraklPendingRefund $orderRefund): StripeTransfer
     {
         $transfer = new StripeTransfer();
         $transfer->setType(StripeTransfer::TRANSFER_REFUND);
-        $transfer->setMiraklId($orderRefund['id']);
+        $transfer->setMiraklId($orderRefund->getId());
 
         return $this->updateOrderRefundTransfer($transfer);
     }
@@ -204,9 +207,8 @@ class StripeTransferFactory implements LoggerAwareInterface
             $refund = $this->findRefundFromRefundId($transfer->getMiraklId());
 
             // Fetch transfer to be reversed
-            $orderTransfer = current($this->stripeTransferRepository->findTransfersByOrderIds(
-                [ $refund->getMiraklOrderId() ]
-            ));
+            $orderIds = [ $refund->getMiraklOrderId() ];
+            $orderTransfer = current($this->stripeTransferRepository->findTransfersByOrderIds($orderIds));
 
             // Check order transfer status
             if (!$orderTransfer || StripeTransfer::TRANSFER_CREATED !== $orderTransfer->getStatus()) {
@@ -223,21 +225,17 @@ class StripeTransferFactory implements LoggerAwareInterface
             }
 
             // Fetch the order to calculate the right amount to reverse
-            $orderId = $refund->getMiraklOrderId();
             if (StripeTransfer::TRANSFER_PRODUCT_ORDER === $orderTransfer->getType()) {
-                $order = current($this->miraklClient->listProductOrdersById([ $orderId ]));
-                $currencyKey = 'currency_iso_code';
-                $commissionMethod = "getProductOrderRefundedCommission";
+                $order = current($this->miraklClient->listProductOrdersById($orderIds));
             } else {
-                $order = current($this->miraklClient->listServiceOrdersById([ $orderId ]));
-                $currencyKey = 'currency_code';
-                $commissionMethod = "getServiceOrderRefundedCommission";
+                $order = current($this->miraklClient->listServiceOrdersById($orderIds));
             }
 
             // Amount and currency
-            $commission = $this->$commissionMethod($order, $refund);
+            $commission = $order->getRefundedOperatorCommission($refund);
+            $commission = gmp_intval((string) ($commission * 100));
             $transfer->setAmount($refund->getAmount() - $commission);
-            $transfer->setCurrency(strtolower($order[$currencyKey]));
+            $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
                 // Problem is final, let's abort
@@ -339,122 +337,10 @@ class StripeTransferFactory implements LoggerAwareInterface
     }
 
     /**
-     * @param string $state
-     * @return int -1 = too soon / 0 = OK / +1 = too late
-     */
-    private function checkOrderState(string $state)
-    {
-        static $tooSoon = [
-            'WAITING_ACCEPTANCE', 'WAITING_DEBIT', 'WAITING_DEBIT_PAYMENT',
-
-            // Product order states
-            'STAGING',
-
-            // Service order states
-            'WAITING_SCORING'
-        ];
-
-        static $tooLate = [
-            // Product order states
-            'REFUSED', 'CANCELED',
-
-            // Service order states
-            'ORDER_REFUSED', 'ORDER_EXPIRED', 'ORDER_CANCELLED'
-        ];
-
-        if (in_array($state, $tooSoon)) {
-            return -1;
-        }
-
-        if (in_array($state, $tooLate)) {
-            return 1;
-        }
-
-        return 0;
-    }
-
-    /**
-     * @param array $order
-     * @return int
-     */
-    private function getProductOrderAmount(array $order): int
-    {
-        $taxes = 0;
-        $orderLines = $order['order_lines'] ?? [];
-        foreach ($orderLines as $orderLine) {
-            $ready = $this->checkOrderState($orderLine['order_line_state']);
-            if (-1 === $ready) {
-                throw new InvalidArgumentException(sprintf(
-                    StripeTransfer::TRANSFER_STATUS_REASON_LINE_ITEM_NOT_READY,
-                    $orderLine['order_line_state']
-                ), 20);
-            } elseif (1 === $ready) {
-                continue;
-            }
-
-            $allTaxes = array_merge(
-                $orderLine['shipping_taxes'] ?? [],
-                $orderLine['taxes'] ?? []
-            );
-
-            foreach ($allTaxes as $tax) {
-                $taxes += (float) $tax['amount'];
-            }
-        }
-
-        $amount = $order['total_price'] + $taxes - $order['total_commission'];
-        $amount = gmp_intval((string) ($amount * 100));
-        if ($amount <= 0) {
-            throw new InvalidArgumentException(sprintf(
-                StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
-                $amount
-            ), 10);
-        }
-
-        return $amount;
-    }
-
-    /**
-     * @param array $order
-     * @return int
-     */
-    private function getServiceOrderAmount(array $order): int
-    {
-        $taxes = 0;
-        foreach (($order['price']['taxes'] ?? []) as $tax) {
-            $taxes += (float) $tax['amount'];
-        }
-
-        $options = 0;
-        foreach (($order['price']['options'] ?? []) as $option) {
-            if ('BOOLEAN' === $option['type']) {
-                $options += (float) $option['amount'];
-            } elseif ('VALUE_LIST' === $option['type']) {
-                foreach ($option['values'] as $value) {
-                    $options += (float) $value['amount'];
-                }
-            }
-        }
-
-        $commission = $order['commission']['amount_including_taxes'] ?? 0;
-
-        $amount = $order['price']['amount'] + $options + $taxes - $commission;
-        $amount = gmp_intval((string) ($amount * 100));
-        if ($amount <= 0) {
-            throw new InvalidArgumentException(sprintf(
-                StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
-                $amount
-            ), 10);
-        }
-
-        return $amount;
-    }
-
-    /**
      * @param string $trid
      * @return string|null
      */
-    private function getOrderTransactionId(string $trid): ?string
+    private function getSourceTransactionId(string $trid): ?string
     {
         $transactionId = null;
         if (0 === strpos($trid, 'pi_')) {
@@ -465,7 +351,7 @@ class StripeTransferFactory implements LoggerAwareInterface
                     // Still have to check if it has been refunded
                     $ch = $pi->charges->data[0] ?? null;
                     if ($ch instanceof Charge) {
-                        $transactionId = $this->getOrderTransactionIdFromCharge($ch);
+                        $transactionId = $this->getSourceTransactionIdFromCharge($ch);
                     }
                     break;
                 case 'canceled':
@@ -483,7 +369,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         } elseif (0 === strpos($trid, 'ch_') || 0 === strpos($trid, 'py_')) {
             // Transaction number is a Charge
             $ch = $this->stripeClient->chargeRetrieve($trid);
-            $transactionId = $this->getOrderTransactionIdFromCharge($ch);
+            $transactionId = $this->getSourceTransactionIdFromCharge($ch);
         }
 
         return $transactionId;
@@ -493,7 +379,7 @@ class StripeTransferFactory implements LoggerAwareInterface
      * @param Charge $ch
      * @return string
      */
-    private function getOrderTransactionIdFromCharge(Charge $ch): string
+    private function getSourceTransactionIdFromCharge(Charge $ch): string
     {
         switch ($ch->status) {
             case 'succeeded':
@@ -559,50 +445,6 @@ class StripeTransferFactory implements LoggerAwareInterface
                     $refundId
                 ), 20);
         }
-    }
-
-    /**
-     * @param array $order
-     * @param StripeRefund $refund
-     * @return int
-     */
-    private function getProductOrderRefundedCommission(array $order, StripeRefund $refund): int
-    {
-        foreach ($order['order_lines'] as $orderLine) {
-            if ($refund->getMiraklOrderLineId() === $orderLine['order_line_id']) {
-                foreach ($orderLine['refunds'] as $orderRefund) {
-                    if ($refund->getMiraklRefundId() === $orderRefund['id']) {
-                        $commission = $orderRefund['commission_total_amount'];
-                        return gmp_intval((string) ($commission * 100));
-                    }
-                }
-            }
-        }
-
-        throw new InvalidArgumentException(sprintf(
-            StripeTransfer::TRANSFER_STATUS_REASON_ORDER_REFUND_AMOUNT_NOT_FOUND,
-            $refund->getMiraklRefundId()
-        ), 10);
-    }
-
-    /**
-     * @param array $order
-     * @param StripeRefund $refund
-     * @return int
-     */
-    private function getServiceOrderRefundedCommission(array $order, StripeRefund $refund): int
-    {
-        foreach ($order['refunds'] as $orderRefund) {
-            if ($refund->getMiraklRefundId() === $orderRefund['id']) {
-                $commission = $orderRefund['commission']['amount_including_taxes'] ?? 0;
-                return gmp_intval((string) ($commission * 100));
-            }
-        }
-
-        throw new InvalidArgumentException(sprintf(
-            StripeTransfer::TRANSFER_STATUS_REASON_ORDER_REFUND_AMOUNT_NOT_FOUND,
-            $refund->getMiraklRefundId()
-        ), 10);
     }
 
     /**

@@ -4,12 +4,12 @@ namespace App\Factory;
 
 use App\Exception\InvalidArgumentException;
 use App\Repository\AccountMappingRepository;
-use App\Repository\OnboardingAccountRepository;
+use App\Repository\AccountOnboardingRepository;
 use App\Service\MiraklClient;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 
-class OnboardingAccountFactory
+class AccountOnboardingFactory
 {
     public const STRIPE_EXPRESS_BASE_URI = 'https://connect.stripe.com/express/oauth/authorize';
 
@@ -19,9 +19,9 @@ class OnboardingAccountFactory
     private $mappingRepository;
 
     /**
-     * @var OnboardingAccountRepository
+     * @var AccountOnboardingRepository
      */
-    private $onboardingAccountRepository;
+    private $accountOnboardingRepository;
 
     /**
      * @var RouterInterface
@@ -45,14 +45,14 @@ class OnboardingAccountFactory
 
     public function __construct(
         AccountMappingRepository $mappingRepository,
-        OnboardingAccountRepository $onboardingAccountRepository,
+        AccountOnboardingRepository $accountOnboardingRepository,
         RouterInterface $router,
         MiraklClient $miraklClient,
         string $stripeClientId,
         bool $stripePrefillOnboarding
     ) {
         $this->mappingRepository = $mappingRepository;
-        $this->onboardingAccountRepository = $onboardingAccountRepository;
+        $this->accountOnboardingRepository = $accountOnboardingRepository;
         $this->router = $router;
         $this->miraklClient = $miraklClient;
         $this->stripeClientId = $stripeClientId;
@@ -67,10 +67,10 @@ class OnboardingAccountFactory
             throw new InvalidArgumentException('Shop ID already mapped to a Stripe Account');
         }
 
-        $onboardingAccount = $this->onboardingAccountRepository->createOnboardingAccount($miraklId);
+        $accountOnboarding = $this->accountOnboardingRepository->createAccountOnboarding($miraklId);
 
         $queryParams = [
-            'state' => $onboardingAccount->getStripeState(),
+            'state' => $accountOnboarding->getStripeState(),
             'client_id' => $this->stripeClientId,
             'redirect_uri' => $this->router->generate('create_mapping', [], UrlGeneratorInterface::ABSOLUTE_URL),
         ];

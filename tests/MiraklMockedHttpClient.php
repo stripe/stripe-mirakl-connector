@@ -364,17 +364,21 @@ class MiraklMockedHttpClient extends MockHttpClient
 								case self::ORDER_STATUS_WAITING_ACCEPTANCE:
 										$order = $this->$method($orderId, 'WAITING_ACCEPTANCE');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
+										$order['customer_debited_date'] = null;
 										break;
 								case self::ORDER_STATUS_WAITING_DEBIT:
 										$order = $this->$method($orderId, 'WAITING_DEBIT');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
+										$order['customer_debited_date'] = null;
 										break;
 								case self::ORDER_STATUS_WAITING_DEBIT_PAYMENT:
 										$order = $this->$method($orderId, 'WAITING_DEBIT_PAYMENT');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED;
+										$order['customer_debited_date'] = null;
 										break;
 								case self::ORDER_STATUS_STAGING:
 										$order = $this->getProductOrder($orderId, 'STAGING');
+										$order['customer_debited_date'] = null;
 										break;
 								case self::ORDER_STATUS_SHIPPING:
 										$order = $this->getProductOrder($orderId, 'SHIPPING');
@@ -398,13 +402,30 @@ class MiraklMockedHttpClient extends MockHttpClient
 								case self::ORDER_STATUS_REFUSED:
 										$order = $this->getProductOrder($orderId, 'REFUSED');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_REFUSED;
+										$order['customer_debited_date'] = null;
+										foreach ($order['order_lines'] as $i => $orderLine) {
+												$order['total_price'] -= $orderLine['total_price'];
+										}
 										break;
 								case self::ORDER_STATUS_CANCELED:
 										$order = $this->getProductOrder($orderId, 'CANCELED');
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_CANCELED;
+										$order['customer_debited_date'] = null;
+										foreach ($order['order_lines'] as $i => $orderLine) {
+												$order['order_lines'][$i]['cancelations'] = [
+														'amount' => $orderLine['total_price'],
+														'shipping_taxes' => $orderLine['shipping_taxes'],
+														'taxes' => $orderLine['taxes']
+												];
+												$order['total_price'] -= $orderLine['total_price'];
+												$order['order_lines'][$i]['total_price'] = 0;
+												$order['order_lines'][$i]['shipping_taxes'] = [];
+												$order['order_lines'][$i]['taxes'] = [];
+										}
 										break;
 								case self::ORDER_STATUS_PARTIALLY_ACCEPTED:
-										$order = $this->getProductOrder($orderId, 'SHIPPING', 'WAITING_DEBIT_PAYMENT');
+										$order = $this->getProductOrder($orderId, 'WAITING_ACCEPTANCE', 'WAITING_DEBIT_PAYMENT');
+										$order['customer_debited_date'] = null;
 										break;
 								case self::ORDER_STATUS_PARTIALLY_REFUSED:
 										$order = $this->getProductOrder($orderId, 'SHIPPING', 'REFUSED');
@@ -521,6 +542,7 @@ class MiraklMockedHttpClient extends MockHttpClient
             'id' => rand(1, 1000),
             'commercial_id' => $orderId,
             'created_date' => date_format(new \Datetime(), MiraklClient::DATE_FORMAT),
+            'customer_debited_date' => date_format(new \Datetime(), MiraklClient::DATE_FORMAT),
             'currency_iso_code' => 'EUR',
             'order_id' => $orderId,
             'order_state' => $status,
@@ -533,7 +555,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                 [
                     'order_line_id' => $orderId . '-1',
                     'order_line_state' => $status,
-                    'price' => 12.34,
+                    'total_price' => 12.34,
                     'shipping_taxes' => [
                         [ 'amount' => 1.12, 'code' => 'ECO_TAX' ],
                         [ 'amount' => 1.34, 'code' => 'EXP_TAX' ]
@@ -546,7 +568,7 @@ class MiraklMockedHttpClient extends MockHttpClient
                 [
                     'order_line_id' => $orderId . '-2',
                     'order_line_state' => $partialStatus ?? $status,
-                    'price' => 56.78,
+                    'total_price' => 56.78,
                     'shipping_taxes' => [
                         [ 'amount' => 2.12, 'code' => 'ECO_TAX' ],
                         [ 'amount' => 2.34, 'code' => 'EXP_TAX' ]
@@ -607,6 +629,7 @@ class MiraklMockedHttpClient extends MockHttpClient
             'currency_iso_code' => 'EUR',
             'order_commercial_id' => $commercialId,
             'order_id' => $orderId,
+            'customer_id' => 'customer_basic',
 						'payment_workflow' => 'PAY_ON_ACCEPTANCE',
             'shop_id' => self::SHOP_BASIC,
             'amount' => 12.34

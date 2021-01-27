@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\Entity\AccountMapping;
 use App\Repository\AccountMappingRepository;
-use App\Repository\OnboardingAccountRepository;
+use App\Repository\AccountOnboardingRepository;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-class SellerAccountInitiation extends AbstractController implements LoggerAwareInterface
+class AccountMappingBySeller extends AbstractController implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
@@ -53,20 +53,20 @@ class SellerAccountInitiation extends AbstractController implements LoggerAwareI
     private $accountMappingRepository;
 
     /**
-     * @var OnboardingAccountRepository
+     * @var AccountOnboardingRepository
      */
-    private $onboardingAccountRepository;
+    private $accountOnboardingRepository;
 
     public function __construct(
         StripeClient $stripeClient,
         string $redirectOnboarding,
         AccountMappingRepository $accountMappingRepository,
-        OnboardingAccountRepository $onboardingAccountRepository
+        AccountOnboardingRepository $accountOnboardingRepository
     ) {
         $this->stripeClient = $stripeClient;
         $this->redirectOnboarding = $redirectOnboarding;
         $this->accountMappingRepository = $accountMappingRepository;
-        $this->onboardingAccountRepository = $onboardingAccountRepository;
+        $this->accountOnboardingRepository = $accountOnboardingRepository;
     }
 
     private function getRedirectResponse(array $error): RedirectResponse
@@ -131,16 +131,16 @@ class SellerAccountInitiation extends AbstractController implements LoggerAwareI
             return $this->getRedirectResponse(self::ERROR_MISSING_STATE);
         }
 
-        $onboardingAccount = $this->onboardingAccountRepository->findOneByStripeState($state);
+        $accountOnboarding = $this->accountOnboardingRepository->findOneByStripeState($state);
 
-        if (null === $onboardingAccount) {
+        if (null === $accountOnboarding) {
             return $this->getRedirectResponse(self::ERROR_NO_MATCHING_STATE);
         }
 
-        $miraklShopId = $onboardingAccount->getMiraklShopId();
+        $miraklShopId = $accountOnboarding->getMiraklShopId();
         assert(null !== $miraklShopId);
 
-        $this->onboardingAccountRepository->deleteAndFlush($onboardingAccount);
+        $this->accountOnboardingRepository->deleteAndFlush($accountOnboarding);
         $existingShop = $this->accountMappingRepository->findOneByMiraklShopId($miraklShopId);
         if ($existingShop) {
             return $this->getRedirectResponse(self::ERROR_ALREADY_EXISTING_SHOP);

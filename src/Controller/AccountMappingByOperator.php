@@ -18,7 +18,7 @@ use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class SellerAccountMapping extends AbstractController implements LoggerAwareInterface
+class AccountMappingByOperator extends AbstractController implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

@@ -2,6 +2,8 @@
 
 namespace App\Tests\Command;
 
+use App\Entity\MiraklPendingRefund;
+use App\Entity\MiraklServicePendingRefund;
 use App\Entity\PaymentMapping;
 use App\Entity\StripeRefund;
 use App\Entity\StripeTransfer;
@@ -121,13 +123,19 @@ class PaymentRefundCommandTest extends KernelTestCase
         ]);
 		}
 
-    private function mockProductOrderTransfer(array $order, string $transactionId)
+    private function mockOrderTransfer(MiraklPendingRefund $order, string $transactionId)
     {
+				if (is_a($order, MiraklServicePendingRefund::class)) {
+						$type = StripeTransfer::TRANSFER_SERVICE_ORDER;
+				} else {
+						$type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
+				}
+
         $transfer = new StripeTransfer();
-				$transfer->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
-				$transfer->setMiraklId($order['order_id']);
-        $transfer->setAmount(gmp_intval((string) ($order['amount'] * 100)));
-        $transfer->setCurrency(strtolower($order['currency_iso_code'] ?? $order['currency_code']));
+				$transfer->setType($type);
+				$transfer->setMiraklId($order->getOrderId());
+        $transfer->setAmount(gmp_intval((string) ($order->getAmount() * 100)));
+        $transfer->setCurrency(strtolower($order->getCurrency()));
 				$transfer->setTransactionId($transactionId);
 				$transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
 
@@ -135,16 +143,6 @@ class PaymentRefundCommandTest extends KernelTestCase
 
 				return $transfer;
     }
-
-    private function mockServiceOrderTransfer(array $order, string $transactionId)
-    {
-				$transfer = $this->mockProductOrderTransfer($order, $transactionId);
-				$transfer->setType(StripeTransfer::TRANSFER_SERVICE_ORDER);
-
-				$this->stripeTransferRepository->flush();
-
-				return $transfer;
-		}
 
 		private function mockRefundCreated(StripeRefund $refund) {
 				$refund->setStripeRefundId(StripeMock::REFUND_BASIC);
@@ -166,8 +164,7 @@ class PaymentRefundCommandTest extends KernelTestCase
 
 				// Mock ORDER_REFUND_BASIC now has a payment ID
 				$orders = $this->miraklClient->listProductPendingRefunds();
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, MiraklMock::PRODUCT_ORDER_REFUND_BASIC);
-				$this->mockProductOrderTransfer($orders[$orderId],	StripeMock::CHARGE_BASIC);
+				$this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC],	StripeMock::CHARGE_BASIC);
 
 				// Refund for ORDER_REFUND_BASIC is ready
 				$this->executeCommand();
@@ -208,8 +205,7 @@ class PaymentRefundCommandTest extends KernelTestCase
 
 				// Mock ORDER_REFUND_BASIC now has a payment ID
 				$orders = $this->miraklClient->listServicePendingRefunds();
-				$orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_SERVICE, MiraklMock::SERVICE_ORDER_REFUND_BASIC);
-				$this->mockServiceOrderTransfer($orders[$orderId],	StripeMock::CHARGE_BASIC);
+				$this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC],	StripeMock::CHARGE_BASIC);
 
 				// Refund for ORDER_REFUND_BASIC is ready
 				$this->executeCommand();

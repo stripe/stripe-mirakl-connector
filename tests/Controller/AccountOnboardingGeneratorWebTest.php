@@ -2,14 +2,14 @@
 
 namespace App\Tests\Controller;
 
-use App\Factory\OnboardingAccountFactory;
+use App\Factory\AccountOnboardingFactory;
 use App\Security\TokenAuthenticator;
 use App\Tests\ConnectorWebTestCase;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Component\HttpFoundation\Response;
 
-class OnboardingAccountGeneratorWebTest extends ConnectorWebTestCase
+class AccountOnboardingGeneratorWebTest extends ConnectorWebTestCase
 {
     use RecreateDatabaseTrait;
 
@@ -76,7 +76,7 @@ class OnboardingAccountGeneratorWebTest extends ConnectorWebTestCase
         $this->assertTrue($response->headers->contains('Content-Type', 'application/json'));
         $this->assertJson($response->getContent());
         $responseData = json_decode($response->getContent(), true);
-        $this->assertStringContainsString(OnboardingAccountFactory::STRIPE_EXPRESS_BASE_URI, $responseData['redirect_url']);
+        $this->assertStringContainsString(AccountOnboardingFactory::STRIPE_EXPRESS_BASE_URI, $responseData['redirect_url']);
     }
 
     public function testGenerateStripeOnboardingUrlWithBadPayload()
@@ -110,6 +110,6 @@ class OnboardingAccountGeneratorWebTest extends ConnectorWebTestCase
         $this->assertTrue($response->headers->contains('Content-Type', 'application/json'));
         $this->assertJson($response->getContent());
         $responseData = json_decode($response->getContent(), true);
-        $this->assertStringContainsString(OnboardingAccountFactory::STRIPE_EXPRESS_BASE_URI, $responseData['redirect_url']);
+        $this->assertStringContainsString(AccountOnboardingFactory::STRIPE_EXPRESS_BASE_URI, $responseData['redirect_url']);
     }
 }

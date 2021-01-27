@@ -15,9 +15,9 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "get"={"path"="/onboarding/{id}", "requirements"={"id"="\d+"}},
  *          "delete"={"path"="/onboarding/{id}", "requirements"={"id"="\d+"}},
  *      }
- * ) * @ORM\Entity(repositoryClass="App\Repository\OnboardingAccountRepository")
+ * ) * @ORM\Entity(repositoryClass="App\Repository\AccountOnboardingRepository")
  */
-class OnboardingAccount
+class AccountOnboarding
 {
     /**
      * @ORM\Id()

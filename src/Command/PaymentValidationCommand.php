@@ -123,33 +123,41 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
             }
 
             // Amount is initially set to the authorized amount and we deduct refused/canceled orders
-            $finalAmount = $paymentMapping->getStripeAmount();
+            $captureAmount = $paymentMapping->getStripeAmount();
             foreach ($ordersByCommercialId[$commercialId] as $orderId => $order) {
-                // Order not fully validated yet
-                // TODO: this check only works for PAY_ON_ACCEPTANCE
-                if (!in_array($order['order_state'], self::ORDER_STATUS_VALIDATED)) {
-		                $this->logger->info(
-		                    'Skipping payment capture for non-validated logistical order.',
-		                    [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
-		                );
+                // Order must be validated (accepted/refused)
+                if (!$order->isValidated()) {
+                    $this->logger->info(
+                        'Skipping payment capture for non-accepted logistical order.',
+                        [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+                    );
+                    continue 2;
+                }
+
+                // Payment must be validated (via PA01) if the order wasn't aborted
+                if (!$order->isAborted() && !$order->isPaid()) {
+                    $this->logger->info(
+                        'Skipping payment capture for non-validated logistical order payment.',
+                        [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+                    );
                     continue 2;
                 }
 
                 // Deduct refused or canceled orders
-                if (!in_array($order['order_state'], self::ORDER_STATUS_TO_CAPTURE)) {
-		                $this->logger->info(
-		                    "Deducting refused/canceled order amount {$order['total_price']} from final amount.",
-		                    [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
-		                );
-										$amountToDeduct = gmp_intval((string) ($order['total_price'] * 100));
-                    $finalAmount -= $amountToDeduct;
+                $abortedAmount = $order->getAbortedAmount();
+                if ($abortedAmount > 0) {
+                    $this->logger->info(
+                        "Deducting order aborted amount {$abortedAmount} from capture amount.",
+                        [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+                    );
+                    $captureAmount -= gmp_intval((string) ($abortedAmount * 100));
                 }
             }
 
-            // Capture or cancel if nothing left to capture
+            // Capture or cancel payment
             $mappingId = $paymentMapping->getId();
-            if ($finalAmount > 0) {
-                $message = new CapturePendingPaymentMessage($mappingId, $finalAmount);
+            if ($captureAmount > 0) {
+                $message = new CapturePendingPaymentMessage($mappingId, $captureAmount);
             } else {
                 $message = new CancelPendingPaymentMessage($mappingId);
             }

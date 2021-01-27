@@ -2,6 +2,7 @@
 
 namespace App\Tests\Handler;
 
+use App\Entity\MiraklProductPendingDebit;
 use App\Entity\PaymentMapping;
 use App\Exception\InvalidStripeAccountException;
 use App\Factory\MiraklPatchShopFactory;
@@ -49,16 +50,16 @@ class ValidateMiraklOrderHandlerTest extends TestCase
     {
         $orders = [
             'Order_66' => [
-                'Order_66-A' => [
+                'Order_66-A' => new MiraklProductPendingDebit([
                     'amount' => '330',
                     'order_id' => 'Order_66-A',
                     'customer_id' => 'Customer_id_001',
-                ],
-                'Order_66-B' => [
+                ]),
+                'Order_66-B' => new MiraklProductPendingDebit([
                     'amount' => '330',
                     'order_id' => 'Order_66-B',
                     'customer_id' => 'Customer_id_001',
-                ],
+                ]),
             ]
         ];
 

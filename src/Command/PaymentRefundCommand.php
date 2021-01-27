@@ -108,15 +108,8 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
             return;
         }
 
-        $this->dispatchRefunds($this->paymentRefundService->getRefundsFromOrderRefunds(
-            $orderRefunds,
-            $orderType
-        ));
-
-        $this->dispatchTransfers($this->paymentRefundService->getTransfersFromOrderRefunds(
-            $orderRefunds,
-            $orderType
-        ));
+        $this->dispatchRefunds($this->paymentRefundService->getRefundsFromOrderRefunds($orderRefunds));
+        $this->dispatchTransfers($this->paymentRefundService->getTransfersFromOrderRefunds($orderRefunds));
     }
 
     private function dispatchRefunds(array $refunds): void
