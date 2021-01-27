@@ -182,7 +182,7 @@ class PaymentValidationCommandTest extends KernelTestCase
 				$this->mockPaymentMapping(
 						MiraklMock::ORDER_COMMERCIAL_CANCELED,
 						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						1234
+						8472
 				);
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
