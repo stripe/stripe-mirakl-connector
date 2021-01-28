@@ -5,6 +5,8 @@ parameters:
     inferPrivatePropertyTypeFromConstructor: true
     ignoreErrors:
         - '#Call to static method createFromThrowable\(\)#'
+    excludes_analyse:
+        - %rootDir%/../../../vendor
 services:
 	-
 		class: Spaze\PHPStan\Reflection\Stripe\RequestProperty

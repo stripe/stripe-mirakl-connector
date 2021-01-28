@@ -31,19 +31,19 @@ jobs:
 
     - name: Setup dependencies
       run: |
-        make vendor
+        composer install -n --prefer-dist --no-scripts
 
     - name: Check for static errors
       run: |
-        make phpstan
+        ./vendor/bin/phpstan analyse src --level=max
 
     - name: Check coding standards
       run: |
-        make php-cs-fixer-check
+        ./vendor/bin/php-cs-fixer --ansi fix src -vvv --dry-run
 
     - name: Run tests
       run: |
-        make ci-phpunit
+        ./bin/phpunit
 
     - name: Run tests coverage
       run: |
