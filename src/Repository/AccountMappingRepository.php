@@ -26,4 +26,18 @@ class AccountMappingRepository extends ServiceEntityRepository
 
         return $accountMapping;
     }
+
+    public function findOneByMiraklShopId(int $miraklShopId): ?AccountMapping
+    {
+        return $this->findOneBy([
+            'miraklShopId' => $miraklShopId
+        ]);
+    }
+
+    public function findOneByStripeAccountId(string $stripeAccountId): ?AccountMapping
+    {
+        return $this->findOneBy([
+            'stripeAccountId' => $stripeAccountId
+        ]);
+    }
 }

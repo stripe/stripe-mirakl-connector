@@ -38,4 +38,11 @@ class AccountOnboardingRepository extends ServiceEntityRepository
         $this->getEntityManager()->remove($toDelete);
         $this->getEntityManager()->flush();
     }
+
+    public function findOneByStripeState(string $state): ?AccountOnboarding
+    {
+        return $this->findOneBy([
+            'stripeState' => $state
+        ]);
+    }
 }
