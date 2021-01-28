@@ -81,8 +81,7 @@ class MiraklProductOrder extends MiraklOrder
                     $amount += (float) $this->getOrderLineTaxes($orderLine);
                     break;
                 case 'CANCELED':
-                    $amount += (float) $orderLine['cancelations']['amount'];
-                    $amount += (float) $this->getOrderLineTaxes($orderLine['cancelations']);
+                    $amount += (float) $this->getOrderLineCanceledAmountWithTaxes($orderLine['cancelations']);
                     break;
             }
         }
@@ -129,5 +128,16 @@ class MiraklProductOrder extends MiraklOrder
         }
 
         return $taxes;
+    }
+
+    protected function getOrderLineCanceledAmountWithTaxes(array $canceledOrderLines): float
+    {
+        $canceledAmount = 0;
+        foreach ($canceledOrderLines as $orderLine) {
+            $canceledAmount += (float) $orderLine['amount'];
+            $canceledAmount += $this->getOrderLineTaxes($orderLine);
+        }
+
+        return $canceledAmount;
     }
 }
