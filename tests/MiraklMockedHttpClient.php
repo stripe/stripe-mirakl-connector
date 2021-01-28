@@ -218,11 +218,21 @@ class MiraklMockedHttpClient extends MockHttpClient
 												return [ $key => [] ];
 								}
 								break;
+						case '/api/mms/debits':
+								$isService = true;
 						case '/api/payment/debit':
-								switch ($method) {
-										case 'GET':
-												return [ 'orders' => [ 'order' => $this->mockPendingDebits($page) ] ];
-										case 'PUT':
+								$isService = $isService ?? false;
+								switch (true) {
+										case isset($params['order_id']):
+												return [ 'data' => $this->mockPendingDebitsByOrderIds($params['order_id']) ];
+										case 'GET' === $method:
+												$pendingDebits = $this->mockPendingDebits($isService, $page);
+												if ($isService) {
+														return [ 'data' => $pendingDebits ];
+												} else {
+														return [ 'orders' => [ 'order' => $pendingDebits ] ];
+												}
+										case 'PUT' === $method:
 												return $this->mockDebitValidation($body);
 								}
 								break;
@@ -607,14 +617,14 @@ class MiraklMockedHttpClient extends MockHttpClient
         ];
     }
 
-    private function mockPendingDebits($page)
+    private function mockPendingDebits($isService, $page)
     {
 				$orders = [
-						$this->getPendingDebit(
+						$this->getProductPendingDebit(
 								self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED,
 								self::ORDER_STATUS_WAITING_DEBIT_PAYMENT
 						),
-						$this->getPendingDebit(
+						$this->getProductPendingDebit(
 								self::ORDER_COMMERCIAL_NONE_VALIDATED,
 								self::ORDER_STATUS_WAITING_DEBIT
 						)
@@ -623,7 +633,32 @@ class MiraklMockedHttpClient extends MockHttpClient
 				return $orders;
     }
 
-    private function getPendingDebit($commercialId, $orderId)
+    private function mockPendingDebitsByOrderIds(array $orderIds)
+    {
+				$orders = [];
+				foreach ($orderIds as $orderId) {
+						switch ($orderId) {
+							case self::ORDER_STATUS_WAITING_SCORING:
+							case self::ORDER_STATUS_WAITING_ACCEPTANCE:
+							case self::ORDER_STATUS_WAITING_DEBIT:
+							case self::ORDER_STATUS_WAITING_DEBIT_PAYMENT:
+							case self::ORDER_STATUS_ORDER_REFUSED:
+							case self::ORDER_STATUS_ORDER_EXPIRED:
+							case self::ORDER_STATUS_ORDER_CANCELLED:
+									$order = $this->getServicePendingDebit($orderId, 'WAITING');
+									break;
+							default:
+									$order = $this->getServicePendingDebit($orderId, 'OK');
+									break;
+						}
+
+						$orders[] = $order;
+				}
+
+				return $orders;
+    }
+
+    private function getProductPendingDebit($commercialId, $orderId)
     {
         return [
             'currency_iso_code' => 'EUR',
@@ -632,6 +667,17 @@ class MiraklMockedHttpClient extends MockHttpClient
             'customer_id' => 'customer_basic',
 						'payment_workflow' => 'PAY_ON_ACCEPTANCE',
             'shop_id' => self::SHOP_BASIC,
+            'amount' => 12.34
+        ];
+    }
+
+    private function getServicePendingDebit($orderId, $state)
+    {
+        return [
+            'currency_code' => 'EUR',
+            'order_id' => $orderId,
+            'customer_id' => 'customer_basic',
+            'state' => $state,
             'amount' => 12.34
         ];
     }

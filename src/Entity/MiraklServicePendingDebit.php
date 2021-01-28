@@ -21,7 +21,7 @@ class MiraklServicePendingDebit extends MiraklPendingDebit
 
     public function getTransactionNumber(): ?string
     {
-        return $this->order['transaction_number'];
+        return $this->order['transaction_number'] ?? null;
     }
 
     public function isPaid(): bool

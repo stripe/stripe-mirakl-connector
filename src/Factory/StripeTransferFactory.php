@@ -121,39 +121,32 @@ class StripeTransferFactory implements LoggerAwareInterface
         }
 
         // Order must be fully paid
-        // TODO: call SPA11 for service orders
-        if (is_a($order, MiraklProductOrder::class) && !$order->isPaid()) {
-            return $this->putTransferOnHold(
-                $transfer,
-                sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_NOT_READY, $order->getState())
-            );
-        }
+        $paymentId = null;
+        if (is_a($order, MiraklProductOrder::class)) {
+            if (!$order->isPaid()) {
+                return $this->putTransferOnHold(
+                    $transfer,
+                    sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_NOT_READY, $order->getState())
+                );
+            }
 
-        // Amount and currency
-        $amount = $order->getAmountDue();
-        $commission = $order->getOperatorCommission();
-        $transferAmount = $amount - $commission;
-        if ($transferAmount <= 0) {
-            return $this->abortTransfer($transfer, sprintf(
-                StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
-                $transferAmount
-            ));
-        }
+            $paymentId = $order->getTransactionNumber();
+        } elseif (is_a($order, MiraklServiceOrder::class)) {
+            $pendingDebit = current($this->miraklClient->listServicePendingDebitsByOrderIds([ $order->getId() ]));
+            if (!$pendingDebit || !$pendingDebit->isPaid()) {
+                return $this->putTransferOnHold(
+                    $transfer,
+                    sprintf(StripeTransfer::TRANSFER_STATUS_REASON_ORDER_NOT_READY, $order->getState())
+                );
+            }
 
-        $transfer->setAmount(gmp_intval((string) ($transferAmount * 100)));
-        $transfer->setCurrency(strtolower($order->getCurrency()));
+            $paymentId = $pendingDebit->getTransactionNumber();
+        }
 
         // Save charge ID to be used in source_transaction
         if (!$transfer->getTransactionId()) {
             try {
                 // TODO: fetch payment ID from PaymentMapping when possible
-                $paymentId = null;
-                if (is_a($order, MiraklProductOrder::class)) {
-                    $paymentId = $order->getTransactionNumber();
-                } else {
-                    // TODO: call SPA11 to get the transaction number for service orders
-                }
-
                 if ($paymentId) {
                     $sourceTransaction = $this->getSourceTransactionId($paymentId);
                     $transfer->setTransactionId($sourceTransaction);
@@ -172,6 +165,20 @@ class StripeTransferFactory implements LoggerAwareInterface
                 }
             }
         }
+
+        // Amount and currency
+        $amount = $order->getAmountDue();
+        $commission = $order->getOperatorCommission();
+        $transferAmount = $amount - $commission;
+        if ($transferAmount <= 0) {
+            return $this->abortTransfer($transfer, sprintf(
+                StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
+                $transferAmount
+            ));
+        }
+
+        $transfer->setAmount(gmp_intval((string) ($transferAmount * 100)));
+        $transfer->setCurrency(strtolower($order->getCurrency()));
 
         // All good
         return $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
