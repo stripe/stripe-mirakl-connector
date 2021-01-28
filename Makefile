@@ -14,4 +14,4 @@ ci-phpunit:
 	./bin/phpunit
 
 vendor: composer.json
-	composer install -n --prefer-dist
+	composer install -n --prefer-dist --no-scripts
