@@ -88,17 +88,17 @@ class AccountOnboardingGenerator extends AbstractController implements LoggerAwa
     public function generateStripeOnboardingLink(Request $request): Response
     {
         $data = $request->getContent();
-        $accountOnboardingDTO = $this->serializer->deserialize($data, AccountOnboardingDTO::class, JsonEncoder::FORMAT);
-        assert(is_a($accountOnboardingDTO, AccountOnboardingDTO::class));
+        $dto = $this->serializer->deserialize($data, AccountOnboardingDTO::class, JsonEncoder::FORMAT);
+        assert(is_object($dto) && is_a($dto, AccountOnboardingDTO::class));
 
-        $errors = $this->validator->validate($accountOnboardingDTO);
+        $errors = $this->validator->validate($dto);
         if (count($errors) > 0) {
             $this->logger->error('Invalid Mirakl shop Id format');
 
             return new Response('Invalid Mirakl shop Id format', Response::HTTP_BAD_REQUEST);
         }
 
-        $miraklId = $accountOnboardingDTO->getMiraklShopId();
+        $miraklId = $dto->getMiraklShopId();
 
         try {
             $stripeUrl = $this->accountOnboardingFactory->createFromMiraklShopId($miraklId);
