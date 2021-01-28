@@ -86,13 +86,16 @@ class MiraklClient
         return $body;
     }
 
-    private function getNextLink(ResponseInterface $response)
+    public function getNextLink(ResponseInterface $response)
     {
-        static $pattern = '/<([^>]+)>;\s*rel="([^"]+)"/';
+        static $splitPattern = '/,\s+/';
+        static $linkPattern = '/<([^>]+)>;\s*rel="([^"]+)"/';
 
-        $links = $response->getHeaders()['link'][0] ?? '';
-        foreach (explode(',', $links) as $link) {
-            if (1 === preg_match($pattern, trim($link), $res) && 'next' === $res[2]) {
+        $linkHeader = $response->getHeaders()['link'][0] ?? '';
+        $links = preg_split($splitPattern, $linkHeader);
+
+        foreach ($links as $link) {
+            if (1 === preg_match($linkPattern, trim($link), $res) && 'next' === $res[2]) {
                 return $res[1];
             }
         }
