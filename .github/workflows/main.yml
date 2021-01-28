@@ -47,15 +47,6 @@ jobs:
     - name: Install Composer dependencies
       run: composer install -n --prefer-dist --no-scripts
 
-    # —— Symfony 🎵 ——————————————————————————————————————————————————————————
-    - name: Check Symfony requirements
-      run: ./vendor/bin/requirements-checker
-
-    - name: Check the Symfony console
-      run: |
-        bin/console -V
-        bin/console strangebuzz:version
-
     ## —— Coding standards ✨ ————————————————————————————————————————————————
 
     - name: Coding standards checks
