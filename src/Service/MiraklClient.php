@@ -276,7 +276,7 @@ class MiraklClient
     // SPA02
     public function validateServicePendingRefunds(array $refunds)
     {
-        $this->client->request('PUT', '/api/mms/refunds', [ 'json' => [ 'refunds' => $refunds ] ]);
+        $this->client->request('PUT', '/api/mms/refunds', [ 'json' => $refunds ]);
     }
 
     // IV01

@@ -727,7 +727,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 
     private function mockRefundValidation($body)
     {
-				$id = $body['refunds'][0]['refund_id'] ?? $body['refunds'][0]['id'];
+				$id = $body['refunds'][0]['refund_id'] ?? $body[0]['id'];
         switch ($id) {
 						case self::PRODUCT_ORDER_REFUND_BASIC:
 						case self::SERVICE_ORDER_REFUND_BASIC:
