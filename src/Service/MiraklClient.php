@@ -88,16 +88,11 @@ class MiraklClient
 
     public function getNextLink(ResponseInterface $response)
     {
-        static $splitPattern = '/,\s+/';
-        static $linkPattern = '/<([^>]+)>;\s*rel="([^"]+)"/';
+        static $nexLinkPattern = '/<([^>]+)>;\s*rel="next"/';
 
         $linkHeader = $response->getHeaders()['link'][0] ?? '';
-        $links = preg_split($splitPattern, $linkHeader);
-
-        foreach ($links as $link) {
-            if (1 === preg_match($linkPattern, trim($link), $res) && 'next' === $res[2]) {
-                return $res[1];
-            }
+        if (1 === preg_match($nexLinkPattern, $linkHeader, $match)) {
+            return $match[1];
         }
 
         return null;

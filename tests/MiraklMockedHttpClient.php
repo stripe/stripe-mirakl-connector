@@ -412,11 +412,11 @@ class MiraklMockedHttpClient extends MockHttpClient
 										$order['commercial_id'] = self::ORDER_COMMERCIAL_CANCELED;
 										$order['customer_debited_date'] = null;
 										foreach ($order['order_lines'] as $i => $orderLine) {
-												$order['order_lines'][$i]['cancelations'] = [
+												$order['order_lines'][$i]['cancelations'] = [[
 														'amount' => $orderLine['total_price'],
 														'shipping_taxes' => $orderLine['shipping_taxes'],
 														'taxes' => $orderLine['taxes']
-												];
+												]];
 												$order['total_price'] -= $orderLine['total_price'];
 												$order['order_lines'][$i]['total_price'] = 0;
 												$order['order_lines'][$i]['shipping_taxes'] = [];

@@ -30,7 +30,7 @@ class MiraklClientTest extends KernelTestCase {
         $nextLink = 'https://test-dev.mirakl.net/api/orders?commercial_ids=3693596968,0195242688,3884560115,2845696461,5526974611,3962904573,0055278822,0253203047,8674454819,2173887289,9577383944,1730096837,7195291116,7569009629,4878630488,5259284619,7978839735,3766272697,9557235094,2201264206,1131931008,7338035900&max=2&offset=2';
 
         $nextLinkHeader = "<{$nextLink}>; rel=\"next\"";
-        $responseNext = new MockResponse(json_encode(), [
+        $responseNext = new MockResponse('', [
             'http_code' => 200,
             'response_headers' => ['Link' => $nextLinkHeader]
         ]);
@@ -38,7 +38,7 @@ class MiraklClientTest extends KernelTestCase {
         $this->assertEquals($nextLink, $link);
 
         $prevNextLinkHeader = "<{$prevLink}>; rel=\"previous\", <{$nextLink}>; rel=\"next\"";
-        $responsePrevNext = new MockResponse(json_encode(), [
+        $responsePrevNext = new MockResponse('', [
             'http_code' => 200,
             'response_headers' => ['Link' => $prevNextLinkHeader]
         ]);
