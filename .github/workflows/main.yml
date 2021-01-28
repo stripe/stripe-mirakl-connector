@@ -45,7 +45,7 @@ jobs:
         restore-keys: ${{ runner.os }}-composer-
 
     - name: Install Composer dependencies
-        composer install -n --prefer-dist --no-scripts
+      run: composer install -n --prefer-dist --no-scripts
 
     # —— Symfony 🎵 ——————————————————————————————————————————————————————————
     - name: Check Symfony requirements
@@ -66,7 +66,7 @@ jobs:
       run: ./vendor/bin/phpstan analyse src --level=max
 
     ## —— Tests ✅ ———————————————————————————————————————————————————————————
-    - name: Load Doctrine fixtures and populate the Elasticsearch indexes
+    - name: Load Doctrine fixtures
       run: make load-fixtures
 
     - name: Run functionnal and unit tests
