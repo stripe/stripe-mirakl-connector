@@ -13,6 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Use Composer v1
+      run: |
+        sudo composer self-update --1
+
     - name: Get Composer Cache Directory
       id: composer-cache
       run: |
@@ -27,12 +31,20 @@ jobs:
 
     - name: Setup dependencies
       run: |
-        sudo composer self-update --1
         make vendor
 
-    - name: Run build
+    - name: Check for static errors
       run: |
         make phpstan
+
+    - name: Check coding standards
+      run: |
         make php-cs-fixer-check
+
+    - name: Run tests
+      run: |
         make ci-phpunit
+
+    - name: Run tests coverage
+      run: |
         ./vendor/bin/php-coveralls -v
