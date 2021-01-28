@@ -80,4 +80,11 @@ class PaymentMappingRepository extends ServiceEntityRepository
             'miraklOrderId' => $orderIds
         ]));
     }
+
+    public function findOneByStripeChargeId(string $stripeChargeId): ?PaymentMapping
+    {
+        return $this->findOneBy([
+            'stripeChargeId' => $stripeChargeId
+        ]);
+    }
 }
