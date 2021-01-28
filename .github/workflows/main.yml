@@ -27,7 +27,7 @@ jobs:
 
     - name: Setup dependencies
       run: |
-        composer self-update --1
+        sudo composer self-update --1
         make vendor
 
     - name: Run build
