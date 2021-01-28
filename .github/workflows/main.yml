@@ -32,6 +32,7 @@ jobs:
     - name: Setup dependencies
       run: |
         composer install -n --prefer-dist --no-scripts
+        php bin/console cache:clear --no-warmup
 
     - name: Check for static errors
       run: |
