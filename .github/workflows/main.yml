@@ -55,5 +55,7 @@ jobs:
     - name: Run functionnal and unit tests
       run: ./bin/phpunit
 
-    - name: Run tests coverage
-      run: ./vendor/bin/php-coveralls -v
+    - name: Run tests coverage (Coveralls)
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
