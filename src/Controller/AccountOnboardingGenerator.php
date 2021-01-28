@@ -88,7 +88,8 @@ class AccountOnboardingGenerator extends AbstractController implements LoggerAwa
     public function generateStripeOnboardingLink(Request $request): Response
     {
         $data = $request->getContent();
-        $accountOnboardingDTO = (object) $this->serializer->deserialize($data, AccountOnboardingDTO::class, JsonEncoder::FORMAT);
+        $accountOnboardingDTO = $this->serializer->deserialize($data, AccountOnboardingDTO::class, JsonEncoder::FORMAT);
+        assert(is_a($accountOnboardingDTO, AccountOnboardingDTO::class));
 
         $errors = $this->validator->validate($accountOnboardingDTO);
         if (count($errors) > 0) {

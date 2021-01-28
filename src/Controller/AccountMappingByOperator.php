@@ -101,7 +101,8 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
     public function createMapping(Request $request): Response
     {
         $data = $request->getContent();
-        $dto = (object) $this->serializer->deserialize($data, AccountMappingDTO::class, JsonEncoder::FORMAT);
+        $dto = $this->serializer->deserialize($data, AccountMappingDTO::class, JsonEncoder::FORMAT);
+        assert(is_a($dto, AccountMappingDTO::class));
 
         $stripeAccount = $this->stripeClient->setPayoutToManual($dto->getStripeUserId());
 
