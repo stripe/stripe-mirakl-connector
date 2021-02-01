@@ -212,8 +212,8 @@ class StripeWebhookEndpointTest extends TestCase
             ->willReturn(null);
 
         $response = $this->controller->handleStripeSellerWebhook($request);
-        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        $this->assertEquals('This Stripe Account does not exist', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals('Ignoring account.updated event for non-Mirakl Stripe account.', $response->getContent());
     }
 
     public function testHandleStripeWebhook()

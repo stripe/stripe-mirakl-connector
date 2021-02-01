@@ -238,8 +238,8 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccount['id']);
         if (null === $accountMapping || null === $accountMapping->getMiraklShopId()) {
-            $this->logger->error(sprintf('This Stripe Account does not exist %s', $stripeAccount['id']));
-            throw new \Exception('This Stripe Account does not exist', Response::HTTP_BAD_REQUEST);
+            $this->logger->info(sprintf('Ignoring account.updated event for non-Mirakl Stripe account: %s', $stripeAccount['id']));
+            return 'Ignoring account.updated event for non-Mirakl Stripe account.';
         }
 
         $accountMapping
