@@ -31,11 +31,11 @@ To upgrade:
 
 To downgrade:
 
-1. Delete the `var` folder to clean the cache.
-2. From the root of your clone, run `git reset` to the desired commit or tag.
-3. From the [examples/docker](./) folder, run `docker-compose up -d --build app` to rebuild and deploy the desired version.
-4. Find the latest database migration version for your clone in [src/Migrations](../../src/Migrations).
-4. Replace the usual command to execute the database migrations with that version, e.g. `docker-compose run --rm app bin/console doctrine:migration:migrate --no-interaction 20201016122853`
+1. Find the latest database migration for the targeted version in [src/Migrations](../../src/Migrations).
+2. Run the database migrations with that version, e.g. `docker-compose run --rm app bin/console doctrine:migration:migrate --no-interaction 20201016122853`
+3. Delete the `var` folder to clean the cache.
+4. From the root of your clone, run `git reset` to the desired commit or tag.
+5. From the [examples/docker](./) folder, run `docker-compose up -d --build app` to rebuild and deploy the desired version.
 
 ## Start jobs manually
 

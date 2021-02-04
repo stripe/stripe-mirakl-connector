@@ -21,11 +21,11 @@ Feel free to share a working example using your favorite tool via a pull request
 
 We use the MAJOR.MINOR.PATCH semantic:
 
-- MAJOR versions contain incompatible API changes, check the [CHANGELOG] before upgrading
-- MINOR versions contain new functionality added in a backwards compatible manner
-- PATCH versions contain bug fixes added in a backwards compatible manner
+- MAJOR versions contain incompatible API or configuration changes.
+- MINOR versions contain new functionality added in a backwards compatible manner.
+- PATCH versions contain bug fixes added in a backwards compatible manner.
 
-Upgrading is safe for all version types.
+Upgrading is safe for MINOR and PATCH types. For MAJOR versions, make sure to check the [CHANGELOG] before upgrading to see if you are affected by the breaking changes.
 
 Downgrading is safe for MINOR and PATCH versions. You shouldn't downgrade between MAJOR versions if the connector was already used in production.
 
@@ -37,11 +37,11 @@ To upgrade:
 
 To downgrade:
 
-1. Delete the `var` folder to clean the cache.
-2. From the root of your clone, run `git reset` to the desired commit or tag.
-3. [Reinstall](https://stripe.com/docs/plugins/mirakl/install#manually) the connector.
-4. Find the latest database migration version for your clone in [src/Migrations](src/Migrations).
-5. Replace the usual command to execute the database migrations with that version, e.g. `bin/console doctrine:migration:migrate --no-interaction 20201016122853`
+1. Find the latest database migration for the targeted version in [src/Migrations](src/Migrations).
+2. Run the database migrations with that version, e.g. `bin/console doctrine:migration:migrate --no-interaction 20201016122853`
+3. Delete the `var` folder to clean the cache.
+4. From the root of your clone, run `git reset` to the desired commit or tag.
+5. [Reinstall](https://stripe.com/docs/plugins/mirakl/install#manually) the connector.
 
 If you use the Docker sample, see instead the specific [instructions](examples/docker#upgrade) on how to upgrade and downgrade.
 
