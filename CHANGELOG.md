@@ -4,6 +4,8 @@
     - Added Config entity to store payment split and seller settlement workflows checkpoints
 		- Processes waiting on a dependency are now "on hold" instead of failing and triggering an alert, e.g. attempting to split a payment still pending used to trigger an error/alert, we now wait for it to be successful.
 		- Added support for SERVICE orders to payment split and validation workflow.
+		- The `account.updated` event will now result in 200 OK if the account is not on Mirakl.
+		- Fixed captured amount for refused/cancelled orders
 		- Breaking changes to resources exposed by the connector API:
 		    - Resource: renamed `StripeCharge` entity to `PaymentMapping`
 		    - Resource: removed `TRANSFER_INVALID_AMOUNT` status from `StripeTransfer`
