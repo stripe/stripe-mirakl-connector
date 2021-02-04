@@ -46,11 +46,11 @@ class StripeWebhookEndpointTest extends TestCase
     /**
      * @var string
      */
-    protected $metadataOrderIdFieldName;
+    protected $metadataCommercialOrderId;
 
     protected function setUp(): void
     {
-        $this->metadataOrderIdFieldName = 'mirakl_order_id';
+        $this->metadataCommercialOrderId = 'mirakl_order_id';
         $this->bus = $this->getMockBuilder(MessageBusInterface::class)
             ->disableOriginalConstructor()
             ->setMethods(['dispatch'])
@@ -75,7 +75,7 @@ class StripeWebhookEndpointTest extends TestCase
             $this->stripeClient,
             $this->accountMappingRepository,
             $this->paymentMappingRepository,
-            $this->metadataOrderIdFieldName
+            $this->metadataCommercialOrderId
         );
         $this->controller->setLogger($logger);
     }
@@ -486,7 +486,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $this->assertEquals("{$this->metadataOrderIdFieldName} not found in charge or PI metadata webhook event", $response->getContent());
+        $this->assertEquals("{$this->metadataCommercialOrderId} not found in charge or PI metadata webhook event", $response->getContent());
     }
 
     public function testHandleStripeWebhookWithBadMetadata()
@@ -511,7 +511,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => null,
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName . "notGod" => 42,
+                        $this->metadataCommercialOrderId . "notGod" => 42,
                     ],
                     'status' => 'pending'
                 ],
@@ -529,7 +529,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
-        $this->assertEquals("{$this->metadataOrderIdFieldName} not found in charge or PI metadata webhook event", $response->getContent());
+        $this->assertEquals("{$this->metadataCommercialOrderId} not found in charge or PI metadata webhook event", $response->getContent());
     }
 
     public function testHandleStripeWebhookWithEmptyMetadata()
@@ -554,7 +554,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => null,
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => '',
+                        $this->metadataCommercialOrderId => '',
                     ],
                     'status' => 'pending'
                 ],
@@ -572,7 +572,7 @@ class StripeWebhookEndpointTest extends TestCase
 
         $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
-        $this->assertEquals("{$this->metadataOrderIdFieldName} is empty in charge metadata webhook event", $response->getContent());
+        $this->assertEquals("{$this->metadataCommercialOrderId} is empty in charge metadata webhook event", $response->getContent());
     }
 
     public function testHandleStripeWebhookWithBadStatus()
@@ -597,7 +597,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => null,
                     'id' => $stripeChargeId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => 42,
+                        $this->metadataCommercialOrderId => 42,
                     ],
                     'status' => 'failed',
                     'amount' => 2000
@@ -642,7 +642,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => null,
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId,
+                        $this->metadataCommercialOrderId => $orderId,
                     ],
                     'status' => 'succeeded',
                     'amount' => 2000
@@ -708,7 +708,7 @@ class StripeWebhookEndpointTest extends TestCase
                         'object' => 'payment_intent',
                         'id' => 'pi_something',
                         'metadata' => [
-                            $this->metadataOrderIdFieldName => $orderId,
+                            $this->metadataCommercialOrderId => $orderId,
                         ]
                     ],
                     'id' => $stripePaymentIntentId,
@@ -774,7 +774,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'object' => 'payment_intent',
                     'id' => $stripePaymentIntentId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId
+                        $this->metadataCommercialOrderId => $orderId
             ]
         ];
 
@@ -853,7 +853,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => null,
                     'id' => $stripeChargeId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId,
+                        $this->metadataCommercialOrderId => $orderId,
                     ],
                     'status' => 'succeeded',
                     'amount' => 2000
@@ -918,7 +918,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'payment_intent' => null,
                     'id' => $stripeChargeId,
                     'metadata' => [
-                        $this->metadataOrderIdFieldName => $orderId,
+                        $this->metadataCommercialOrderId => $orderId,
                     ],
                     'status' => 'succeeded',
                     'amount' => 2000

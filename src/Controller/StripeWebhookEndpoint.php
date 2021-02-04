@@ -64,20 +64,20 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     /**
      * @var string
      */
-    private $metadataOrderIdFieldName;
+    private $metadataCommercialOrderId;
 
     public function __construct(
         MessageBusInterface $bus,
         StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
-        string $metadataOrderIdFieldName
+        string $metadataCommercialOrderId
     ) {
         $this->bus = $bus;
         $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
-        $this->metadataOrderIdFieldName = $metadataOrderIdFieldName;
+        $this->metadataCommercialOrderId = $metadataCommercialOrderId;
     }
 
     /**
@@ -308,7 +308,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             $paymentIntent = $this->stripeClient->paymentIntentRetrieve($paymentIntent);
         }
 
-        return $paymentIntent['metadata'][$this->metadataOrderIdFieldName] ?? null;
+        return $paymentIntent['metadata'][$this->metadataCommercialOrderId] ?? null;
     }
 
     /**
@@ -316,7 +316,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private function checkAndReturnChargeMetadataOrderId(\Stripe\Charge $stripeCharge): string
     {
-        if (!isset($stripeCharge['metadata'][$this->metadataOrderIdFieldName])) {
+        if (!isset($stripeCharge['metadata'][$this->metadataCommercialOrderId])) {
 
             // Check that linked payment intent does not contain itself the metadata
             $paymentIntentMetadata = $this->checkAndReturnPaymentIntentMetadataOrderId($stripeCharge->payment_intent);
@@ -324,20 +324,20 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 return $paymentIntentMetadata;
             }
 
-            $message = sprintf('%s not found in charge or PI metadata webhook event', $this->metadataOrderIdFieldName);
+            $message = sprintf('%s not found in charge or PI metadata webhook event', $this->metadataCommercialOrderId);
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_OK);
         }
 
-        if ('' === $stripeCharge['metadata'][$this->metadataOrderIdFieldName]) {
-            $message = sprintf('%s is empty in charge metadata webhook event', $this->metadataOrderIdFieldName);
+        if ('' === $stripeCharge['metadata'][$this->metadataCommercialOrderId]) {
+            $message = sprintf('%s is empty in charge metadata webhook event', $this->metadataCommercialOrderId);
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_BAD_REQUEST);
         }
 
-        return $stripeCharge['metadata'][$this->metadataOrderIdFieldName];
+        return $stripeCharge['metadata'][$this->metadataCommercialOrderId];
     }
 
     /**

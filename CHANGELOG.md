@@ -6,6 +6,8 @@
 		- Added support for SERVICE orders to payment split and validation workflow.
 		- The `account.updated` event will now result in 200 OK if the account is not on Mirakl.
 		- Fixed captured amount for refused/cancelled orders
+		- Breaking changes to the environment variables:
+				- Default payment metadata key for the payment validation is now `mirakl_commercial_order_id`. The connector will keep using your custom metadata key if you set one. This only affects users relying on the payment validation workflow and with no set `MIRAKL_METADATA_ORDER_ID` variable. 
 		- Breaking changes to resources exposed by the connector API:
 		    - Resource: renamed `StripeCharge` entity to `PaymentMapping`
 		    - Resource: removed `TRANSFER_INVALID_AMOUNT` status from `StripeTransfer`
