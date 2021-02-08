@@ -2,11 +2,11 @@
 
 namespace App\Controller;
 
-use App\Entity\StripeCharge;
+use App\Entity\PaymentMapping;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
-use App\Repository\StripeChargeRepository;
-use App\Utils\StripeProxy;
+use App\Repository\PaymentMappingRepository;
+use App\Service\StripeClient;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\ORMException;
 use Psr\Log\LoggerAwareInterface;
@@ -47,9 +47,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private $bus;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var AccountMappingRepository
@@ -57,27 +57,27 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private $accountMappingRepository;
 
     /**
-     * @var StripeChargeRepository
+     * @var PaymentMappingRepository
      */
-    private $stripeChargeRepository;
+    private $paymentMappingRepository;
 
     /**
      * @var string
      */
-    private $metadataOrderIdFieldName;
+    private $metadataCommercialOrderId;
 
     public function __construct(
         MessageBusInterface $bus,
-        StripeProxy $stripeProxy,
+        StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
-        StripeChargeRepository $stripeChargeRepository,
-        string $metadataOrderIdFieldName
+        PaymentMappingRepository $paymentMappingRepository,
+        string $metadataCommercialOrderId
     ) {
         $this->bus = $bus;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
-        $this->stripeChargeRepository = $stripeChargeRepository;
-        $this->metadataOrderIdFieldName = $metadataOrderIdFieldName;
+        $this->paymentMappingRepository = $paymentMappingRepository;
+        $this->metadataCommercialOrderId = $metadataCommercialOrderId;
     }
 
     /**
@@ -157,7 +157,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     protected function handleStripeWebhook($payload, string $signatureHeader, bool $isOperatorWebhook): Response
     {
         try {
-            $event = $this->stripeProxy->webhookConstructEvent($payload, $signatureHeader, $isOperatorWebhook);
+            $event = $this->stripeClient->webhookConstructEvent($payload, $signatureHeader, $isOperatorWebhook);
         } catch (\UnexpectedValueException $e) {
             $this->logger->error('Invalid payload');
 
@@ -237,10 +237,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeAccount = $event->data->object;
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccount['id']);
-        if (!$accountMapping) {
-            $this->logger->error(sprintf('This Stripe Account does not exist %s', $stripeAccount['id']));
-
-            throw new \Exception('This Stripe Account does not exist', Response::HTTP_BAD_REQUEST);
+        if (null === $accountMapping || null === $accountMapping->getMiraklShopId()) {
+            $this->logger->info(sprintf('Ignoring account.updated event for non-Mirakl Stripe account: %s', $stripeAccount['id']));
+            return 'Ignoring account.updated event for non-Mirakl Stripe account.';
         }
 
         $accountMapping
@@ -276,10 +275,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeChargeId = $stripeCharge['id'];
         $stripeAmount = $stripeCharge['amount'];
 
-        $stripeCharge = $this->stripeChargeRepository->findOneByStripeChargeId($stripeChargeId);
+        $stripeCharge = $this->paymentMappingRepository->findOneByStripeChargeId($stripeChargeId);
 
         if (!$stripeCharge) {
-            $stripeCharge = new StripeCharge();
+            $stripeCharge = new PaymentMapping();
             $stripeCharge
                 ->setStripeChargeId($stripeChargeId)
                 ->setStripeAmount($stripeAmount);
@@ -288,7 +287,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeCharge->setMiraklOrderId($miraklOrderId);
 
         try {
-            $this->stripeChargeRepository->persistAndFlush($stripeCharge);
+            $this->paymentMappingRepository->persistAndFlush($stripeCharge);
         } catch (UniqueConstraintViolationException $e) {
             // in case of concurrency
         }
@@ -306,10 +305,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         if (!$paymentIntent instanceof \Stripe\PaymentIntent) {
-            $paymentIntent = $this->stripeProxy->paymentIntentRetrieve($paymentIntent);
+            $paymentIntent = $this->stripeClient->paymentIntentRetrieve($paymentIntent);
         }
 
-        return $paymentIntent['metadata'][$this->metadataOrderIdFieldName] ?? null;
+        return $paymentIntent['metadata'][$this->metadataCommercialOrderId] ?? null;
     }
 
     /**
@@ -317,7 +316,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private function checkAndReturnChargeMetadataOrderId(\Stripe\Charge $stripeCharge): string
     {
-        if (!isset($stripeCharge['metadata'][$this->metadataOrderIdFieldName])) {
+        if (!isset($stripeCharge['metadata'][$this->metadataCommercialOrderId])) {
 
             // Check that linked payment intent does not contain itself the metadata
             $paymentIntentMetadata = $this->checkAndReturnPaymentIntentMetadataOrderId($stripeCharge->payment_intent);
@@ -325,20 +324,20 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 return $paymentIntentMetadata;
             }
 
-            $message = sprintf('%s not found in charge or PI metadata webhook event', $this->metadataOrderIdFieldName);
+            $message = sprintf('%s not found in charge or PI metadata webhook event', $this->metadataCommercialOrderId);
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_OK);
         }
 
-        if ('' === $stripeCharge['metadata'][$this->metadataOrderIdFieldName]) {
-            $message = sprintf('%s is empty in charge metadata webhook event', $this->metadataOrderIdFieldName);
+        if ('' === $stripeCharge['metadata'][$this->metadataCommercialOrderId]) {
+            $message = sprintf('%s is empty in charge metadata webhook event', $this->metadataCommercialOrderId);
             $this->logger->error($message);
 
             throw new \Exception($message, Response::HTTP_BAD_REQUEST);
         }
 
-        return $stripeCharge['metadata'][$this->metadataOrderIdFieldName];
+        return $stripeCharge['metadata'][$this->metadataCommercialOrderId];
     }
 
     /**

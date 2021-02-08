@@ -34,7 +34,7 @@ class TransferFailedMessage implements NotifiableMessageInterface
                 'transactionId' => $transfer->getTransactionId(),
                 'amount' => $transfer->getAmount(),
                 'status' => $transfer->getStatus(),
-                'failedReason' => $transfer->getFailedReason(),
+                'failedReason' => $transfer->getStatusReason(),
                 'currency' => $transfer->getCurrency(),
             ],
         ];

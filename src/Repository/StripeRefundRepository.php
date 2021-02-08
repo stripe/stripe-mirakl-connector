@@ -26,4 +26,33 @@ class StripeRefundRepository extends ServiceEntityRepository
 
         return $stripeRefund;
     }
+
+    public function persist(StripeRefund $stripeRefund): StripeRefund
+    {
+        $this->getEntityManager()->persist($stripeRefund);
+
+        return $stripeRefund;
+    }
+
+    public function flush()
+    {
+        $this->getEntityManager()->flush();
+    }
+
+    private function mapRefundsByRefundId(array $refunds)
+    {
+        $map = [];
+        foreach ($refunds as $refund) {
+            $map[$refund->getMiraklRefundId()] = $refund;
+        }
+
+        return $map;
+    }
+
+    public function findRefundsByRefundIds(array $refundIds)
+    {
+        return $this->mapRefundsByRefundId($this->findBy([
+            'miraklRefundId' => $refundIds
+        ]));
+    }
 }

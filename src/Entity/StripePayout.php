@@ -19,9 +19,19 @@ use Gedmo\Mapping\Annotation as Gedmo;
  */
 class StripePayout
 {
+    public const PAYOUT_ON_HOLD = 'PAYOUT_ON_HOLD';
+    public const PAYOUT_ABORTED = 'PAYOUT_ABORTED';
     public const PAYOUT_PENDING = 'PAYOUT_PENDING';
-    public const PAYOUT_CREATED = 'PAYOUT_CREATED';
     public const PAYOUT_FAILED = 'PAYOUT_FAILED';
+    public const PAYOUT_CREATED = 'PAYOUT_CREATED';
+
+    // Payout status reasons: on hold
+    public const PAYOUT_STATUS_REASON_SHOP_NOT_READY = 'Cannot find Stripe account for shop ID %s';
+    public const PAYOUT_STATUS_REASON_SHOP_PAYOUT_DISABLED = 'Payouts are disabled shop ID %s';
+
+    // Payout status reasons: aborted
+    public const PAYOUT_STATUS_REASON_INVALID_AMOUNT = 'Amount must be positive, input was: %d';
+    public const PAYOUT_STATUS_REASON_NO_SHOP_ID = 'No shop ID provided';
 
     /**
      * @ORM\Id()
@@ -36,19 +46,14 @@ class StripePayout
     private $accountMapping;
 
     /**
-     * @ORM\Column(type="integer")
+     * @ORM\Column(type="integer", nullable=true)
      */
     private $amount = 0;
 
     /**
-     * @ORM\Column(type="string")
+     * @ORM\Column(type="string", nullable=true)
      */
     private $currency;
-
-    /**
-     * @ORM\Column(type="datetime")
-     */
-    private $miraklUpdateTime;
 
     /**
      * @ORM\Column(type="integer", unique=true)
@@ -58,7 +63,7 @@ class StripePayout
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $stripePayoutId;
+    private $payoutId;
 
     /**
      * @ORM\Column(type="string")
@@ -68,7 +73,12 @@ class StripePayout
     /**
      * @ORM\Column(type="string", length=1024, nullable=true)
      */
-    private $failedReason;
+    private $statusReason;
+
+    /**
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    private $miraklCreatedDate;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
@@ -85,9 +95,11 @@ class StripePayout
     public static function getAvailableStatus(): array
     {
         return [
+            self::PAYOUT_ON_HOLD,
+            self::PAYOUT_ABORTED,
             self::PAYOUT_PENDING,
-            self::PAYOUT_CREATED,
             self::PAYOUT_FAILED,
+            self::PAYOUT_CREATED,
         ];
     }
 
@@ -96,6 +108,24 @@ class StripePayout
         return [
             self::PAYOUT_FAILED,
         ];
+    }
+
+    public static function getRetriableStatus(): array
+    {
+        return [
+            self::PAYOUT_FAILED,
+            self::PAYOUT_ON_HOLD,
+        ];
+    }
+
+    public function isRetriable(): bool
+    {
+        return in_array($this->getStatus(), self::getRetriableStatus());
+    }
+
+    public function isDispatchable(): bool
+    {
+        return self::PAYOUT_PENDING === $this->getStatus();
     }
 
     public function getId(): ?int
@@ -139,18 +169,6 @@ class StripePayout
         return $this;
     }
 
-    public function getMiraklUpdateTime(): ?\DateTimeInterface
-    {
-        return $this->miraklUpdateTime;
-    }
-
-    public function setMiraklUpdateTime(\DateTime $miraklUpdateTime): self
-    {
-        $this->miraklUpdateTime = $miraklUpdateTime;
-
-        return $this;
-    }
-
     public function getMiraklInvoiceId(): int
     {
         return $this->miraklInvoiceId;
@@ -163,14 +181,14 @@ class StripePayout
         return $this;
     }
 
-    public function getStripePayoutId(): ?string
+    public function getPayoutId(): ?string
     {
-        return $this->stripePayoutId;
+        return $this->payoutId;
     }
 
-    public function setStripePayoutId(string $stripePayoutId): self
+    public function setPayoutId(?string $payoutId): self
     {
-        $this->stripePayoutId = $stripePayoutId;
+        $this->payoutId = $payoutId;
 
         return $this;
     }
@@ -190,14 +208,26 @@ class StripePayout
         return $this;
     }
 
-    public function getFailedReason(): ?string
+    public function getStatusReason(): ?string
     {
-        return $this->failedReason;
+        return $this->statusReason;
     }
 
-    public function setFailedReason(?string $failedReason): self
+    public function setStatusReason(?string $statusReason): self
     {
-        $this->failedReason = $failedReason;
+        $this->statusReason = $statusReason;
+
+        return $this;
+    }
+
+    public function getMiraklCreatedDate(): \DateTimeInterface
+    {
+        return $this->miraklCreatedDate;
+    }
+
+    public function setMiraklCreatedDate(?\DateTimeInterface $miraklCreatedDate): self
+    {
+        $this->miraklCreatedDate = $miraklCreatedDate;
 
         return $this;
     }

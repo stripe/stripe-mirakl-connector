@@ -27,9 +27,10 @@ class RefundFailedMessage implements NotifiableMessageInterface
                 'miraklOrderId' => $refund->getMiraklOrderId(),
                 'miraklRefundId' => $refund->getMiraklRefundId(),
                 'stripeRefundId' => $refund->getStripeRefundId(),
-                'stripeReversalId' => $refund->getStripeReversalId(),
+                'transactionId' => $refund->getTransactionId(),
                 'status' => $refund->getStatus(),
-                'failedReason' => $refund->getFailedReason(),
+                'failedReason' => $refund->getStatusReason(),
+                'type' => $refund->getType(),
             ],
         ];
     }

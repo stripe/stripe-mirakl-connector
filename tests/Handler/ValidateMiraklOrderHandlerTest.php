@@ -2,7 +2,8 @@
 
 namespace App\Tests\Handler;
 
-use App\Entity\StripeCharge;
+use App\Entity\MiraklProductPendingDebit;
+use App\Entity\PaymentMapping;
 use App\Exception\InvalidStripeAccountException;
 use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
@@ -10,8 +11,8 @@ use App\Handler\UpdateKYCStatusHandler;
 use App\Handler\ValidateMiraklOrderHandler;
 use App\Message\AccountUpdateMessage;
 use App\Message\ValidateMiraklOrderMessage;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Stripe\Account;
@@ -34,67 +35,64 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $this->miraklClient = $this->createMock(MiraklClient::class);
 
         $this->handler = new ValidateMiraklOrderHandler($this->miraklClient);
-
-        $logger = new NullLogger();
-
-        $this->handler->setLogger($logger);
+        $this->handler->setLogger(new NullLogger());
     }
 
+    private function executeHandler($orders, $paymentMappings)
+    {
+				($this->handler)(new ValidateMiraklOrderMessage(
+						$orders,
+						$paymentMappings
+				));
+    }
 
     public function testNominalExecute()
     {
-
         $orders = [
             'Order_66' => [
-                'Order_66-A' => [
+                'Order_66-A' => new MiraklProductPendingDebit([
                     'amount' => '330',
                     'order_id' => 'Order_66-A',
                     'customer_id' => 'Customer_id_001',
-                ],
-                'Order_66-B' => [
+                ]),
+                'Order_66-B' => new MiraklProductPendingDebit([
                     'amount' => '330',
                     'order_id' => 'Order_66-B',
                     'customer_id' => 'Customer_id_001',
-                ],
+                ]),
             ]
         ];
 
-        $stripePayment = new StripeCharge();
-        $stripePayment
+        $paymentMapping = new PaymentMapping();
+        $paymentMapping
             ->setStripeChargeId('pi_valid')
             ->setMiraklOrderId('Order_66');
 
-        $stripePayments = ['Order_66' => $stripePayment];
+        $paymentMappings = ['Order_66' => $paymentMapping];
 
         $this
             ->miraklClient
             ->expects($this->once())
-             ->method('validatePayments');
+             ->method('validateProductPendingDebits');
 
-        $message = new ValidateMiraklOrderMessage($orders, $stripePayments);
-
-        $handler = $this->handler;
-        $handler($message);
+        $this->executeHandler($orders, $paymentMappings);
     }
 
     public function testWithNoOrders()
     {
-        $stripePayment = new StripeCharge();
-        $stripePayment
+        $paymentMapping = new PaymentMapping();
+        $paymentMapping
             ->setStripeChargeId('pi_valid')
             ->setMiraklOrderId('Order_66');
 
-        $stripePayments = ['Order_66' => $stripePayment];
+        $paymentMappings = ['Order_66' => $paymentMapping];
 
         $this
             ->miraklClient
             ->expects($this->never())
-            ->method('validatePayments');
+            ->method('validateProductPendingDebits');
 
-        $message = new ValidateMiraklOrderMessage([], $stripePayments);
-
-        $handler = $this->handler;
-        $handler($message);
+        $this->executeHandler([], $paymentMappings);
     }
 
 }

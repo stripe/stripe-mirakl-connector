@@ -7,25 +7,25 @@ class CapturePendingPaymentMessage
     /**
      * @var int
      */
-    private $stripeChargeId;
+    private $paymentMappingId;
 
     /**
      * @var int
      */
     private $amount;
 
-    public function __construct(int $stripeChargeId, int $amount)
+    public function __construct(int $paymentMappingId, int $amount)
     {
-        $this->stripeChargeId = $stripeChargeId;
+        $this->paymentMappingId = $paymentMappingId;
         $this->amount = $amount;
     }
 
     /**
      * @return int
      */
-    public function getstripeChargeId(): int
+    public function getPaymentMappingId(): int
     {
-        return $this->stripeChargeId;
+        return $this->paymentMappingId;
     }
 
     /**

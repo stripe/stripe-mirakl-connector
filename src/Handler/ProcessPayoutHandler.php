@@ -5,8 +5,8 @@ namespace App\Handler;
 use App\Entity\StripePayout;
 use App\Message\ProcessPayoutMessage;
 use App\Repository\StripePayoutRepository;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -17,14 +17,9 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
     use LoggerAwareTrait;
 
     /**
-     * @var MiraklClient
+     * @var StripeClient
      */
-    private $miraklClient;
-
-    /**
-     * @var StripeProxy
-     */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var StripePayoutRepository
@@ -32,65 +27,50 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
     private $stripePayoutRepository;
 
     public function __construct(
-        MiraklClient $miraklClient,
-        StripeProxy $stripeProxy,
+        StripeClient $stripeClient,
         StripePayoutRepository $stripePayoutRepository
     ) {
-        $this->miraklClient = $miraklClient;
-        $this->stripeProxy = $stripeProxy;
+        $this->stripeClient = $stripeClient;
         $this->stripePayoutRepository = $stripePayoutRepository;
     }
 
     public function __invoke(ProcessPayoutMessage $message)
     {
-        $stripePayoutId = $message->getStripePayoutId();
-
-        $stripePayout = $this->stripePayoutRepository->findOneBy([
-            'id' => $stripePayoutId,
+        $payout = $this->stripePayoutRepository->findOneBy([
+            'id' => $message->getStripePayoutId(),
         ]);
+        assert(null !== $payout && null !== $payout->getAccountMapping());
+        assert(StripePayout::PAYOUT_CREATED !== $payout->getStatus());
 
-        if (null === $stripePayout) {
-            return;
-        }
-
-        $accountMapping = $stripePayout->getAccountMapping();
-        if (
-            null === $accountMapping ||
-            null === $accountMapping->getStripeAccountId() ||
-            !$accountMapping->getPayoutEnabled()
-        ) {
-            $stripePayout
-                ->setFailedReason('Unknown account, or payout is not enabled on this Stripe account')
-                ->setStatus(StripePayout::PAYOUT_FAILED);
-            $this->stripePayoutRepository->persistAndFlush($stripePayout);
-
-            return;
-        }
-
-        $amount = $stripePayout->getAmount();
-        $currency = $stripePayout->getCurrency();
-        $stripeAccountId = $accountMapping->getStripeAccountId();
-        $invoiceId = $stripePayout->getMiraklInvoiceId();
-
+        $accountMapping = $payout->getAccountMapping();
         try {
-            $response = $this->stripeProxy->createPayout($currency, $amount, $stripeAccountId, [
-                'miraklShopId' => $accountMapping->getMiraklShopId(),
-                'invoiceId' => $invoiceId,
-            ]);
-            $payoutId = $response->id;
-            $stripePayout
-                ->setStatus(StripePayout::PAYOUT_CREATED)
-                ->setStripePayoutId($payoutId);
+            $response = $this->stripeClient->createPayout(
+                $payout->getCurrency(),
+                $payout->getAmount(),
+                $accountMapping->getStripeAccountId(),
+                [
+                    'miraklShopId' => $accountMapping->getMiraklShopId(),
+                    'invoiceId' => $payout->getMiraklInvoiceId(),
+                ]
+            );
+
+            $payout->setPayoutId($response->id);
+            $payout->setStatus(StripePayout::PAYOUT_CREATED);
+            $payout->setStatusReason(null);
         } catch (ApiErrorException $e) {
-            $this->logger->error(sprintf('Could not create Stripe Payout: %s.', $e->getMessage()), [
-                'miraklShopId' => $accountMapping->getMiraklShopId(),
-                'stripePayoutId' => $invoiceId,
-                'stripeErrorCode' => $e->getStripeCode(),
-            ]);
-            $stripePayout
-                ->setStatus(StripePayout::PAYOUT_FAILED)
-                ->setFailedReason(substr($e->getMessage(), 0, 1024));
+            $this->logger->error(
+                sprintf('Could not create Stripe Payout: %s.', $e->getMessage()),
+                [
+                    'miraklShopId' => $accountMapping->getMiraklShopId(),
+                    'stripePayoutId' => $payout->getMiraklInvoiceId(),
+                    'stripeErrorCode' => $e->getStripeCode(),
+                ]
+            );
+
+            $payout->setStatus(StripePayout::PAYOUT_FAILED);
+            $payout->setStatusReason(substr($e->getMessage(), 0, 1024));
         }
-        $this->stripePayoutRepository->persistAndFlush($stripePayout);
+
+        $this->stripePayoutRepository->flush();
     }
 }

@@ -5,44 +5,50 @@
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
   env(CORS_ALLOW_ORIGIN): "^https?://localhost(:[0-9]+)?$"
-  env(DATABASE_URL): ""
+  env(MAILER_DSN): "smtp://null"
   env(TECHNICAL_ALERT_EMAIL): ""
   env(TECHNICAL_ALERT_EMAIL_FROM): ""
-  env(MAILER_DSN): "smtp://null"
-  env(BASE_HOST): ""
-  env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
-  env(ENABLES_AUTOMATIC_TRANSFER_CREATION): false
-  env(ENABLES_AUTOMATIC_REFUND_CREATION): false
-  env(REDIRECT_ONBOARDING): "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
-  env(STRIPE_PREFILL_ONBOARDING): false
+  env(OPERATOR_NOTIFICATION_URL): ""
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
-  env(OPERATOR_NOTIFICATION_URL): ""
-  env(MIRAKL_METADATA_ORDER_ID): "mirakl_order_id"
-  env(STRIPE_WEBHOOK_SECRET): ""
+  env(STRIPE_PREFILL_ONBOARDING): false
+  env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
+  env(ENABLE_SERVICE_PAYMENT_SPLIT): false
+  env(ENABLE_SERVICE_PAYMENT_REFUND): false
 
-  DEPRECATED_STRIPE_WEBHOOK_SECRET: "%env(STRIPE_WEBHOOK_SECRET)%"
+  default_redirect_onboarding: "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
+  default_enable_product_payment_split: false
+  default_enable_product_payment_refund: false
+  default_payment_metadata_commercial_order_id: "mirakl_commercial_order_id"
+
+  deprecated_webhook_secret: "%env(default::STRIPE_WEBHOOK_SECRET)%"
+  deprecated_enable_product_payment_split: "%env(default:default_enable_product_payment_split:bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
+  deprecated_enable_product_payment_refund: "%env(default:default_enable_product_payment_refund:bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
+  deprecated_payment_metadata_commercial_order_id: "%env(default:default_payment_metadata_commercial_order_id:MIRAKL_METADATA_ORDER_ID)%"
+
+  router.request_context.host: "%env(BASE_HOST)%"
+  router.request_context.scheme: 'https'
 
   app.base_host: "%env(BASE_HOST)%"
   app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
   app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"
-  app.stripe.webhook_seller_secret: "%env(default:DEPRECATED_STRIPE_WEBHOOK_SECRET:STRIPE_SELLERS_WEBHOOK_SECRET)%"
-  app.stripe.webhook_operator_secret: "%env(default:DEPRECATED_STRIPE_WEBHOOK_SECRET:STRIPE_OPERATOR_WEBHOOK_SECRET)%"
+  app.stripe.webhook_seller_secret: "%env(default:deprecated_webhook_secret:STRIPE_SELLERS_WEBHOOK_SECRET)%"
+  app.stripe.webhook_operator_secret: "%env(default:deprecated_webhook_secret:STRIPE_OPERATOR_WEBHOOK_SECRET)%"
   app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
-  app.stripe.enables_auto_transfer_creation: "%env(bool:ENABLES_AUTOMATIC_TRANSFER_CREATION)%"
-  app.stripe.enables_auto_refund_creation: "%env(bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
+  app.workflow.enable_product_payment_split: "%env(default:deprecated_enable_product_payment_split:bool:ENABLE_PRODUCT_PAYMENT_SPLIT)%"
+  app.workflow.enable_service_payment_split: "%env(bool:ENABLE_SERVICE_PAYMENT_SPLIT)%"
+  app.workflow.enable_product_payment_refund: "%env(default:deprecated_enable_product_payment_refund:bool:ENABLE_PRODUCT_PAYMENT_REFUND)%"
+  app.workflow.enable_service_payment_refund: "%env(bool:ENABLE_SERVICE_PAYMENT_REFUND)%"
+  app.workflow.payment_metadata_commercial_order_id: "%env(default:deprecated_payment_metadata_commercial_order_id:PAYMENT_METADATA_COMMERCIAL_ORDER_ID)%"
   app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
   app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
-  app.redirect.onboarding: "%env(REDIRECT_ONBOARDING)%"
+  app.redirect.onboarding: "%env(default:default_redirect_onboarding:REDIRECT_ONBOARDING)%"
   app.operator.notification_url: "%env(OPERATOR_NOTIFICATION_URL)%"
   app.mailer.technical: "%env(TECHNICAL_ALERT_EMAIL)%"
   app.mailer.technical_from: "%env(TECHNICAL_ALERT_EMAIL_FROM)%"
-  router.request_context.host: "%env(BASE_HOST)%"
-  router.request_context.scheme: 'https'
   app.endpoint_down.mail_notification: "%env(bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
   app.endpoint_down.mail_notification_throttle: "%env(int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
-  app.mirakl.metadata_order_id_field_name: "%env(MIRAKL_METADATA_ORDER_ID)%"
 
 services:
   # default configuration for services in *this* file
@@ -54,17 +60,18 @@ services:
       $stripeClientSecret: "%app.stripe.client_secret%"
       $webhookSellerSecret: "%app.stripe.webhook_seller_secret%"
       $webhookOperatorSecret: "%app.stripe.webhook_operator_secret%"
-      $skipAutoTransferCreation: "%app.stripe.enables_auto_transfer_creation%"
       $stripePrefillOnboarding: "%app.stripe.prefill_onboarding%"
 
       $miraklApiKey: "%app.mirakl.api_key%"
       $miraklHostName: "%app.mirakl.host_name%"
       $customFieldCode: "%app.mirakl.stripe_custom_field_code%"
-      $enablesAutoTransferCreation: "%app.stripe.enables_auto_transfer_creation%"
-      $enablesAutoRefundCreation: "%app.stripe.enables_auto_refund_creation%"
+      $enableProductPaymentSplit: "%app.workflow.enable_product_payment_split%"
+      $enableServicePaymentSplit: "%app.workflow.enable_service_payment_split%"
+      $enableProductPaymentRefund: "%app.workflow.enable_product_payment_refund%"
+      $enableServicePaymentRefund: "%app.workflow.enable_service_payment_refund%"
+      $metadataCommercialOrderId: "%app.workflow.payment_metadata_commercial_order_id%"
       $redirectOnboarding: "%app.redirect.onboarding%"
       $operatorNotificationUrl: "%app.operator.notification_url%"
-      $metadataOrderIdFieldName: "%app.mirakl.metadata_order_id_field_name%"
 
       $endpointDownMailNotification: "%app.endpoint_down.mail_notification%"
       $endpointDownMailNotificationThrottleDelay: "%app.endpoint_down.mail_notification_throttle%"
@@ -101,8 +108,8 @@ services:
     lazy: true
     autowire: false
     arguments:
-      $fromEmail: '%env(TECHNICAL_ALERT_EMAIL_FROM)%'
-      $toEmail:   '%env(TECHNICAL_ALERT_EMAIL)%'
+      $fromEmail: '%app.mailer.technical_from%'
+      $toEmail:   '%app.mailer.technical%'
       $subject:    '[Stripe-Mirakl] An Error Occurred! %%message%%'
 
   symfony_mailer_monolog:

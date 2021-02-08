@@ -5,8 +5,8 @@ namespace App\Tests\MessageHandler;
 use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
 use App\Message\AccountUpdateMessage;
-use App\Utils\MiraklClient;
-use App\Utils\StripeProxy;
+use App\Service\MiraklClient;
+use App\Service\StripeClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Stripe\LoginLink;
@@ -19,9 +19,9 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
     private $miraklClient;
 
     /**
-     * @var StripeProxy
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
      * @var MiraklPatchShopFactory
@@ -36,14 +36,14 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
     protected function setUp(): void
     {
         $this->miraklClient = $this->createMock(MiraklClient::class);
-        $this->stripeProxy = $this->createMock(StripeProxy::class);
+        $this->stripeClient = $this->createMock(StripeClient::class);
         $this->patchFactory = $this->getMockBuilder(MiraklPatchShopFactory::class)
                          ->setConstructorArgs(['stripe-link'])
                          ->getMock();
 
         $this->handler = new UpdateAccountLoginLinkHandler(
             $this->miraklClient,
-            $this->stripeProxy,
+            $this->stripeClient,
             $this->patchFactory
         );
 
@@ -57,7 +57,7 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
         $stripeLoginLink = new LoginLink();
         $stripeLoginLink['url'] = 'https://stripe-login-link';
 
-        $this->stripeProxy
+        $this->stripeClient
             ->expects($this->once())
             ->method('accountCreateLoginLink')
             ->with('acct_stripe_account')

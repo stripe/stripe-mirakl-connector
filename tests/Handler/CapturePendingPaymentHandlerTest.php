@@ -2,31 +2,32 @@
 
 namespace App\Tests\Handler;
 
-use App\Entity\StripeCharge;
+use App\Entity\PaymentMapping;
 use App\Handler\CapturePendingPaymentHandler;
 use App\Handler\UpdateAccountLoginLinkHandler;
 use App\Message\CapturePendingPaymentMessage;
-use App\Repository\StripeChargeRepository;
-use App\Tests\StripeWebTestCase;
-use App\Utils\StripeProxy;
+use App\Repository\PaymentMappingRepository;
+use App\Service\StripeClient;
+use App\Tests\MiraklMockedHttpClient as MiraklMock;
+use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Psr\Log\NullLogger;
-use Stripe\Exception\ApiConnectionException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
-class CapturePendingPaymentHandlerTest extends StripeWebTestCase
+class CapturePendingPaymentHandlerTest extends KernelTestCase
 {
     use RecreateDatabaseTrait;
 
     /**
-     * @var StripeProxy|\PHPUnit\Framework\MockObject\MockObject
+     * @var StripeClient
      */
-    private $stripeProxy;
+    private $stripeClient;
 
     /**
-     * @var StripeChargeRepository
+     * @var PaymentMappingRepository
      */
-    private $stripeChargeRepository;
+    private $paymentMappingRepository;
 
     /**
      * @var UpdateAccountLoginLinkHandler
@@ -38,90 +39,89 @@ class CapturePendingPaymentHandlerTest extends StripeWebTestCase
         self::bootKernel();
         $container = self::$kernel->getContainer();
 
-        $this->stripeProxy = $container->get('App\Utils\StripeProxy');
+        $this->stripeClient = $container->get('App\Service\StripeClient');
 
-        $this->stripeChargeRepository = $container->get('doctrine')->getRepository(StripeCharge::class);
+        $this->paymentMappingRepository = $container->get('doctrine')->getRepository(PaymentMapping::class);
 
-        $this->handler = new CapturePendingPaymentHandler($this->stripeProxy, $this->stripeChargeRepository);
-
-        $logger = new NullLogger();
-
-        $this->handler->setLogger($logger);
+        $this->handler = new CapturePendingPaymentHandler(
+						$this->stripeClient,
+						$this->paymentMappingRepository
+				);
+        $this->handler->setLogger(new NullLogger());
     }
 
-
-    public function testNominalPaymentIntentExecute()
+    private function executeHandler($paymentMappingId)
     {
-        $stripeChargeId = 1;
-
-        $message = new CapturePendingPaymentMessage($stripeChargeId, 33000);
-        $handler = $this->handler;
-        $handler($message);
-
-        $stripePayment = $this->stripeChargeRepository->findOneBy([
-            'id' => $stripeChargeId,
-        ]);
-
-        $this->assertEquals(StripeCharge::CAPTURED, $stripePayment->getStatus());
+				($this->handler)(new CapturePendingPaymentMessage($paymentMappingId, 100));
     }
 
-    public function testNominalChargeExecute()
+    private function mockPaymentMapping($orderId, $chargeId)
     {
-        $stripePayment = new StripeCharge();
-        $stripePayment
-            ->setStripeChargeId('ch_valid')
-            ->setMiraklOrderId('Order_66');
+        $mapping = new PaymentMapping();
+				$mapping->setMiraklOrderId($orderId);
+				$mapping->setStripeChargeId($chargeId);
 
-        $this->stripeChargeRepository->persistAndFlush($stripePayment);
+				$this->paymentMappingRepository->persistAndFlush($mapping);
 
-        $message = new CapturePendingPaymentMessage($stripePayment->getId(), 33000);
-        $handler = $this->handler;
-        $handler($message);
-
-        $stripePayment = $this->stripeChargeRepository->findOneBy([
-            'id' => $stripePayment->getId(),
-        ]);
-
-        $this->assertEquals(StripeCharge::CAPTURED, $stripePayment->getStatus());
+				return $mapping;
     }
 
-    public function testNominalPaymentIntentErrorExecute()
+    private function getPaymentMapping($id)
     {
-        $stripePayment = new StripeCharge();
-        $stripePayment
-            ->setStripeChargeId('pi_invalid')
-            ->setMiraklOrderId('Order_66');
-
-        $this->stripeChargeRepository->persistAndFlush($stripePayment);
-
-        $message = new CapturePendingPaymentMessage($stripePayment->getId(), 42000);
-        $handler = $this->handler;
-        $handler($message);
-
-        $stripePayment = $this->stripeChargeRepository->findOneBy([
-            'id' => $stripePayment->getId(),
+				return $this->paymentMappingRepository->findOneBy([
+            'id' => $id
         ]);
-
-        $this->assertEquals(StripeCharge::TO_CAPTURE, $stripePayment->getStatus());
     }
 
-    public function testNominalChargeErrorExecute()
+    public function testCapturePaymentIntent()
     {
-        $stripePayment = new StripeCharge();
-        $stripePayment
-            ->setStripeChargeId('ch_invalid')
-            ->setMiraklOrderId('Order_66');
+        $mapping = $this->mockPaymentMapping(
+						MiraklMock::ORDER_BASIC,
+						StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE
+				);
 
-        $this->stripeChargeRepository->persistAndFlush($stripePayment);
+        $this->executeHandler($mapping->getId());
 
-        $message = new CapturePendingPaymentMessage($stripePayment->getId(), 42000);
-        $handler = $this->handler;
-        $handler($message);
+        $mapping = $this->getPaymentMapping($mapping->getId());
+        $this->assertEquals(PaymentMapping::CAPTURED, $mapping->getStatus());
+    }
 
-        $stripePayment = $this->stripeChargeRepository->findOneBy([
-            'id' => $stripePayment->getId(),
-        ]);
+    public function testCaptureCharge()
+    {
+        $mapping = $this->mockPaymentMapping(
+						MiraklMock::ORDER_BASIC,
+						StripeMock::CHARGE_STATUS_AUTHORIZED
+				);
 
-        $this->assertEquals(StripeCharge::TO_CAPTURE, $stripePayment->getStatus());
+        $this->executeHandler($mapping->getId());
+
+        $mapping = $this->getPaymentMapping($mapping->getId());
+        $this->assertEquals(PaymentMapping::CAPTURED, $mapping->getStatus());
+    }
+
+    public function testCapturePaymentIntentWithApiError()
+    {
+        $mapping = $this->mockPaymentMapping(
+						MiraklMock::ORDER_BASIC,
+						StripeMock::PAYMENT_INTENT_STATUS_SUCCEEDED
+				);
+
+        $this->executeHandler($mapping->getId());
+
+        $mapping = $this->getPaymentMapping($mapping->getId());
+        $this->assertEquals(PaymentMapping::TO_CAPTURE, $mapping->getStatus());
+    }
+
+    public function testCaptureChargeWithApiError()
+    {
+        $mapping = $this->mockPaymentMapping(
+						MiraklMock::ORDER_BASIC,
+						StripeMock::CHARGE_STATUS_CAPTURED
+				);
+
+        $this->executeHandler($mapping->getId());
+
+        $mapping = $this->getPaymentMapping($mapping->getId());
+        $this->assertEquals(PaymentMapping::TO_CAPTURE, $mapping->getStatus());
     }
 }

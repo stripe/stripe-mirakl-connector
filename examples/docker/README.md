@@ -18,12 +18,24 @@ Some examples of tasks required to complete the configuration for production:
 2. From the [examples/docker](./) folder, run `make install` to start the application.
 3. If you are starting the application for the first time, run `make db-install` to set up the database.
 
-## Upgrade
+## Versioning
 
-1. From the root of your clone, run `git pull` to download changes.
-2. Delete the `var` folder to clean the cache.
+See also [Versioning](../../README.md#versioning).
+
+To upgrade:
+
+1. Delete the `var` folder to clean the cache.
+2. From the root of your clone, run `git pull` to download changes.
 3. From the [examples/docker](./) folder, run `docker-compose up -d --build app` to rebuild and deploy the new version.
 4. Run `make db-install` to check and apply database updates.
+
+To downgrade:
+
+1. Find the latest database migration for the targeted version in [src/Migrations](../../src/Migrations).
+2. Run the database migrations with that version, e.g. `docker-compose run --rm app bin/console doctrine:migration:migrate --no-interaction 20201016122853`
+3. Delete the `var` folder to clean the cache.
+4. From the root of your clone, run `git reset` to the desired commit or tag.
+5. From the [examples/docker](./) folder, run `docker-compose up -d --build app` to rebuild and deploy the desired version.
 
 ## Start jobs manually
 
