@@ -1,20 +1,20 @@
 # Changelog
 
 - Version 2.0.0
-    - Added Config entity to store payment split and seller settlement workflows checkpoints
-		- Processes waiting on a dependency are now "on hold" instead of failing and triggering an alert, e.g. attempting to split a payment still pending used to trigger an error/alert, we now wait for it to be successful.
-		- Added support for SERVICE orders to payment split and validation workflow.
-		- The `account.updated` event will now result in 200 OK if the account is not on Mirakl.
-		- Fixed captured amount for refused/cancelled orders
-		- Breaking changes to the environment variables:
-				- Default payment metadata key for the payment validation is now `mirakl_commercial_order_id`. The connector will keep using your custom metadata key if you set one. This only affects users relying on the payment validation workflow and with no set `MIRAKL_METADATA_ORDER_ID` variable. 
-		- Breaking changes to resources exposed by the connector API:
-		    - Resource: renamed `StripeCharge` entity to `PaymentMapping`
-		    - Resource: removed `TRANSFER_INVALID_AMOUNT` status from `StripeTransfer`
-		    - Resource: added `*_ABORTED` and `*_ON_HOLD` statuses to `StripeTransfer`, `StripePayout` and `StripeRefund`
-		    - Resource: added type to `StripeRefund`
-				- Notification: `stripePayoutId` in the `payout.failed` notification has been deprecated in favor of `payoutId`
-				- Notification: added `type` to `payout.failed`
+	- Added: config service to better manage workflows checkpoints.
+	- Added: "on hold" and "aborted" statuses for better backlog management.
+	- Added: support for service orders by the payment split and validation workflows.
+	- Fixed: `account.updated` event will now result in 200 OK if the account is not on Mirakl.
+	- Fixed: captured amount for refused/cancelled orders
+	- Breaking changes to the environment variables:
+	  - Default payment metadata key for the payment validation is now `mirakl_commercial_order_id`. The connector will keep using your custom metadata key if you set one. This only affects users relying on the payment validation workflow and with no set `MIRAKL_METADATA_ORDER_ID` variable. 
+	- Breaking changes to resources exposed by the connector API:
+	  - Resource: renamed `StripeCharge` entity to `PaymentMapping`
+	  - Resource: removed `TRANSFER_INVALID_AMOUNT` status from `StripeTransfer`
+	  - Resource: added `*_ABORTED` and `*_ON_HOLD` statuses to `StripeTransfer`, `StripePayout` and `StripeRefund`
+	  - Resource: added `type` to `StripeRefund`
+	  - Notification: `stripePayoutId` in the `payout.failed` notification has been deprecated in favor of `payoutId`
+	  - Notification: added `type` to `payout.failed`
 
 - Version 1.2.7
     - Fixed capture flow when using PaymentIntents (#46)
