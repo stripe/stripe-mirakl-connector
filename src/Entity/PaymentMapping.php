@@ -24,7 +24,7 @@ class PaymentMapping
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $miraklOrderId;
+    private $miraklCommercialOrderId;
 
     /**
      * @ORM\Column(type="string", unique=true)
@@ -64,18 +64,18 @@ class PaymentMapping
     /**
      * @return string|null
      */
-    public function getMiraklOrderId(): ?string
+    public function getMiraklCommercialOrderId(): ?string
     {
-        return $this->miraklOrderId;
+        return $this->miraklCommercialOrderId;
     }
 
     /**
-     * @param string|null $miraklOrderId
+     * @param string|null $miraklCommercialOrderId
      * @return self
      */
-    public function setMiraklOrderId(?string $miraklOrderId): self
+    public function setMiraklCommercialOrderId(?string $miraklCommercialOrderId): self
     {
-        $this->miraklOrderId = $miraklOrderId;
+        $this->miraklCommercialOrderId = $miraklCommercialOrderId;
         return $this;
     }
 
@@ -111,10 +111,10 @@ class PaymentMapping
     public static function getAvailableStatus()
     {
         return [
-                self::TO_CAPTURE,
-                self::CAPTURED,
-                self::CANCELED,
-            ];
+            self::TO_CAPTURE,
+            self::CAPTURED,
+            self::CANCELED,
+        ];
     }
 
     /**

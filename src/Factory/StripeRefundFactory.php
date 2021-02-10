@@ -130,7 +130,7 @@ class StripeRefundFactory implements LoggerAwareInterface
         }
 
         // Check for a payment mapping
-        $paymentMapping = current($this->paymentMappingRepository->findPaymentsByOrderIds(
+        $paymentMapping = current($this->paymentMappingRepository->findPaymentsByCommercialOrderIds(
             [ $refund->getMiraklOrderId() ]
         ));
 

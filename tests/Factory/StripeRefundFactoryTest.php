@@ -90,10 +90,11 @@ class StripeRefundFactoryTest extends KernelTestCase
     private function mockPaymentMapping(string $orderId, string $chargeId)
     {
         $paymentMapping = new PaymentMapping();
-				$paymentMapping->setMiraklOrderId($orderId);
+				$paymentMapping->setMiraklCommercialOrderId($orderId);
 				$paymentMapping->setStripeChargeId($chargeId);
 
-				$this->paymentMappingRepository->persistAndFlush($paymentMapping);
+				$this->paymentMappingRepository->persist($paymentMapping);
+				$this->paymentMappingRepository->flush();
 
 				return $paymentMapping;
     }

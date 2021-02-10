@@ -66,7 +66,7 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $paymentMapping = new PaymentMapping();
         $paymentMapping
             ->setStripeChargeId('pi_valid')
-            ->setMiraklOrderId('Order_66');
+            ->setMiraklCommercialOrderId('Order_66');
 
         $paymentMappings = ['Order_66' => $paymentMapping];
 
@@ -83,7 +83,7 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $paymentMapping = new PaymentMapping();
         $paymentMapping
             ->setStripeChargeId('pi_valid')
-            ->setMiraklOrderId('Order_66');
+            ->setMiraklCommercialOrderId('Order_66');
 
         $paymentMappings = ['Order_66' => $paymentMapping];
 
