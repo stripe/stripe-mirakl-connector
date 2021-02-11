@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.0.1
+
+- Fixed: use commercial ID in refund workflow instead of order ID to fetch the payment ID.
+
 ## Version 2.0.0
 
 - Added: config service to better manage workflows checkpoints.
