@@ -193,6 +193,7 @@ class MiraklClient
                 foreach ($orderLine['refunds']['refund'] as $orderRefund) {
                     $pendingRefund = $orderRefund; // id and amount
                     $pendingRefund['currency_iso_code'] = $order['currency_iso_code'];
+                    $pendingRefund['order_commercial_id'] = $order['order_commercial_id'];
                     $pendingRefund['order_id'] = $order['order_id'];
                     $pendingRefund['order_line_id'] = $orderLine['order_line_id'];
 

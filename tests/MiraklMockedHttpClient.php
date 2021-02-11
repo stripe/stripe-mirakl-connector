@@ -515,6 +515,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 						}
 
 						if (0 === strpos($orderId, self::SERVICE_ORDER_PENDING_REFUND)) {
+								$orderId = substr($orderId, 0, strrpos($orderId, '-'));
 								$refundIds = str_replace(self::SERVICE_ORDER_PENDING_REFUND . '_', '', $orderId);
 								$order['refunds'] = [];
 								foreach (explode('_', $refundIds) as $refundId) {
@@ -529,6 +530,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 						}
 
 						if (0 === strpos($orderId, self::PRODUCT_ORDER_PENDING_REFUND)) {
+								$orderId = substr($orderId, 0, strrpos($orderId, '-'));
 								$refundIds = str_replace(self::PRODUCT_ORDER_PENDING_REFUND . '_', '', $orderId);
 								$order['order_lines'][0]['refunds'] = [];
 								foreach (explode('_', $refundIds) as $refundId) {
@@ -738,7 +740,7 @@ class MiraklMockedHttpClient extends MockHttpClient
         }
     }
 
-    public static function getOrderIdFromRefundId($orderType, $refundId)
+    public static function getCommercialIdFromRefundId($orderType, $refundId)
     {
 				if (MiraklClient::ORDER_TYPE_PRODUCT === $orderType) {
 						return self::PRODUCT_ORDER_PENDING_REFUND . "_$refundId";
@@ -747,11 +749,18 @@ class MiraklMockedHttpClient extends MockHttpClient
 				}
     }
 
+    public static function getOrderIdFromRefundId($orderType, $refundId)
+    {
+				return self::getCommercialIdFromRefundId($orderType, $refundId) . '-1';
+    }
+
     private function getProductPendingRefund($refundId)
     {
+				$commercialId = self::getCommercialIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId);
 				$orderId = self::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId);
         return [
             'currency_iso_code' => 'EUR',
+            'order_commercial_id' => $commercialId,
             'order_id' => $orderId,
 						'payment_workflow' => 'PAY_ON_ACCEPTANCE',
             'shop_id' => self::SHOP_BASIC,

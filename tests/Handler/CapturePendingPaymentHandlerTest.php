@@ -58,10 +58,11 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
     private function mockPaymentMapping($orderId, $chargeId)
     {
         $mapping = new PaymentMapping();
-				$mapping->setMiraklOrderId($orderId);
+				$mapping->setMiraklCommercialOrderId($orderId);
 				$mapping->setStripeChargeId($chargeId);
 
-				$this->paymentMappingRepository->persistAndFlush($mapping);
+				$this->paymentMappingRepository->persist($mapping);
+				$this->paymentMappingRepository->flush();
 
 				return $mapping;
     }

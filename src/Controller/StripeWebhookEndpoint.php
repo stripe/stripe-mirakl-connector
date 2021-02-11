@@ -35,12 +35,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         'payment_intent.amount_capturable_updated'
     ];
 
-
-    public const STRIPE_PAYMENT_LISTEN_STATUS = [
-        'succeeded',
-        'pending'
-    ];
-
     /**
      * @var MessageBusInterface
      */
@@ -159,25 +153,24 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         try {
             $event = $this->stripeClient->webhookConstructEvent($payload, $signatureHeader, $isOperatorWebhook);
         } catch (\UnexpectedValueException $e) {
-            $this->logger->error('Invalid payload');
+            $this->logger->error('Invalid payload.');
 
-            return new Response('Invalid payload', Response::HTTP_BAD_REQUEST);
+            return new Response('Invalid payload.', Response::HTTP_BAD_REQUEST);
         } catch (\Stripe\Exception\SignatureVerificationException $e) {
-            $this->logger->error('Invalid signature');
+            $this->logger->error('Invalid signature.');
 
-            return new Response('Invalid signature', Response::HTTP_BAD_REQUEST);
+            return new Response('Invalid signature.', Response::HTTP_BAD_REQUEST);
         }
 
-        if ($this->ignores($event['type'])) {
+        if (in_array($event['type'], self::DEPRECATED_EVENT_TYPES)) {
             return new Response(sprintf(
-                'The event type %s is no longer required and can be removed in the operator webhook settings.',
+                'The event type %s is no longer required and can be removed in the webhook settings.',
                 $event['type']
             ), Response::HTTP_OK);
         }
 
-        if (!$this->handles($event['type'])) {
-            $this->logger->error(sprintf('Unhandled event type %s', $event['type']));
-
+        if (!in_array($event['type'], self::HANDLED_EVENT_TYPES)) {
+            $this->logger->error(sprintf('Unhandled event type %s.', $event['type']));
             return new Response('Unhandled event type', Response::HTTP_BAD_REQUEST);
         }
 
@@ -185,11 +178,11 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         try {
             switch ($event->type) {
                 case 'account.updated':
-                    $message = $this->onAccountUpdated($event);
+                    $message = $this->handleAccountEvent($event);
                     break;
                 case 'charge.succeeded':
                 case 'charge.updated':
-                    $message = $this->onChargeCreated($event);
+                    $message = $this->handleChargeEvent($event);
                     break;
                 default:
                     // should never be triggered
@@ -210,29 +203,11 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     }
 
     /**
-     * @param string $eventType
-     * @return bool
-     */
-    private function handles(string $eventType)
-    {
-        return in_array($eventType, self::HANDLED_EVENT_TYPES);
-    }
-
-    /**
-     * @param string $eventType
-     * @return bool
-     */
-    private function ignores(string $eventType)
-    {
-        return in_array($eventType, self::DEPRECATED_EVENT_TYPES);
-    }
-
-    /**
      * @param Event $event
      * @return string
      * @throws \Exception
      */
-    private function onAccountUpdated(Event $event): string
+    private function handleAccountEvent(Event $event): string
     {
         $stripeAccount = $event->data->object;
 
@@ -242,16 +217,15 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             return 'Ignoring account.updated event for non-Mirakl Stripe account.';
         }
 
-        $accountMapping
-            ->setPayoutEnabled($stripeAccount['payouts_enabled'])
-            ->setPayinEnabled($stripeAccount['charges_enabled'])
-            ->setDisabledReason($stripeAccount['disabled_reason']);
+        $accountMapping->setPayoutEnabled($stripeAccount['payouts_enabled']);
+        $accountMapping->setPayinEnabled($stripeAccount['charges_enabled']);
+        $accountMapping->setDisabledReason($stripeAccount['disabled_reason']);
 
-        $this->accountMappingRepository->persistAndFlush($accountMapping);
+        $this->accountMappingRepository->flush();
 
         $this->bus->dispatch(new AccountUpdateMessage($accountMapping->getMiraklShopId(), $stripeAccount['id']));
 
-        return 'Account updated';
+        return 'Account mapping updated.';
     }
 
     /**
@@ -260,96 +234,71 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
-    private function onChargeCreated(Event $event): string
+    private function handleChargeEvent(Event $event): string
     {
-        $stripeCharge = $event->data->object;
-        if (!$stripeCharge instanceof \Stripe\Charge) {
-            $message = sprintf('Webhook expected a charge. Received a %s instead.', \get_class($stripeCharge));
-            $this->logger->error($message);
+        $charge = $event->data->object;
+        assert($charge instanceof \Stripe\Charge);
 
-            throw new \Exception($message, Response::HTTP_BAD_REQUEST);
+        if ('failed' === $charge->status) {
+            return 'Ignoring failed charge event.';
         }
 
-        $miraklOrderId = $this->checkAndReturnChargeMetadataOrderId($stripeCharge);
-        $this->checkChargeStatus($stripeCharge);
-        $stripeChargeId = $stripeCharge['id'];
-        $stripeAmount = $stripeCharge['amount'];
-
-        $stripeCharge = $this->paymentMappingRepository->findOneByStripeChargeId($stripeChargeId);
-
-        if (!$stripeCharge) {
-            $stripeCharge = new PaymentMapping();
-            $stripeCharge
-                ->setStripeChargeId($stripeChargeId)
-                ->setStripeAmount($stripeAmount);
+        $miraklCommercialOrderId = $this->findMiraklCommercialOrderId($charge);
+        if (!$miraklCommercialOrderId) {
+            return 'Ignoring event with no Mirakl Commercial Order ID.';
         }
 
-        $stripeCharge->setMiraklOrderId($miraklOrderId);
-
-        try {
-            $this->paymentMappingRepository->persistAndFlush($stripeCharge);
-        } catch (UniqueConstraintViolationException $e) {
-            // in case of concurrency
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($charge['id']);
+        if (!$paymentMapping) {
+            $paymentMapping = new PaymentMapping();
+            $paymentMapping->setStripeChargeId($charge['id']);
+            $paymentMapping->setStripeAmount($charge['amount']);
+            $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
+            $this->paymentMappingRepository->persist($paymentMapping);
+            $message = 'Payment mapping created.';
+        } else {
+            $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
+            $message = 'Payment mapping updated.';
         }
 
-        return 'Payment created';
-    }
+        $this->paymentMappingRepository->flush();
 
-    /**
-     * @param null|string|\Stripe\PaymentIntent $paymentIntent
-     */
-    private function checkAndReturnPaymentIntentMetadataOrderId($paymentIntent): ?string
-    {
-        if (null === $paymentIntent) {
-            return null;
-        }
-
-        if (!$paymentIntent instanceof \Stripe\PaymentIntent) {
-            $paymentIntent = $this->stripeClient->paymentIntentRetrieve($paymentIntent);
-        }
-
-        return $paymentIntent['metadata'][$this->metadataCommercialOrderId] ?? null;
+        return $message;
     }
 
     /**
      * @throws \Exception
      */
-    private function checkAndReturnChargeMetadataOrderId(\Stripe\Charge $stripeCharge): string
+    private function findMiraklCommercialOrderId(\Stripe\Charge $charge): ?string
     {
-        if (!isset($stripeCharge['metadata'][$this->metadataCommercialOrderId])) {
-
-            // Check that linked payment intent does not contain itself the metadata
-            $paymentIntentMetadata = $this->checkAndReturnPaymentIntentMetadataOrderId($stripeCharge->payment_intent);
-            if (null !== $paymentIntentMetadata) {
-                return $paymentIntentMetadata;
+        if (isset($charge['metadata'][$this->metadataCommercialOrderId])) {
+            if ('' === $charge['metadata'][$this->metadataCommercialOrderId]) {
+                $message = sprintf('%s is empty in Charge metadata.', $this->metadataCommercialOrderId);
+                $this->logger->error($message);
+                throw new \Exception($message, Response::HTTP_BAD_REQUEST);
             }
 
-            $message = sprintf('%s not found in charge or PI metadata webhook event', $this->metadataCommercialOrderId);
-            $this->logger->error($message);
-
-            throw new \Exception($message, Response::HTTP_OK);
+            return $charge['metadata'][$this->metadataCommercialOrderId];
         }
 
-        if ('' === $stripeCharge['metadata'][$this->metadataCommercialOrderId]) {
-            $message = sprintf('%s is empty in charge metadata webhook event', $this->metadataCommercialOrderId);
-            $this->logger->error($message);
+        // Fallback to linked payment intent to see if it contains the metadata
+        if (isset($charge->payment_intent)) {
+            $paymentIntent = $charge->payment_intent;
+            if (is_string($paymentIntent)) {
+                $paymentIntent = $this->stripeClient->paymentIntentRetrieve($paymentIntent);
+            }
 
-            throw new \Exception($message, Response::HTTP_BAD_REQUEST);
+            if (isset($paymentIntent['metadata'][$this->metadataCommercialOrderId])) {
+                if ('' === $paymentIntent['metadata'][$this->metadataCommercialOrderId]) {
+                    $message = sprintf('%s is empty in PaymentIntent.', $this->metadataCommercialOrderId);
+                    $this->logger->error($message);
+                    throw new \Exception($message, Response::HTTP_BAD_REQUEST);
+                }
+
+                return $paymentIntent['metadata'][$this->metadataCommercialOrderId];
+            }
         }
 
-        return $stripeCharge['metadata'][$this->metadataCommercialOrderId];
-    }
-
-    /**
-     * @param mixed $stripeObject
-     * @throws \Exception
-     */
-    private function checkChargeStatus($stripeObject)
-    {
-        $status = $stripeObject['status'] ?? '';
-
-        if (!in_array($status, self::STRIPE_PAYMENT_LISTEN_STATUS, true)) {
-            throw new \Exception('Status has not a valid value to be catch', Response::HTTP_OK);
-        }
+        return null;
     }
 }

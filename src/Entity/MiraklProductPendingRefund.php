@@ -14,6 +14,11 @@ class MiraklProductPendingRefund extends MiraklPendingRefund
         return $this->order['order_id'];
     }
 
+    public function getCommercialId(): string
+    {
+        return $this->order['order_commercial_id'];
+    }
+
     public function getOrderLineId(): ?string
     {
         return $this->order['order_line_id'];

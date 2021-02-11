@@ -27,6 +27,11 @@ class AccountMappingRepository extends ServiceEntityRepository
         return $accountMapping;
     }
 
+    public function flush()
+    {
+        $this->getEntityManager()->flush();
+    }
+
     public function findOneByMiraklShopId(int $miraklShopId): ?AccountMapping
     {
         return $this->findOneBy([

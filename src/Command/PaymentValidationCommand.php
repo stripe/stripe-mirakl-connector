@@ -83,7 +83,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
     protected function validateOrders(array $ordersByCommercialId): void
     {
         // get stripe known payment intent or charge for pending order
-        $paymentMappings = $this->paymentMappingRepository->findPaymentsByOrderIds(
+        $paymentMappings = $this->paymentMappingRepository->findPaymentsByCommercialOrderIds(
             array_keys($ordersByCommercialId)
         );
 

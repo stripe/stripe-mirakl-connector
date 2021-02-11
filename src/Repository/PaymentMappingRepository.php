@@ -23,24 +23,12 @@ class PaymentMappingRepository extends ServiceEntityRepository
         parent::__construct($registry, PaymentMapping::class);
     }
 
-    /**
-     * @param PaymentMapping $paymentMapping
-     * @return PaymentMapping
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
-     */
-    public function persistAndFlush(PaymentMapping $paymentMapping): PaymentMapping
+    public function persist(PaymentMapping $paymentMapping): PaymentMapping
     {
         $this->getEntityManager()->persist($paymentMapping);
-        $this->getEntityManager()->flush();
-
         return $paymentMapping;
     }
 
-    /**
-     * @throws \Doctrine\ORM\ORMException
-     * @throws \Doctrine\ORM\OptimisticLockException
-     */
     public function flush()
     {
         $this->getEntityManager()->flush();
@@ -50,11 +38,11 @@ class PaymentMappingRepository extends ServiceEntityRepository
      * @param array $paymentMappings
      * @return array
      */
-    private function mapByMiraklOrderId(array $paymentMappings): array
+    private function mapByMiraklCommercialOrderId(array $paymentMappings): array
     {
         $map = [];
         foreach ($paymentMappings as $paymentMapping) {
-            $map[$paymentMapping->getMiraklOrderId()] = $paymentMapping;
+            $map[$paymentMapping->getMiraklCommercialOrderId()] = $paymentMapping;
         }
 
         return $map;
@@ -65,19 +53,19 @@ class PaymentMappingRepository extends ServiceEntityRepository
      */
     public function findToCapturePayments(): array
     {
-        return $this->mapByMiraklOrderId($this->findBy([
+        return $this->mapByMiraklCommercialOrderId($this->findBy([
             'status' => PaymentMapping::TO_CAPTURE
         ]));
     }
 
     /**
-     * @param array $orderIds
+     * @param array $commercialOrderIds
      * @return PaymentMapping[]
      */
-    public function findPaymentsByOrderIds(array $orderIds): array
+    public function findPaymentsByCommercialOrderIds(array $commercialOrderIds): array
     {
-        return $this->mapByMiraklOrderId($this->findBy([
-            'miraklOrderId' => $orderIds
+        return $this->mapByMiraklCommercialOrderId($this->findBy([
+            'miraklCommercialOrderId' => $commercialOrderIds
         ]));
     }
 

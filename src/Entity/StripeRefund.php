@@ -69,6 +69,11 @@ class StripeRefund
     private $miraklRefundId;
 
     /**
+     * @ORM\Column(type="string", nullable=true)
+     */
+    private $miraklCommercialOrderId;
+
+    /**
      * @ORM\Column(type="string")
      */
     private $miraklOrderId;
@@ -223,6 +228,18 @@ class StripeRefund
     public function setMiraklRefundId(string $miraklRefundId): self
     {
         $this->miraklRefundId = $miraklRefundId;
+
+        return $this;
+    }
+
+    public function getMiraklCommercialOrderId(): ?string
+    {
+        return $this->miraklCommercialOrderId;
+    }
+
+    public function setMiraklCommercialOrderId(string $miraklCommercialOrderId): self
+    {
+        $this->miraklCommercialOrderId = $miraklCommercialOrderId;
 
         return $this;
     }

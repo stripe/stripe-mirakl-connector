@@ -63,12 +63,13 @@ class PaymentValidationCommandTest extends KernelTestCase
     private function mockPaymentMapping($commercialId, $paymentId, $amount)
     {
         $mapping = new PaymentMapping();
-				$mapping->setMiraklOrderId($commercialId);
+				$mapping->setMiraklCommercialOrderId($commercialId);
 				$mapping->setStripeChargeId($paymentId);
         $mapping->setStripeAmount($amount);
 				$mapping->setStatus(PaymentMapping::TO_CAPTURE);
 
-				$this->paymentMappingRepository->persistAndFlush($mapping);
+				$this->paymentMappingRepository->persist($mapping);
+				$this->paymentMappingRepository->flush();
 
 				return $mapping;
     }

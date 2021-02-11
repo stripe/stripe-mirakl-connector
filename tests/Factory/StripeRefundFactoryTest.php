@@ -90,10 +90,11 @@ class StripeRefundFactoryTest extends KernelTestCase
     private function mockPaymentMapping(string $orderId, string $chargeId)
     {
         $paymentMapping = new PaymentMapping();
-				$paymentMapping->setMiraklOrderId($orderId);
+				$paymentMapping->setMiraklCommercialOrderId($orderId);
 				$paymentMapping->setStripeChargeId($chargeId);
 
-				$this->paymentMappingRepository->persistAndFlush($paymentMapping);
+				$this->paymentMappingRepository->persist($paymentMapping);
+				$this->paymentMappingRepository->flush();
 
 				return $paymentMapping;
     }
@@ -128,7 +129,7 @@ class StripeRefundFactoryTest extends KernelTestCase
 
         $this->assertEquals(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
 
-				$this->mockPaymentMapping($pendingRefund->getOrderId(), StripeMock::CHARGE_BASIC);
+				$this->mockPaymentMapping($pendingRefund->getCommercialId(), StripeMock::CHARGE_BASIC);
 				$refund = $this->stripeRefundFactory->updateRefund($refund);
 
         $this->assertEquals(StripeRefund::REFUND_PENDING, $refund->getStatus());
@@ -164,7 +165,7 @@ class StripeRefundFactoryTest extends KernelTestCase
 
         $this->assertEquals(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
 
-				$this->mockPaymentMapping($pendingRefund->getOrderId(), StripeMock::CHARGE_BASIC);
+				$this->mockPaymentMapping($pendingRefund->getCommercialId(), StripeMock::CHARGE_BASIC);
 				$refund = $this->stripeRefundFactory->updateRefund($refund);
 
         $this->assertEquals(StripeRefund::REFUND_PENDING, $refund->getStatus());

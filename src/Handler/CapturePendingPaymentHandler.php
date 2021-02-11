@@ -48,7 +48,7 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
             );
 
             $paymentMapping->capture();
-            $this->paymentMappingRepository->persistAndFlush($paymentMapping);
+            $this->paymentMappingRepository->flush();
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not capture Stripe Charge: %s.', $e->getMessage()), [
                 'chargeId' => $paymentMapping->getStripeChargeId(),

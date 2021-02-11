@@ -59,6 +59,7 @@ class StripeRefundFactory implements LoggerAwareInterface
 
         $refund = new StripeRefund();
         $refund->setType($type);
+        $refund->setMiraklCommercialOrderId($pendingRefund->getCommercialId());
         $refund->setMiraklOrderId($pendingRefund->getOrderId());
         $refund->setMiraklOrderLineId($pendingRefund->getOrderLineId());
         $refund->setAmount(gmp_intval((string) ($pendingRefund->getAmount() * 100)));
@@ -130,12 +131,15 @@ class StripeRefundFactory implements LoggerAwareInterface
         }
 
         // Check for a payment mapping
-        $paymentMapping = current($this->paymentMappingRepository->findPaymentsByOrderIds(
-            [ $refund->getMiraklOrderId() ]
-        ));
+        $commercialId = $refund->getMiraklCommercialOrderId();
+        if ($commercialId) {
+            $paymentMapping = current($this->paymentMappingRepository->findPaymentsByCommercialOrderIds(
+                [ $commercialId ]
+            ));
 
-        if ($paymentMapping && $paymentMapping->getStripeChargeId()) {
-            return $paymentMapping->getStripeChargeId();
+            if ($paymentMapping && $paymentMapping->getStripeChargeId()) {
+                return $paymentMapping->getStripeChargeId();
+            }
         }
 
         throw new InvalidArgumentException(
