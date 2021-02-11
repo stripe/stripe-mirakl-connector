@@ -26,7 +26,7 @@ final class Version20210209195048 extends AbstractMigration
     {
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
 
-				$this->addSql('ALTER TABLE stripe_refund DROP COLUMN mirakl_commercial_order_id');
+        $this->addSql('ALTER TABLE stripe_refund DROP COLUMN mirakl_commercial_order_id');
         $this->addSql('ALTER TABLE payment_mapping RENAME COLUMN mirakl_commercial_order_id TO mirakl_order_id');
     }
 }
