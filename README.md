@@ -25,7 +25,7 @@ We use the MAJOR.MINOR.PATCH semantic:
 - MINOR versions contain new functionality added in a backwards compatible manner.
 - PATCH versions contain bug fixes added in a backwards compatible manner.
 
-Upgrading is safe for MINOR and PATCH types. For MAJOR versions, make sure to check the [CHANGELOG] before upgrading to see if you are affected by the breaking changes.
+Upgrading is safe for MINOR and PATCH types. For MAJOR versions, make sure to check the [CHANGELOG](CHANGELOG.md) before upgrading to see if you are affected by the breaking changes.
 
 Downgrading is safe for MINOR and PATCH versions. You shouldn't downgrade between MAJOR versions if the connector was already used in production.
 
