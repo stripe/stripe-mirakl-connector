@@ -18,6 +18,7 @@ abstract class MiraklPendingRefund
 
     abstract public function getId(): string;
     abstract public function getOrderId(): string;
+    abstract public function getCommercialId(): string;
     abstract public function getOrderLineId(): ?string;
 
     abstract public function getAmount(): float;

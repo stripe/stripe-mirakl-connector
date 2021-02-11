@@ -129,7 +129,7 @@ class StripeRefundFactoryTest extends KernelTestCase
 
         $this->assertEquals(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
 
-				$this->mockPaymentMapping($pendingRefund->getOrderId(), StripeMock::CHARGE_BASIC);
+				$this->mockPaymentMapping($pendingRefund->getCommercialId(), StripeMock::CHARGE_BASIC);
 				$refund = $this->stripeRefundFactory->updateRefund($refund);
 
         $this->assertEquals(StripeRefund::REFUND_PENDING, $refund->getStatus());
@@ -165,7 +165,7 @@ class StripeRefundFactoryTest extends KernelTestCase
 
         $this->assertEquals(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
 
-				$this->mockPaymentMapping($pendingRefund->getOrderId(), StripeMock::CHARGE_BASIC);
+				$this->mockPaymentMapping($pendingRefund->getCommercialId(), StripeMock::CHARGE_BASIC);
 				$refund = $this->stripeRefundFactory->updateRefund($refund);
 
         $this->assertEquals(StripeRefund::REFUND_PENDING, $refund->getStatus());
