@@ -23,7 +23,7 @@ class Config
     private $id;
 
     /**
-     * @ORM\Column(type="string", unique=true)
+     * @ORM\Column(name="`key`", type="string", unique=true)
      */
     private $key;
 
