@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 2.0.2
+
+- Fixed: escape config.key column name which is a reserved keyword in some DBMSs (#66).
+- Improve performance in payment split workflow (#67 and #68).
+
 ## Version 2.0.1
 
 - Fixed: use commercial ID in refund workflow instead of order ID to fetch the payment ID.
