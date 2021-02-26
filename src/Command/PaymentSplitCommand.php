@@ -93,9 +93,10 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
             return;
         }
 
-        $chunks = array_chunk($backlog, 10, true);
+        // Update and dispatch transfers
+        $backlog = array_chunk($backlog, 10, true);
         $method = "list{$orderType}OrdersById";
-        foreach ($chunks as $chunk) {
+        foreach ($backlog as $chunk) {
             $this->dispatchTransfers(
                 $this->paymentSplitService->updateTransfersFromOrders(
                     $chunk,
@@ -124,25 +125,24 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
             return;
         }
 
-        $this->dispatchTransfers($this->paymentSplitService->getTransfersFromOrders($orders));
+        // Retrieve new checkpoint
+        $lastOrder = current(array_reverse($orders));
+        $newCheckpoint = $lastOrder->getCreationDate();
 
-        $newCheckpoint = $this->updateCheckpoint($orders, $checkpoint);
+        // Create and dispatch transfers
+        $orders = array_chunk($orders, 100, true);
+        foreach ($orders as $chunk) {
+            $this->dispatchTransfers(
+                $this->paymentSplitService->getTransfersFromOrders($chunk)
+            );
+        }
+
+        // Save new checkpoint
         if ($checkpoint !== $newCheckpoint) {
             $method = "set{$orderType}PaymentSplitCheckpoint";
             $this->configService->$method($newCheckpoint);
             $this->logger->info("Setting new $orderType checkpoint:  . $newCheckpoint.");
         }
-    }
-
-    // Return the last creation date
-    private function updateCheckpoint(array $orders, ?string $checkpoint): ?string
-    {
-        if (empty($orders)) {
-            return $checkpoint;
-        }
-
-        $lastOrder = current(array_reverse($orders));
-        return $lastOrder->getCreationDate();
     }
 
     private function dispatchTransfers(array $transfers): void
