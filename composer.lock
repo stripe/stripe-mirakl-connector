@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "12a4b6607cb780606efc32711b587c41",
+    "content-hash": "341841ce2346bce12b4aa620b4758eab",
     "packages": [
         {
             "name": "antishov/doctrine-extensions-bundle",
@@ -9149,59 +9149,6 @@
                 }
             ],
             "time": "2020-11-30T07:34:24+00:00"
-        },
-        {
-            "name": "spaze/phpstan-stripe",
-            "version": "v0.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/spaze/phpstan-stripe.git",
-                "reference": "b2a4153cefa2c0a401ac1f96bf9dd8a202de17ca"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/spaze/phpstan-stripe/zipball/b2a4153cefa2c0a401ac1f96bf9dd8a202de17ca",
-                "reference": "b2a4153cefa2c0a401ac1f96bf9dd8a202de17ca",
-                "shasum": ""
-            },
-            "require": {
-                "php": "^7.1 || ^8.0"
-            },
-            "require-dev": {
-                "php-parallel-lint/php-console-highlighter": "^0.5.0",
-                "php-parallel-lint/php-parallel-lint": "^1.2",
-                "phpstan/phpstan": "^0.12",
-                "spaze/coding-standard": "^0.0.4"
-            },
-            "suggest": {
-                "phpstan/extension-installer": "Allows automatic requirement of extension.neon"
-            },
-            "type": "phpstan-extension",
-            "extra": {
-                "phpstan": {
-                    "includes": [
-                        "extension.neon"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Spaze\\PHPStan\\Reflection\\Stripe\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Michal Špaček",
-                    "email": "mail@michalspacek.cz",
-                    "homepage": "https://www.michalspacek.cz"
-                }
-            ],
-            "description": "Stripe SDK extension for PHPStan",
-            "time": "2020-12-06T02:19:16+00:00"
         },
         {
             "name": "symfony/browser-kit",

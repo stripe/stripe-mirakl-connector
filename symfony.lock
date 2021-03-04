@@ -339,9 +339,6 @@
     "shivas/versioning-bundle": {
         "version": "3.2.1"
     },
-    "spaze/phpstan-stripe": {
-        "version": "v0.0.3"
-    },
     "stripe/stripe-php": {
         "version": "v6.43.0"
     },

@@ -7,3 +7,5 @@ parameters:
         - '#typehint#'
         - '#type specified in iterable#'
         - '#setApiKey\(\) expects string#'
+    universalObjectCratesClasses:
+        - Stripe\StripeObject
