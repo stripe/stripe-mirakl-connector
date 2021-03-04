@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        php-versions: [7.2]
+        php-versions: [7.4]
 
     runs-on: ubuntu-latest
 
@@ -20,7 +20,7 @@ jobs:
       with:
         php-version: ${{ matrix.php-versions }}
         extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, iconv, json, mbstring, pdo
-        coverage: xdebug
+        coverage: pcov
       env:
         update: true
 
