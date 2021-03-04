@@ -1,8 +1,12 @@
 # Changelog
 
+## Version 2.1.0
+
+- Bump dependencies to remove deprecated packages.
+
 ## Version 2.0.2
 
-- Fixed: escape config.key column name which is a reserved keyword in some DBMSs (#66).
+- Fixed: escape `config.key` column name which is a reserved keyword in some DBMSs (#66).
 - Improve performance in payment split workflow (#67 and #68).
 
 ## Version 2.0.1
