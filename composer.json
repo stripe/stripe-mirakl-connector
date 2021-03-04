@@ -39,7 +39,6 @@
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^2.18",
         "hautelook/alice-bundle": "2.7.*",
-        "php-coveralls/php-coveralls": "^2.2",
         "phpstan/extension-installer": "^1.0",
         "phpstan/phpstan": "^0.12",
         "phpstan/phpstan-doctrine": "^0.12",
