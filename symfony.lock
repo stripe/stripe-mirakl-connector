@@ -107,9 +107,6 @@
     "doctrine/persistence": {
         "version": "1.1.1"
     },
-    "doctrine/reflection": {
-        "version": "v1.0.0"
-    },
     "doctrine/sql-formatter": {
         "version": "1.1.1"
     },
@@ -118,6 +115,9 @@
     },
     "exsyst/swagger": {
         "version": "v0.4.1"
+    },
+    "fakerphp/faker": {
+        "version": "v1.13.0"
     },
     "fig/link-util": {
         "version": "1.0.0"
@@ -136,9 +136,6 @@
     },
     "friendsofphp/proxy-manager-lts": {
         "version": "v1.0.3"
-    },
-    "fzaninotto/faker": {
-        "version": "v1.8.0"
     },
     "gedmo/doctrine-extensions": {
         "version": "v2.4.37"

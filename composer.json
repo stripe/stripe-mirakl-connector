@@ -11,7 +11,7 @@
     "type": "project",
     "license": "MIT",
     "require": {
-        "php": "^7.2",
+        "php": "^7.3",
         "antishov/doctrine-extensions-bundle": "^1.4",
         "api-platform/api-pack": "^1.2",
         "doctrine/doctrine-migrations-bundle": "^2.0",
@@ -38,7 +38,7 @@
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^2.18",
-        "hautelook/alice-bundle": "2.7.*",
+        "hautelook/alice-bundle": "2.9.*",
         "phpstan/extension-installer": "^1.0",
         "phpstan/phpstan": "^0.12",
         "phpstan/phpstan-doctrine": "^0.12",
@@ -52,10 +52,7 @@
         "preferred-install": {
             "*": "dist"
         },
-        "sort-packages": true,
-        "platform": {
-            "php": "7.2"
-        }
+        "sort-packages": true
     },
     "autoload": {
         "psr-4": {
