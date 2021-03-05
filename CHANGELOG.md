@@ -3,7 +3,8 @@
 ## Version 2.1.0
 
 - Bumped dependencies to remove deprecated and abandoned packages.
-- Bumped required PHP version to ^7.3.
+- Bumped PHPUnit to 9.5.
+- Bumped required PHP version to 7.3+.
 
 ## Version 2.0.2
 

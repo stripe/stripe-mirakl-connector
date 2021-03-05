@@ -99,25 +99,13 @@ class OperatorHttpNotificationHandlerTest extends TestCase
 
         $this
             ->response
-            ->expects($this->once())
             ->method('getStatusCode')
             ->willReturn(400);
 
         $this->response
-            ->expects($this->at(0))
             ->method('getInfo')
-            ->with('http_code')
-            ->willReturn(400);
-        $this->response
-            ->expects($this->at(1))
-            ->method('getInfo')
-            ->with('url')
-            ->willReturn('http://badrequest');
-        $this->response
-            ->expects($this->at(2))
-            ->method('getInfo')
-            ->with('response_headers')
-            ->willReturn([]);
+            ->withConsecutive([ 'http_code' ], [ 'url' ], [ 'response_headers' ])
+            ->willReturnOnConsecutiveCalls(400, 'http://badrequest', []);;
 
         $this->response
             ->method('getContent')
