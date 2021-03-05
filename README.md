@@ -43,7 +43,7 @@ To downgrade:
 4. From the root of your clone, run `git reset` to the desired commit or tag.
 5. [Reinstall](https://stripe.com/docs/plugins/mirakl/install#manually) the connector.
 
-If you are using Docker, see instead the specific [instructions](examples/docker#upgrade) on how to upgrade and downgrade.
+If you are using Docker, see instead the specific [instructions](examples/docker#versioning) on how to upgrade and downgrade.
 
 ## Contributing to the application
 
