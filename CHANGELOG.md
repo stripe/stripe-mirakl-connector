@@ -4,7 +4,7 @@
 
 - Bumped dependencies to remove deprecated and abandoned packages.
 - Bumped PHPUnit to 9.5.
-- Bumped required PHP version to 7.3+.
+- Bumped required PHP version to 7.3 or higher.
 
 ## Version 2.0.2
 
