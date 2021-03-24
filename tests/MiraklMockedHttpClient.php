@@ -104,7 +104,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 
         $responseFactory = function ($method, $url, $options) {
 						$path = parse_url($url, PHP_URL_PATH);
-						parse_str(parse_url($url, PHP_URL_QUERY), $params);
+						$params = $this->parseQueryParams(parse_url($url, PHP_URL_QUERY));
 		        $requestBody = json_decode($options['body'] ?? '', true);
 						try {
 								$response = $this->mockResponse($method, $path, $params, $requestBody);
@@ -133,6 +133,31 @@ class MiraklMockedHttpClient extends MockHttpClient
         parent::__construct($responseFactory, self::MIRAKL_BASE_URL);
     }
 
+		private function parseQueryParams($str)
+		{
+				$arr = [];
+				if (!$str) {
+						return $arr;
+				}
+
+				foreach (explode('&', $str) as $i) {
+						list($name, $value) = explode('=', $i, 2);
+						$value = urldecode($value);
+
+						if (isset($arr[$name])) {
+								if (is_array($arr[$name])) {
+										$arr[$name][] = $value;
+								} else {
+										$arr[$name] = array($arr[$name], $value);
+								}
+						} else {
+								$arr[$name] = $value;
+						}
+				}
+
+				return $arr;
+    }
+
 		private function isOffsetPagination($path, $params)
 		{
 				switch ($path) {
@@ -151,9 +176,9 @@ class MiraklMockedHttpClient extends MockHttpClient
 		private function getLinkHeader($path, $params)
 		{
 				if ($this->isOffsetPagination($path, $params) && 0 === ($params['offset'] ?? 0)) {
-						$previous = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params);
+						$previous = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 						$params['offset'] = 10;
-						$next = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params);
+						$next = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 						$link = '<' . $previous . '>; rel="previous", <' . $next . '>; rel="next"';
 						return [ 'Link' => $link ];
 				}
