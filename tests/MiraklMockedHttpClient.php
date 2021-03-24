@@ -232,12 +232,14 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 												return [ $key => $this->mockOrdersByStartDate($isService, $date, $page) ];
 										case isset($params['order_ids']): // Product
+												$orderIds = explode(',', $params['order_ids']);
 										case isset($params['order_id']): // Service
-												$orderIds = isset($params['order_id']) ? explode(',', $params['order_id']) : explode(',', $params['order_ids']);
+												$orderIds = $orderIds ?? (array) $params['order_id'];
 												return [ $key => $this->mockOrdersById($isService, $orderIds) ];
 										case isset($params['commercial_ids']): // Product
+												$commercialIds = explode(',', $params['commercial_ids']);
 										case isset($params['commercial_order_id']): // Service
-												$commercialIds = isset($params['commercial_order_id']) ? explode(',', $params['commercial_order_id']) : explode(',', $params['commercial_ids']);
+												$commercialIds = $commercialIds ?? (array) $params['commercial_order_id'];
 												return [ $key => $this->mockOrdersByCommercialId($isService, $commercialIds) ];
 										default:
 												return [ $key => [] ];
@@ -249,7 +251,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 								$isService = $isService ?? false;
 								switch (true) {
 										case isset($params['order_id']):
-												return [ 'data' => $this->mockPendingDebitsByOrderIds(explode(',', $params['order_id'])) ];
+												return [ 'data' => $this->mockPendingDebitsByOrderIds((array) $params['order_id']) ];
 										case 'GET' === $method:
 												$pendingDebits = $this->mockPendingDebits($isService, $page);
 												if ($isService) {
