@@ -231,7 +231,7 @@ class MiraklClient
     // SOR11 by order_id
     public function listServiceOrdersById(array $orderIds)
     {
-        $res = $this->paginateByPage('/api/mms/orders', [ 'order_id' => $orderIds ], 'data');
+        $res = $this->paginateByPage('/api/mms/orders', [ 'order_id' => implode(',', $orderIds) ], 'data');
         $res = $this->arraysToObjects($res, MiraklServiceOrder::class);
         return $this->objectsToMap($res, 'getId');
     }
@@ -239,7 +239,7 @@ class MiraklClient
     // SOR11 by commercial_id
     public function listServiceOrdersByCommercialId(array $commercialIds)
     {
-        $res = $this->paginateByPage('/api/mms/orders', [ 'commercial_order_id' => $commercialIds ], 'data');
+        $res = $this->paginateByPage('/api/mms/orders', [ 'commercial_order_id' => implode(',', $commercialIds) ], 'data');
         $res = $this->arraysToObjects($res, MiraklServiceOrder::class);
         return $this->objectsToMap($res, 'getCommercialId', 'getId');
     }
@@ -255,7 +255,7 @@ class MiraklClient
     // SPA11 by order ID
     public function listServicePendingDebitsByOrderIds(array $orderIds)
     {
-        $res = $this->paginateByPage('/api/mms/debits', [ 'order_id' => $orderIds ], 'data');
+        $res = $this->paginateByPage('/api/mms/debits', [ 'order_id' => implode(',', $orderIds) ], 'data');
         $res = $this->arraysToObjects($res, MiraklServicePendingDebit::class);
         return $this->objectsToMap($res, 'getOrderId');
     }
