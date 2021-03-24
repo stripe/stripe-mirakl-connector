@@ -273,7 +273,7 @@ class MiraklClient
     // SPA11 by order ID
     public function listServicePendingDebitsByOrderIds(array $orderIds)
     {
-        $res = $this->paginateByPage('/api/mms/debits', [ 'order_id' => implode(',', $orderIds) ], 'data');
+        $res = $this->paginateByPage('/api/mms/debits', [ 'order_id' => $orderIds ], 'data');
         $res = $this->arraysToObjects($res, MiraklServicePendingDebit::class);
         return $this->objectsToMap($res, 'getOrderId');
     }
