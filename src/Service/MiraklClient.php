@@ -86,7 +86,8 @@ class MiraklClient
         return $body;
     }
 
-    private function serializeArrayForServiceEndpoint(string $key, array $values): string {
+    private function serializeArrayForServiceEndpoint(string $key, array $values): string
+    {
         $queryString = array();
         foreach ($values as $value) {
             $queryString[] = urlencode($key) . '=' . urlencode($value);
