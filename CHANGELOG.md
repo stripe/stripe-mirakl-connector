@@ -6,6 +6,14 @@
 - Bumped PHPUnit to 9.5.
 - Bumped required PHP version to 7.3 or higher.
 
+## Version 2.0.4
+
+- Fixed query params formatting for arrays (#72 thanks @fhervieux)
+
+## Version 2.0.3
+
+- Fixed serialization of array query params on service endpoints (#70 thanks @fhervieux)
+
 ## Version 2.0.2
 
 - Fixed: escape `config.key` column name which is a reserved keyword in some DBMSs (#66).
