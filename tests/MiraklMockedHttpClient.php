@@ -104,7 +104,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 
         $responseFactory = function ($method, $url, $options) {
 						$path = parse_url($url, PHP_URL_PATH);
-						parse_str(parse_url($url, PHP_URL_QUERY), $params);
+						$params = $this->parseQueryParams(parse_url($url, PHP_URL_QUERY));
 		        $requestBody = json_decode($options['body'] ?? '', true);
 						try {
 								$response = $this->mockResponse($method, $path, $params, $requestBody);
@@ -133,6 +133,31 @@ class MiraklMockedHttpClient extends MockHttpClient
         parent::__construct($responseFactory, self::MIRAKL_BASE_URL);
     }
 
+		private function parseQueryParams($str)
+		{
+				$arr = [];
+				if (!$str) {
+						return $arr;
+				}
+
+				foreach (explode('&', $str) as $i) {
+						list($name, $value) = explode('=', $i, 2);
+						$value = urldecode($value);
+
+						if (isset($arr[$name])) {
+								if (is_array($arr[$name])) {
+										$arr[$name][] = $value;
+								} else {
+										$arr[$name] = array($arr[$name], $value);
+								}
+						} else {
+								$arr[$name] = $value;
+						}
+				}
+
+				return $arr;
+    }
+
 		private function isOffsetPagination($path, $params)
 		{
 				switch ($path) {
@@ -151,9 +176,9 @@ class MiraklMockedHttpClient extends MockHttpClient
 		private function getLinkHeader($path, $params)
 		{
 				if ($this->isOffsetPagination($path, $params) && 0 === ($params['offset'] ?? 0)) {
-						$previous = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params);
+						$previous = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 						$params['offset'] = 10;
-						$next = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params);
+						$next = self::MIRAKL_BASE_URL . $path . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 						$link = '<' . $previous . '>; rel="previous", <' . $next . '>; rel="next"';
 						return [ 'Link' => $link ];
 				}
@@ -207,12 +232,14 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 												return [ $key => $this->mockOrdersByStartDate($isService, $date, $page) ];
 										case isset($params['order_ids']): // Product
+												$orderIds = explode(',', $params['order_ids']);
 										case isset($params['order_id']): // Service
-												$orderIds = isset($params['order_id']) ? explode(',', $params['order_id']) : explode(',', $params['order_ids']);
+												$orderIds = $orderIds ?? (array) $params['order_id'];
 												return [ $key => $this->mockOrdersById($isService, $orderIds) ];
 										case isset($params['commercial_ids']): // Product
+												$commercialIds = explode(',', $params['commercial_ids']);
 										case isset($params['commercial_order_id']): // Service
-												$commercialIds = isset($params['commercial_order_id']) ? explode(',', $params['commercial_order_id']) : explode(',', $params['commercial_ids']);
+												$commercialIds = $commercialIds ?? (array) $params['commercial_order_id'];
 												return [ $key => $this->mockOrdersByCommercialId($isService, $commercialIds) ];
 										default:
 												return [ $key => [] ];
@@ -224,7 +251,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 								$isService = $isService ?? false;
 								switch (true) {
 										case isset($params['order_id']):
-												return [ 'data' => $this->mockPendingDebitsByOrderIds(explode(',', $params['order_id'])) ];
+												return [ 'data' => $this->mockPendingDebitsByOrderIds((array) $params['order_id']) ];
 										case 'GET' === $method:
 												$pendingDebits = $this->mockPendingDebits($isService, $page);
 												if ($isService) {
