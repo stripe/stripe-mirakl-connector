@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.0.4
+
+- Fixed query params formatting for arrays (#72 thanks @fhervieux)
+
 ## Version 2.0.3
 
 - Fixed serialization of array query params on service endpoints (#70 thanks @fhervieux)
