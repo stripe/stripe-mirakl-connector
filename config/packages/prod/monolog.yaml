@@ -6,10 +6,11 @@ monolog:
             handler: nested
             excluded_http_codes: [404, 405]
         nested:
-            type: stream
+            type: rotating_file
             path: "%kernel.logs_dir%/%kernel.environment%.log"
             formatter: json_log_formatter
             level: info
+            max_files: 10
         console:
             type: console
             process_psr_3_messages: false

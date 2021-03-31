@@ -57,5 +57,8 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
 RUN mkdir /var/log/supervisor
 RUN chown -R nobody /var/log/supervisor
 
+# Add nginx logrotate
+COPY examples/docker/app/config/nginxlogrotate /etc/logrotate.d/nginx
+
 # Switch to use a non-root user from here on
 USER nobody
