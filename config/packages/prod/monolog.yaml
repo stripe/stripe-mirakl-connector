@@ -7,7 +7,7 @@ monolog:
             excluded_http_codes: [404, 405]
         nested:
             type: stream
-            path: "php://stderr"
+            path: "%kernel.logs_dir%/%kernel.environment%.log"
             level: info
         console:
             type: console
