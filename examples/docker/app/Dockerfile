@@ -7,12 +7,24 @@ ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.
 USER root
 
 # Install packages
-RUN apk add postgresql php7-pdo_pgsql php7-iconv php7-tokenizer php7-pcntl php7-gmp --no-cache
+RUN apk add postgresql php7-pdo_pgsql php7-iconv php7-tokenizer php7-pcntl php7-gmp libc6-compat curl jq --no-cache
+
+# Install filebeat
+RUN \
+    cd /tmp \
+    && wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.12.0-linux-x86_64.tar.gz \
+    && tar xzvf filebeat-7.12.0-linux-x86_64.tar.gz \
+    && mv filebeat-7.12.0-linux-x86_64 /usr/share/filebeat \
+    && mkdir /usr/share/filebeat/logs /usr/share/filebeat/data \
+    && rm /tmp/*
+ENV PATH $PATH:/usr/share/filebeat
+RUN chown -R nobody /usr/share/filebeat
 
 # Install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Copy configuration files
+COPY examples/docker/app/config/filebeat.yml /usr/share/filebeat/filebeat.yml
 COPY examples/docker/app/config/php.ini /etc/php7/conf.d/settings.ini
 COPY examples/docker/app/config/nginx.conf /etc/nginx/nginx.conf
 COPY examples/docker/app/certs/* /etc/letsencrypt/
@@ -36,10 +48,14 @@ RUN composer dump-autoload --no-scripts --no-dev --optimize -q \
 
 # Install supercronic (for crons)
 RUN curl -fsSLO "$SUPERCRONIC_URL" \
- && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
- && chmod +x "$SUPERCRONIC" \
- && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
- && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
+    && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
+    && chmod +x "$SUPERCRONIC" \
+    && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
+    && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
+
+# Create supervisor log directory and let nobody user read it
+RUN mkdir /var/log/supervisor
+RUN chown -R nobody /var/log/supervisor
 
 # Switch to use a non-root user from here on
 USER nobody

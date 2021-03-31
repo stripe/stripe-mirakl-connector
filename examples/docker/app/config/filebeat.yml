@@ -1,0 +1,34 @@
+# ============================== Filebeat inputs ===============================
+filebeat.inputs:
+- type: log 
+  paths:
+    - /var/www/var/log/*.log
+  fields:
+    emitter: "symfony"
+  fields_under_root: true
+  json:
+    keys_under_root: true
+    overwrite_keys: true
+
+- type: log
+  paths:
+    - /var/log/nginx/*.log
+  fields:
+    emitter: "nginx"
+  fields_under_root: true
+
+- type: log
+  paths:
+    - /var/log/supervisor/*.log
+  fields:
+    emitter: "supervisor"
+  fields_under_root: true
+
+# ============================== Filebeat outputs ===============================
+# Output to console by default, configure your own destination below
+# https://www.elastic.co/guide/en/beats/filebeat/current/configuring-output.html
+
+output.console:
+
+#cloud.id: ""
+#cloud.auth: ""
