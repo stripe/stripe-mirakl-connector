@@ -8,7 +8,7 @@ use App\Entity\StripeRefund;
 use App\Message\PayoutFailedMessage;
 use App\Message\TransferFailedMessage;
 use App\Message\RefundFailedMessage;
-use Doctrine\Common\Persistence\Event\LifecycleEventArgs;
+use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 class SendFailedOperationToAlertingQueue

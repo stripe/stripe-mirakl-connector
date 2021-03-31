@@ -3,10 +3,8 @@ nelmio_api_doc:
         info:
             title: Stripe Mirakl Connector
             description: >
-                This application is the connector between Stripe and Mirakl.
-
-                It is in charge of onboarding the sellers in Stripe and sending them money through payouts.
-            version: 2.0.4
+                This connector allows marketplaces powered by Mirakl to onboard sellers on Stripe and pay them out automatically.
+            version: 2.1.0
         securityDefinitions:
             Bearer:
                 type: apiKey

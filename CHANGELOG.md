@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 2.1.0
+
+- Bumped dependencies to remove deprecated and abandoned packages.
+- Bumped PHPUnit to 9.5.
+- Bumped required PHP version to 7.3 or higher.
+
 ## Version 2.0.4
 
 - Fixed query params formatting for arrays (#72 thanks @fhervieux)
@@ -10,7 +16,7 @@
 
 ## Version 2.0.2
 
-- Fixed: escape config.key column name which is a reserved keyword in some DBMSs (#66).
+- Fixed: escape `config.key` column name which is a reserved keyword in some DBMSs (#66).
 - Improve performance in payment split workflow (#67 and #68).
 
 ## Version 2.0.1

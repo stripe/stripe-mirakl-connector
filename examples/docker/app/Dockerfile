@@ -10,7 +10,7 @@ USER root
 RUN apk add postgresql php7-pdo_pgsql php7-iconv php7-tokenizer php7-pcntl php7-gmp --no-cache
 
 # Install composer
-COPY --from=composer:1.10 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Copy configuration files
 COPY examples/docker/app/config/php.ini /etc/php7/conf.d/settings.ini
