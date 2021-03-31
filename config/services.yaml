@@ -126,3 +126,6 @@ services:
       $messageFactory: '@symfony_mailer_monolog.mail_message_factory'
       $level: 'warning'
       $bubble: true
+
+  json_log_formatter:
+    class: Monolog\Formatter\JsonFormatter
