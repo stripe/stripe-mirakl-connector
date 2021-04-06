@@ -4,7 +4,7 @@ filebeat.inputs:
   paths:
     - /var/www/var/log/*.log
   fields:
-    emitter: "symfony"
+    emitter: "SYMFONY"
   fields_under_root: true
   json:
     keys_under_root: true
@@ -12,16 +12,50 @@ filebeat.inputs:
 
 - type: log
   paths:
-    - /var/log/nginx/*.log
+    - /var/log/nginx/error.log
   fields:
-    emitter: "nginx"
+    emitter: "NGINX"
+    level_name: "ERROR"
   fields_under_root: true
 
 - type: log
   paths:
-    - /var/log/supervisor/*.log
+    - /var/log/nginx/access.log
   fields:
-    emitter: "supervisor"
+    emitter: "NGINX"
+    level_name: "INFO"
+  fields_under_root: true
+
+- type: log
+  paths:
+    - /var/log/supervisor/cron.log
+    - /var/log/supervisor/operator_http_notification.log
+    - /var/log/supervisor/operator_http_notification_failed.log
+    - /var/log/supervisor/validate_mirakl_order.log
+    - /var/log/supervisor/capture_pending_payment.log
+    - /var/log/supervisor/cancel_pending_payment.log
+    - /var/log/supervisor/process_transfers.log
+    - /var/log/supervisor/process_payouts.log
+    - /var/log/supervisor/process_refunds.log
+  fields:
+    emitter: "SUPERVISOR"
+    level_name: "INFO"
+  fields_under_root: true
+
+- type: log
+  paths:
+    - /var/log/supervisor/cron-error.log
+    - /var/log/supervisor/operator_http_notification-error.log
+    - /var/log/supervisor/operator_http_notification_failed-error.log
+    - /var/log/supervisor/validate_mirakl_order-error.log
+    - /var/log/supervisor/capture_pending_payment-error.log
+    - /var/log/supervisor/cancel_pending_payment-error.log
+    - /var/log/supervisor/process_transfers-error.log
+    - /var/log/supervisor/process_payouts-error.log
+    - /var/log/supervisor/process_refunds-error.log
+  fields:
+    emitter: "SUPERVISOR"
+    level_name: "ERROR"
   fields_under_root: true
 
 # ============================== Filebeat outputs ===============================
@@ -29,6 +63,8 @@ filebeat.inputs:
 # https://www.elastic.co/guide/en/beats/filebeat/current/configuring-output.html
 
 output.console:
-
+  codec.format:
+    string: '[%{[emitter]}] %{[@timestamp]} %{[level_name]}: %{[message]}'
+    escape_html: false
 #cloud.id: ""
 #cloud.auth: ""
