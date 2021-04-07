@@ -41,7 +41,9 @@ filebeat.inputs:
     emitter: "SUPERVISOR"
     level_name: "INFO"
   fields_under_root: true
-
+  json:
+    keys_under_root: true
+    overwrite_keys: true
 - type: log
   paths:
     - /var/log/supervisor/cron-error.log
@@ -57,6 +59,64 @@ filebeat.inputs:
     emitter: "SUPERVISOR"
     level_name: "ERROR"
   fields_under_root: true
+  json:
+    keys_under_root: true
+    overwrite_keys: true
+
+# For Supervisor logs, rename msg field to message and add human readable job_name field
+processors:
+  - if:
+      equals:
+        emitter: "SUPERVISOR"
+    then:
+      - rename:
+          fields:
+            - from: "msg"
+              to: "message"
+          ignore_missing: true
+          fail_on_error: false
+      - add_fields:
+          when:
+            contains:
+              job.command: "onboarding"
+          target: ""
+          fields:
+            job_name: "Onboarding"
+      - add_fields:
+          when:
+            contains:
+              job.command: "pending-debit"
+          target: ""
+          fields:
+            job_name: "Pending Debit"
+      - add_fields:
+          when:
+            contains:
+              job.command: "process-transfer"
+          target: ""
+          fields:
+            job_name: "Process Transfer"
+      - add_fields:
+          when:
+            contains:
+              job.command: "process-refund"
+          target: ""
+          fields:
+            job_name: "Process Refund"
+      - add_fields:
+          when:
+            contains:
+              job.command: "process-payout"
+          target: ""
+          fields:
+            job_name: "Process Payout"
+      - add_fields:
+          when:
+            contains:
+              job.command: "failed-operation"
+          target: ""
+          fields:
+            job_name: "Failed Operation"
 
 # ============================== Filebeat outputs ===============================
 # Output to console by default, configure your own destination below
@@ -64,7 +124,7 @@ filebeat.inputs:
 
 output.console:
   codec.format:
-    string: '[%{[emitter]}] %{[@timestamp]} %{[level_name]}: %{[message]}'
+    string: '[%{[emitter]}] %{[@timestamp]} %{[level_name]}: [%{[job_name]:}] %{[message]}'
     escape_html: false
 #cloud.id: ""
 #cloud.auth: ""
