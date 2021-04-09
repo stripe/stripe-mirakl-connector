@@ -14,7 +14,7 @@ monolog:
         console:
             type: console
             process_psr_3_messages: false
-            channels: ["!event", "!doctrine"]
+            channels: ["!event", "!doctrine", "!messenger"]
 
         critical_mail:
             type:         fingers_crossed
