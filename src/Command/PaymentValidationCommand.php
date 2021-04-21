@@ -63,7 +63,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         if (!empty($ordersByCommercialId)) {
             $this->validateOrders($ordersByCommercialId);
         } else {
-            $output->writeln('No mirakl orders pending debit');
+            $this->logger->info('No mirakl orders pending debit');
         }
 
         // capture payment when mirakl order is totally validated
@@ -71,7 +71,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         if (!empty($paymentMappings)) {
             $this->capturePayments($paymentMappings);
         } else {
-            $output->writeln('No payment to capture');
+            $this->logger->info('No payment to capture');
         }
 
         return 0;
