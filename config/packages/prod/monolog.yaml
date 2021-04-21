@@ -11,9 +11,6 @@ monolog:
             formatter: json_log_formatter
             level: info
             max_files: 10
-        console:
-            type: console
-            process_psr_3_messages: false
             channels: ["!event", "!doctrine", "!messenger"]
 
         critical_mail:
