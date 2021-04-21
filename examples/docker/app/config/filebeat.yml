@@ -63,8 +63,63 @@ filebeat.inputs:
     keys_under_root: true
     overwrite_keys: true
 
-# For Supervisor logs, rename msg field to message and add human readable job_name field
+
 processors:
+# For Symfony logs, rename channel field to job_name and make it human readable
+  - if:
+      equals:
+        emitter: "SYMFONY"
+    then:
+      - rename:
+          fields:
+            - from: "channel"
+              to: "job_name"
+          ignore_missing: true
+          fail_on_error: false
+      - add_fields:
+          when:
+            equals:
+              job_name: "onboarding"
+          target: ""
+          fields:
+            job_name: "Onboarding"
+      - add_fields:
+          when:
+            equals:
+              job_name: "pending_debit"
+          target: ""
+          fields:
+            job_name: "Pending Debit"
+      - add_fields:
+          when:
+            equals:
+              job_name: "process_transfer"
+          target: ""
+          fields:
+            job_name: "Process Transfer"
+      - add_fields:
+          when:
+            equals:
+              job_name: "process_refund"
+          target: ""
+          fields:
+            job_name: "Process Refund"
+      - add_fields:
+          when:
+            equals:
+              job_name: "process_payout"
+          target: ""
+          fields:
+            job_name: "Process Payout"
+      - add_fields:
+          when:
+            equals:
+              job_name: "failed_operation"
+          target: ""
+          fields:
+            job_name: "Failed Operation"
+
+# For Supervisor logs, rename msg field to message and add human readable job_name field
   - if:
       equals:
         emitter: "SUPERVISOR"
