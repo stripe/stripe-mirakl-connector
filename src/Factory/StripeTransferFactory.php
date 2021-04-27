@@ -462,13 +462,13 @@ class StripeTransferFactory implements LoggerAwareInterface
     private function getInvoiceAmount(array $invoice, string $type): int
     {
         static $typeToKey = [
-                        StripeTransfer::TRANSFER_SUBSCRIPTION => 'total_subscription_incl_tax',
-                        StripeTransfer::TRANSFER_EXTRA_CREDITS => 'total_other_credits_incl_tax',
-                        StripeTransfer::TRANSFER_EXTRA_INVOICES => 'total_other_invoices_incl_tax'
-                ];
+            StripeTransfer::TRANSFER_SUBSCRIPTION => 'total_subscription_incl_tax',
+            StripeTransfer::TRANSFER_EXTRA_CREDITS => 'total_other_credits_incl_tax',
+            StripeTransfer::TRANSFER_EXTRA_INVOICES => 'total_other_invoices_incl_tax'
+        ];
 
         $amount = $invoice['summary'][$typeToKey[$type]] ?? 0;
-        $amount = gmp_intval((string) ($amount * 100));
+        $amount = abs(gmp_intval((string) ($amount * 100)));
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(
                 StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,

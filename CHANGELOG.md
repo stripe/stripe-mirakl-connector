@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 2.1.1
+
+- Fixed transfers not being created for subscription fees and extra invoices
+- Added migration to restore previously aborted subscription fees and extra invoices to the backlog
+
 ## Version 2.1.0
 
 - Bumped dependencies to remove deprecated and abandoned packages.

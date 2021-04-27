@@ -1007,9 +1007,9 @@ class MiraklMockedHttpClient extends MockHttpClient
 						'shop_id' => $shopId,
             'summary' => [
                 'amount_transferred' => 12.34,
-                'total_subscription_incl_tax' => 9.99,
+                'total_subscription_incl_tax' => -9.99,
                 'total_other_credits_incl_tax' => 56.78,
-                'total_other_invoices_incl_tax' => 98.76,
+                'total_other_invoices_incl_tax' => -98.76,
             ],
         ];
     }
