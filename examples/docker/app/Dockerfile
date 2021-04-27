@@ -1,4 +1,4 @@
-FROM trafex/alpine-nginx-php7:latest
+FROM trafex/alpine-nginx-php7:1.10.0
 
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.9/supercronic-linux-amd64 \
     SUPERCRONIC=supercronic-linux-amd64 \
