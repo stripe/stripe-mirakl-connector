@@ -69,6 +69,7 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
+        $this->logger->info('starting');
         if ($this->enableProductPaymentRefund || $this->enableServicePaymentRefund) {
             $this->processBacklog();
 
@@ -81,6 +82,7 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
             }
         }
 
+        $this->logger->info('job succeeded');
         return 0;
     }
 

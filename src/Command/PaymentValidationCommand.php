@@ -58,6 +58,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
+        $this->logger->info('starting');
         // validate payment to mirakl when we have a charge/paymentIntent
         $ordersByCommercialId = $this->miraklClient->listProductPendingDebits();
         if (!empty($ordersByCommercialId)) {
@@ -74,6 +75,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
             $this->logger->info('No payment to capture');
         }
 
+        $this->logger->info('job succeeded');
         return 0;
     }
 

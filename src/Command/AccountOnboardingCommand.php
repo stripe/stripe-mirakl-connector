@@ -66,6 +66,7 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
+        $this->logger->info('starting');
         $this->logger->info('Updating Stripe Express onboarding links for new Mirakl sellers');
         $delay = intval($input->getArgument(self::DELAY_ARGUMENT_NAME));
 
@@ -90,6 +91,7 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
             }
         }
 
+        $this->logger->info('job succeeded');
         return 0;
     }
 

@@ -66,6 +66,7 @@ class AlertingCommand extends Command implements LoggerAwareInterface
 
     public function execute(InputInterface $input, OutputInterface $output): ?int
     {
+        $this->logger->info('starting');
         $this->logger->info('<info>Sending alert email about failed transfers, payouts and refunds</info>');
 
         $failedTransfers = $this->stripeTransferRepository->findBy(['status' => StripeTransfer::getInvalidStatus()]);
@@ -79,7 +80,7 @@ class AlertingCommand extends Command implements LoggerAwareInterface
 
         if (0 === count($failedTransfers) && 0 === count($failedPayouts) && 0 === count($failedRefunds)) {
             $this->logger->info('Exiting');
-
+            $this->logger->info('job succeeded');
             return 0;
         }
 
@@ -132,7 +133,7 @@ class AlertingCommand extends Command implements LoggerAwareInterface
         $this->logger->info('Sending email');
         $this->mailer->send($email);
         $this->logger->info('<info>Email sent</info>');
-
+        $this->logger->info('job succeeded');
         return 0;
     }
 }

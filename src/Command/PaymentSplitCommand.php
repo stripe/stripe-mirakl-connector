@@ -70,6 +70,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
+        $this->logger->info('starting');
         if ($this->enableProductPaymentSplit) {
             $this->processBacklog(MiraklClient::ORDER_TYPE_PRODUCT);
             $this->processNewOrders(MiraklClient::ORDER_TYPE_PRODUCT);
@@ -80,6 +81,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
             $this->processNewOrders(MiraklClient::ORDER_TYPE_SERVICE);
         }
 
+        $this->logger->info('job succeeded');
         return 0;
     }
 

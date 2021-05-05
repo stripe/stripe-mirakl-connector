@@ -62,10 +62,12 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+        $this->logger->info('starting');
         // Shop ID passed as argument
         $shopId = $input->getArgument('mirakl_shop_id');
         if (is_numeric($shopId)) {
             $this->processProvidedShopId((int) $shopId);
+            $this->logger->info('job succeeded');
             return 0;
         }
 
@@ -75,6 +77,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         // Now up to 100 new invoices
         $this->processNewInvoices();
 
+        $this->logger->info('job succeeded');
         return 0;
     }
 
