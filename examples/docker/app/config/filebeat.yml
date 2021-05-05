@@ -82,42 +82,42 @@ processors:
               job_name: "onboarding"
           target: ""
           fields:
-            job_name: "Onboarding"
+            job_name: "Sellers onboarding"
       - add_fields:
           when:
             equals:
               job_name: "pending_debit"
           target: ""
           fields:
-            job_name: "Pending Debit"
+            job_name: "Payments validation"
       - add_fields:
           when:
             equals:
               job_name: "process_transfer"
           target: ""
           fields:
-            job_name: "Process Transfer"
+            job_name: "Payments split"
       - add_fields:
           when:
             equals:
               job_name: "process_refund"
           target: ""
           fields:
-            job_name: "Process Refund"
+            job_name: "Payments refund"
       - add_fields:
           when:
             equals:
               job_name: "process_payout"
           target: ""
           fields:
-            job_name: "Process Payout"
+            job_name: "Seller settlement"
       - add_fields:
           when:
             equals:
               job_name: "failed_operation"
           target: ""
           fields:
-            job_name: "Failed Operation"
+            job_name: "Alerting"
 
 # For Supervisor logs, rename msg field to message and add human readable job_name field
   - if:
@@ -136,42 +136,42 @@ processors:
               job.command: "onboarding"
           target: ""
           fields:
-            job_name: "Onboarding"
+            job_name: "Sellers onboarding"
       - add_fields:
           when:
             contains:
               job.command: "pending-debit"
           target: ""
           fields:
-            job_name: "Pending Debit"
+            job_name: "Payments validation"
       - add_fields:
           when:
             contains:
               job.command: "process-transfer"
           target: ""
           fields:
-            job_name: "Process Transfer"
+            job_name: "Payments split"
       - add_fields:
           when:
             contains:
               job.command: "process-refund"
           target: ""
           fields:
-            job_name: "Process Refund"
+            job_name: "Payments refund"
       - add_fields:
           when:
             contains:
               job.command: "process-payout"
           target: ""
           fields:
-            job_name: "Process Payout"
+            job_name: "Seller settlement"
       - add_fields:
           when:
             contains:
               job.command: "failed-operation"
           target: ""
           fields:
-            job_name: "Failed Operation"
+            job_name: "Alerting"
 
 # ============================== Filebeat outputs ===============================
 # Output to console by default, configure your own destination below
