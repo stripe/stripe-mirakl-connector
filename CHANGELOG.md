@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.1.2
+
+- Added: fetch payment ID from PaymentMapping if not provided in PA01
+
 ## Version 2.1.1
 
 - Fixed transfers not being created for subscription fees and extra invoices

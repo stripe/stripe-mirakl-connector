@@ -7,6 +7,7 @@ use App\Entity\MiraklProductOrder;
 use App\Entity\MiraklServiceOrder;
 use App\Entity\MiraklPendingRefund;
 use App\Entity\MiraklServicePendingRefund;
+use App\Entity\PaymentMapping;
 use App\Entity\StripeRefund;
 use App\Entity\StripeTransfer;
 use App\Factory\StripeTransferFactory;
@@ -46,6 +47,8 @@ class StripeTransferFactoryTest extends KernelTestCase
 
         $this->miraklClient = $container->get('App\Service\MiraklClient');
 
+				$this->paymentMappingRepository = $container->get('doctrine')
+								->getRepository(PaymentMapping::class);
 				$this->stripeRefundRepository = $container->get('doctrine')
 									->getRepository(StripeRefund::class);
 				$this->stripeTransferRepository = $container->get('doctrine')
@@ -53,6 +56,7 @@ class StripeTransferFactoryTest extends KernelTestCase
 
         $this->stripeTransferFactory = new StripeTransferFactory(
             $container->get('doctrine')->getRepository(AccountMapping::class),
+						$this->paymentMappingRepository,
             $this->stripeRefundRepository,
             $this->stripeTransferRepository,
 						$this->miraklClient,
@@ -127,6 +131,18 @@ class StripeTransferFactoryTest extends KernelTestCase
 				return $refund;
     }
 
+    private function mockPaymentMapping(string $orderId, string $chargeId)
+    {
+        $paymentMapping = new PaymentMapping();
+				$paymentMapping->setMiraklCommercialOrderId($orderId);
+				$paymentMapping->setStripeChargeId($chargeId);
+
+				$this->paymentMappingRepository->persist($paymentMapping);
+				$this->paymentMappingRepository->flush();
+
+				return $paymentMapping;
+    }
+
     public function testCreateFromProductOrder()
     {
         $transfer = $this->stripeTransferFactory->createFromOrder(
@@ -161,6 +177,32 @@ class StripeTransferFactoryTest extends KernelTestCase
 				]));
         $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+    }
+
+    public function testProductOrderWithTransactionNumber()
+    {
+        $order = current($this->miraklClient->listProductOrdersById([
+						MiraklMock::ORDER_WITH_TRANSACTION_NUMBER
+				]));
+
+        $transfer = $this->stripeTransferFactory->createFromOrder($order);
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertEquals(StripeMock::CHARGE_BASIC, $transfer->getTransactionId());
+    }
+
+    public function testProductOrderWithPaymentMapping()
+    {
+        $order = current($this->miraklClient->listProductOrdersById([
+						MiraklMock::ORDER_BASIC
+				]));
+
+        $transfer = $this->stripeTransferFactory->createFromOrder($order);
+        $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertNull($transfer->getTransactionId());
+
+				$this->mockPaymentMapping(MiraklMock::ORDER_BASIC, StripeMock::CHARGE_BASIC);
+        $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
+        $this->assertEquals(StripeMock::CHARGE_BASIC, $transfer->getTransactionId());
     }
 
     public function testProductOrderWithTransfer()

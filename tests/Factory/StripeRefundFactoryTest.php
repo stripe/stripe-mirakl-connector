@@ -53,7 +53,7 @@ class StripeRefundFactoryTest extends KernelTestCase
         $application = new Application($kernel);
 
 				$this->paymentMappingRepository = $container->get('doctrine')
-				->getRepository(PaymentMapping::class);
+								->getRepository(PaymentMapping::class);
 				$this->stripeTransferRepository = $container->get('doctrine')
 								->getRepository(StripeTransfer::class);
         $this->stripeRefundFactory = new StripeRefundFactory(

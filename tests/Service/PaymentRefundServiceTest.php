@@ -68,6 +68,7 @@ class PaymentRefundServiceTest extends KernelTestCase
 
 				$stripeTransferFactory = new StripeTransferFactory(
 						$container->get('doctrine')->getRepository(AccountMapping::class),
+						$container->get('doctrine')->getRepository(PaymentMapping::class),
 						$this->stripeRefundRepository,
 						$this->stripeTransferRepository,
 						$this->miraklClient,
