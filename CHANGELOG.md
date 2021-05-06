@@ -2,7 +2,8 @@
 
 ## Version 2.1.2
 
-- Added: fetch payment ID from PaymentMapping if not provided in PA01
+- Added: fetch payment ID from PaymentMapping if not provided in order transaction_number
+- Fixed: ignore capture of charge if it is already succeeded
 
 ## Version 2.1.1
 

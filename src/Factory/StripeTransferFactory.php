@@ -161,7 +161,9 @@ class StripeTransferFactory implements LoggerAwareInterface
                     ));
 
                     if ($paymentMapping && $paymentMapping->getStripeChargeId()) {
-                        $transfer->setTransactionId($paymentMapping->getStripeChargeId());
+                        $transfer->setTransactionId(
+                            $this->getSourceTransactionId($paymentMapping->getStripeChargeId())
+                        );
                     }
                 } else {
                     $transfer->setTransactionId(
