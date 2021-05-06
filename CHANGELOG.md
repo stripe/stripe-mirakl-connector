@@ -3,7 +3,7 @@
 ## Version 2.1.2
 
 - Added: fetch payment ID from PaymentMapping if not provided in order transaction_number
-- Fixed: ignore capture of charge if it is already succeeded
+- Fixed: mark PaymentMapping as captured if charge is captured
 
 ## Version 2.1.1
 
