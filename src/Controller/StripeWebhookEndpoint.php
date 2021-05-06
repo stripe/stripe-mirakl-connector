@@ -248,18 +248,22 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             return 'Ignoring event with no Mirakl Commercial Order ID.';
         }
 
-        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($charge['id']);
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($charge->id);
+        $status = isset($charge->captured) && $charge->captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE;
         if (!$paymentMapping) {
             $paymentMapping = new PaymentMapping();
-            $paymentMapping->setStripeChargeId($charge['id']);
-            $paymentMapping->setStripeAmount($charge['amount']);
+            $paymentMapping->setStripeChargeId($charge->id);
+            $paymentMapping->setStripeAmount($charge->amount);
+            $paymentMapping->setStatus($status);
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
             $this->paymentMappingRepository->persist($paymentMapping);
             $message = 'Payment mapping created.';
         } else {
+            $paymentMapping->setStatus($status);
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
             $message = 'Payment mapping updated.';
         }
+
 
         $this->paymentMappingRepository->flush();
 

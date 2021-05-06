@@ -11,6 +11,7 @@ use App\Entity\StripeRefund;
 use App\Entity\StripeTransfer;
 use App\Exception\InvalidArgumentException;
 use App\Repository\AccountMappingRepository;
+use App\Repository\PaymentMappingRepository;
 use App\Repository\StripeRefundRepository;
 use App\Repository\StripeTransferRepository;
 use App\Service\MiraklClient;
@@ -28,6 +29,11 @@ class StripeTransferFactory implements LoggerAwareInterface
      * @var AccountMappingRepository
      */
     private $accountMappingRepository;
+
+    /**
+     * @var PaymentMappingRepository
+     */
+    private $paymentMappingRepository;
 
     /**
      * @var StripeRefundRepository
@@ -51,12 +57,14 @@ class StripeTransferFactory implements LoggerAwareInterface
 
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
+        PaymentMappingRepository $paymentMappingRepository,
         StripeRefundRepository $stripeRefundRepository,
         StripeTransferRepository $stripeTransferRepository,
         MiraklClient $miraklClient,
         StripeClient $stripeClient
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
+        $this->paymentMappingRepository = $paymentMappingRepository;
         $this->stripeRefundRepository = $stripeRefundRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->miraklClient = $miraklClient;
@@ -146,10 +154,21 @@ class StripeTransferFactory implements LoggerAwareInterface
         // Save charge ID to be used in source_transaction
         if (!$transfer->getTransactionId()) {
             try {
-                // TODO: fetch payment ID from PaymentMapping when possible
-                if ($paymentId) {
-                    $sourceTransaction = $this->getSourceTransactionId($paymentId);
-                    $transfer->setTransactionId($sourceTransaction);
+                if (!$paymentId) {
+                    // Check for a payment mapping
+                    $paymentMapping = current($this->paymentMappingRepository->findPaymentsByCommercialOrderIds(
+                        [ $order->getCommercialId() ]
+                    ));
+
+                    if ($paymentMapping && $paymentMapping->getStripeChargeId()) {
+                        $transfer->setTransactionId(
+                            $this->getSourceTransactionId($paymentMapping->getStripeChargeId())
+                        );
+                    }
+                } else {
+                    $transfer->setTransactionId(
+                        $this->getSourceTransactionId($paymentId)
+                    );
                 }
             } catch (InvalidRequestException $e) {
                 return $this->abortTransfer(

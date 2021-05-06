@@ -80,11 +80,12 @@ class StripeWebhookEndpointTest extends TestCase
         $this->controller->setLogger($logger);
     }
 
-    private function mockPaymentMapping(string $orderId, string $chargeId)
+    private function mockPaymentMapping(string $orderId, string $chargeId, bool $captured = false)
     {
         $paymentMapping = new PaymentMapping();
 				$paymentMapping->setMiraklCommercialOrderId($orderId);
 				$paymentMapping->setStripeChargeId($chargeId);
+				$paymentMapping->setStatus($captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE);
 
 				$this->paymentMappingRepository->persist($paymentMapping);
 				$this->paymentMappingRepository->flush();
@@ -599,7 +600,7 @@ class StripeWebhookEndpointTest extends TestCase
                     'amount' => 2000
                 ],
             ],
-            'type' => 'charge.succeeded',
+            'type' => 'charge.updated',
         ];
         $expectedEvent = \Stripe\Event::constructFrom($data);
 
@@ -613,6 +614,59 @@ class StripeWebhookEndpointTest extends TestCase
         $response = $this->controller->handleStripeSellerWebhook($request);
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertEquals('Ignoring failed charge event.', $response->getContent());
+    }
+
+    public function testHandleStripeWebhookChargeAlreadyCaptured()
+    {
+        $payload = 'validPayload';
+        $signature = 'validSignature';
+        $request = Request::create(
+            '/api/public/webhook',
+            'POST',
+            [],
+            [],
+            [],
+            ['HTTP_STRIPE_SIGNATURE' => $signature],
+            $payload
+        );
+
+        $stripeChargeId = 'ch_valid';
+        $orderId = '42';
+        $data = [
+            'data' => [
+                'object' => [
+                    'object' => 'charge',
+                    'payment_intent' => null,
+                    'id' => $stripeChargeId,
+                    'metadata' => [
+                        $this->metadataCommercialOrderId => $orderId,
+                    ],
+                    'status' => 'succeeded',
+                    'captured' => true,
+                    'amount' => 2000
+                ],
+            ],
+            'type' => 'charge.updated',
+        ];
+        $expectedEvent = \Stripe\Event::constructFrom($data);
+
+        $this
+            ->stripeClient
+            ->expects($this->once())
+            ->method('webhookConstructEvent')
+            ->with($payload, $signature)
+            ->willReturn($expectedEvent);
+
+        $this
+            ->paymentMappingRepository
+            ->expects($this->once())
+            ->method('findOneByStripeChargeId')
+            ->with($stripeChargeId)
+            ->willReturn($this->mockPaymentMapping($orderId, $stripeChargeId, true));
+
+        $response = $this->controller->handleStripeSellerWebhook($request);
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals("Payment mapping updated.", $response->getContent());
     }
 
     public function testHandleStripeWebhookPICreatedWithtMetadata()

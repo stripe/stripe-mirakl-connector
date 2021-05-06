@@ -3,6 +3,7 @@
 namespace App\Tests\Factory;
 
 use App\Entity\AccountMapping;
+use App\Entity\PaymentMapping;
 use App\Entity\MiraklProductOrder;
 use App\Entity\StripeRefund;
 use App\Entity\StripeTransfer;
@@ -46,6 +47,7 @@ class PaymentSplitServiceTest extends KernelTestCase
 
 				$stripeTransferFactory = new StripeTransferFactory(
 						$container->get('doctrine')->getRepository(AccountMapping::class),
+						$container->get('doctrine')->getRepository(PaymentMapping::class),
 						$container->get('doctrine')->getRepository(StripeRefund::class),
 						$this->stripeTransferRepository,
 						$this->miraklClient,

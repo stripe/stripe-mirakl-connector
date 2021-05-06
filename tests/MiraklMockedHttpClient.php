@@ -4,6 +4,7 @@ namespace App\Tests;
 
 use App\Exception\InvalidArgumentException;
 use App\Service\MiraklClient;
+use App\Tests\StripeMockedHttpClient as StripeMock;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -32,6 +33,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 		public const ORDER_STATUS_ORDER_EXPIRED = 'order_status_order_expired';
 		public const ORDER_STATUS_ORDER_CLOSED = 'order_status_order_closed';
 		public const ORDER_STATUS_ORDER_CANCELLED = 'order_status_order_cancelled';
+		public const ORDER_WITH_TRANSACTION_NUMBER = 'order_with_transaction_number';
 		public const ORDER_INVALID_AMOUNT = 'order_invalid_amount';
 		public const ORDER_INVALID_SHOP = 'order_invalid_shop';
 		public const ORDER_AMOUNT_NO_COMMISSION = 'order_no_commission';
@@ -493,6 +495,11 @@ class MiraklMockedHttpClient extends MockHttpClient
 												$order['commission']['amount_including_taxes'] = 100;
 										} else {
 												$order['total_commission'] = 100;
+										}
+										break;
+								case self::ORDER_WITH_TRANSACTION_NUMBER:
+										if (!$isService) {
+						        		$order['transaction_number'] = StripeMock::CHARGE_BASIC;
 										}
 										break;
 								case self::ORDER_INVALID_SHOP:
