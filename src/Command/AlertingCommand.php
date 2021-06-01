@@ -66,20 +66,21 @@ class AlertingCommand extends Command implements LoggerAwareInterface
 
     public function execute(InputInterface $input, OutputInterface $output): ?int
     {
-        $output->writeln('<info>Sending alert email about failed transfers, payouts and refunds</info>');
+        $this->logger->info('starting');
+        $this->logger->info('<info>Sending alert email about failed transfers, payouts and refunds</info>');
 
         $failedTransfers = $this->stripeTransferRepository->findBy(['status' => StripeTransfer::getInvalidStatus()]);
-        $output->writeln(sprintf('Found %d transfer(s) which failed transfering', count($failedTransfers)));
+        $this->logger->info(sprintf('Found %d transfer(s) which failed transfering', count($failedTransfers)));
 
         $failedPayouts = $this->stripePayoutRepository->findBy(['status' => StripePayout::getInvalidStatus()]);
-        $output->writeln(sprintf('Found %d payout(s) which failed transfering', count($failedPayouts)));
+        $this->logger->info(sprintf('Found %d payout(s) which failed transfering', count($failedPayouts)));
 
         $failedRefunds = $this->stripeRefundRepository->findBy(['status' => StripeRefund::getInvalidStatus()]);
-        $output->writeln(sprintf('Found %d refund(s) which failed transfering', count($failedRefunds)));
+        $this->logger->info(sprintf('Found %d refund(s) which failed transfering', count($failedRefunds)));
 
         if (0 === count($failedTransfers) && 0 === count($failedPayouts) && 0 === count($failedRefunds)) {
-            $output->writeln('Exiting');
-
+            $this->logger->info('Exiting');
+            $this->logger->info('job succeeded');
             return 0;
         }
 
@@ -129,10 +130,10 @@ class AlertingCommand extends Command implements LoggerAwareInterface
             'technicalEmail' => $this->technicalEmail,
         ]);
 
-        $output->writeln('Sending email');
+        $this->logger->info('Sending email');
         $this->mailer->send($email);
-        $output->writeln('<info>Email sent</info>');
-
+        $this->logger->info('<info>Email sent</info>');
+        $this->logger->info('job succeeded');
         return 0;
     }
 }

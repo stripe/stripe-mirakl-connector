@@ -1,0 +1,185 @@
+# ============================== Filebeat inputs ===============================
+filebeat.inputs:
+- type: log 
+  paths:
+    - /var/www/var/log/*.log
+  fields:
+    emitter: "SYMFONY"
+  fields_under_root: true
+  json:
+    keys_under_root: true
+    overwrite_keys: true
+
+- type: log
+  paths:
+    - /var/log/nginx/error.log
+  fields:
+    emitter: "NGINX"
+    level_name: "ERROR"
+  fields_under_root: true
+
+- type: log
+  paths:
+    - /var/log/nginx/access.log
+  fields:
+    emitter: "NGINX"
+    level_name: "INFO"
+  fields_under_root: true
+
+- type: log
+  paths:
+    - /var/log/supervisor/cron.log
+    - /var/log/supervisor/operator_http_notification.log
+    - /var/log/supervisor/operator_http_notification_failed.log
+    - /var/log/supervisor/validate_mirakl_order.log
+    - /var/log/supervisor/capture_pending_payment.log
+    - /var/log/supervisor/cancel_pending_payment.log
+    - /var/log/supervisor/process_transfers.log
+    - /var/log/supervisor/process_payouts.log
+    - /var/log/supervisor/process_refunds.log
+  fields:
+    emitter: "SUPERVISOR"
+    level_name: "INFO"
+  fields_under_root: true
+  json:
+    keys_under_root: true
+    overwrite_keys: true
+- type: log
+  paths:
+    - /var/log/supervisor/cron-error.log
+    - /var/log/supervisor/operator_http_notification-error.log
+    - /var/log/supervisor/operator_http_notification_failed-error.log
+    - /var/log/supervisor/validate_mirakl_order-error.log
+    - /var/log/supervisor/capture_pending_payment-error.log
+    - /var/log/supervisor/cancel_pending_payment-error.log
+    - /var/log/supervisor/process_transfers-error.log
+    - /var/log/supervisor/process_payouts-error.log
+    - /var/log/supervisor/process_refunds-error.log
+  fields:
+    emitter: "SUPERVISOR"
+    level_name: "ERROR"
+  fields_under_root: true
+  json:
+    keys_under_root: true
+    overwrite_keys: true
+
+
+processors:
+# For Symfony logs, rename channel field to job_name and make it human readable
+  - if:
+      equals:
+        emitter: "SYMFONY"
+    then:
+      - rename:
+          fields:
+            - from: "channel"
+              to: "job_name"
+          ignore_missing: true
+          fail_on_error: false
+      - add_fields:
+          when:
+            equals:
+              job_name: "onboarding"
+          target: ""
+          fields:
+            job_name: "Sellers onboarding"
+      - add_fields:
+          when:
+            equals:
+              job_name: "pending_debit"
+          target: ""
+          fields:
+            job_name: "Payments validation"
+      - add_fields:
+          when:
+            equals:
+              job_name: "process_transfer"
+          target: ""
+          fields:
+            job_name: "Payments split"
+      - add_fields:
+          when:
+            equals:
+              job_name: "process_refund"
+          target: ""
+          fields:
+            job_name: "Payments refund"
+      - add_fields:
+          when:
+            equals:
+              job_name: "process_payout"
+          target: ""
+          fields:
+            job_name: "Seller settlement"
+      - add_fields:
+          when:
+            equals:
+              job_name: "failed_operation"
+          target: ""
+          fields:
+            job_name: "Alerting"
+
+# For Supervisor logs, rename msg field to message and add human readable job_name field
+  - if:
+      equals:
+        emitter: "SUPERVISOR"
+    then:
+      - rename:
+          fields:
+            - from: "msg"
+              to: "message"
+          ignore_missing: true
+          fail_on_error: false
+      - add_fields:
+          when:
+            contains:
+              job.command: "onboarding"
+          target: ""
+          fields:
+            job_name: "Sellers onboarding"
+      - add_fields:
+          when:
+            contains:
+              job.command: "pending-debit"
+          target: ""
+          fields:
+            job_name: "Payments validation"
+      - add_fields:
+          when:
+            contains:
+              job.command: "process-transfer"
+          target: ""
+          fields:
+            job_name: "Payments split"
+      - add_fields:
+          when:
+            contains:
+              job.command: "process-refund"
+          target: ""
+          fields:
+            job_name: "Payments refund"
+      - add_fields:
+          when:
+            contains:
+              job.command: "process-payout"
+          target: ""
+          fields:
+            job_name: "Seller settlement"
+      - add_fields:
+          when:
+            contains:
+              job.command: "failed-operation"
+          target: ""
+          fields:
+            job_name: "Alerting"
+
+# ============================== Filebeat outputs ===============================
+# Output to console by default, configure your own destination below
+# https://www.elastic.co/guide/en/beats/filebeat/current/configuring-output.html
+
+output.console:
+  codec.format:
+    string: '[%{[emitter]}] %{[@timestamp]} %{[level_name]}: [%{[job_name]:}] %{[message]}'
+    escape_html: false
+#cloud.id: ""
+#cloud.auth: ""

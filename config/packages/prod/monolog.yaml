@@ -1,4 +1,5 @@
 monolog:
+    channels: ['onboarding', 'pending_debit', 'process_transfer', 'process_refund', 'process_payout', 'failed_operation']
     handlers:
         main:
             type: fingers_crossed
@@ -6,13 +7,12 @@ monolog:
             handler: nested
             excluded_http_codes: [404, 405]
         nested:
-            type: stream
-            path: "php://stderr"
+            type: rotating_file
+            path: "%kernel.logs_dir%/%kernel.environment%.log"
+            formatter: json_log_formatter
             level: info
-        console:
-            type: console
-            process_psr_3_messages: false
-            channels: ["!event", "!doctrine"]
+            max_files: 10
+            channels: ["!event", "!doctrine", "!messenger"]
 
         critical_mail:
             type:         fingers_crossed

@@ -1,4 +1,5 @@
 monolog:
+    channels: ['onboarding', 'pending_debit', 'process_transfer', 'process_refund', 'process_payout', 'failed_operation']
     handlers:
         main:
             type: stream

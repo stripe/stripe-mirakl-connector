@@ -126,3 +126,30 @@ services:
       $messageFactory: '@symfony_mailer_monolog.mail_message_factory'
       $level: 'warning'
       $bubble: true
+
+  json_log_formatter:
+    class: Monolog\Formatter\JsonFormatter
+
+  App\Command\AccountOnboardingCommand:
+    calls:
+        - setLogger: ['@monolog.logger.onboarding']
+
+  App\Command\AlertingCommand:
+    calls:
+        - setLogger: ['@monolog.logger.failed_operation']
+
+  App\Command\PaymentRefundCommand:
+    calls:
+        - setLogger: ['@monolog.logger.process_refund']
+
+  App\Command\PaymentSplitCommand:
+    calls:
+        - setLogger: ['@monolog.logger.process_transfer']
+
+  App\Command\PaymentValidationCommand:
+    calls:
+        - setLogger: ['@monolog.logger.pending_debit']
+
+  App\Command\SellerSettlementCommand:
+    calls:
+        - setLogger: ['@monolog.logger.process_payout']

@@ -66,7 +66,8 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
-        $output->writeln('Updating Stripe Express onboarding links for new Mirakl sellers');
+        $this->logger->info('starting');
+        $this->logger->info('Updating Stripe Express onboarding links for new Mirakl sellers');
         $delay = intval($input->getArgument(self::DELAY_ARGUMENT_NAME));
 
         if ($delay > 0) {
@@ -78,10 +79,10 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
         }
 
         $shopsToCheck = $this->miraklClient->fetchShops(null, $lastMapping, false);
-        $output->writeln(sprintf('Found %d potentially new Mirakl Shops', count($shopsToCheck)));
+        $this->logger->info(sprintf('Found %d potentially new Mirakl Shops', count($shopsToCheck)));
 
         $shopsToUpdate = array_filter(array_map([$this, 'generateShopPatch'], $shopsToCheck));
-        $output->writeln(sprintf('Updating %d new Mirakl Shops', count($shopsToUpdate)));
+        $this->logger->info(sprintf('Updating %d new Mirakl Shops', count($shopsToUpdate)));
 
         if (count($shopsToUpdate) > 0) {
             $maxBatchSizeShops = array_chunk($shopsToUpdate, self::MAX_MIRAKL_BATCH_SIZE);
@@ -90,6 +91,7 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
             }
         }
 
+        $this->logger->info('job succeeded');
         return 0;
     }
 
