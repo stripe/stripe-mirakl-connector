@@ -7,5 +7,6 @@ parameters:
         - '#typehint#'
         - '#type specified in iterable#'
         - '#setApiKey\(\) expects string#'
+        - '#on Psr\\Log\\LoggerInterface\|null#'
     universalObjectCratesClasses:
         - Stripe\StripeObject

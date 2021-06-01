@@ -131,7 +131,7 @@ class AccountMappingBySeller extends AbstractController implements LoggerAwareIn
             return $this->getRedirectResponse(self::ERROR_MISSING_STATE);
         }
 
-        $accountOnboarding = $this->accountOnboardingRepository->findOneByStripeState($state);
+        $accountOnboarding = $this->accountOnboardingRepository->findOneByStripeState((string) $state);
 
         if (null === $accountOnboarding) {
             return $this->getRedirectResponse(self::ERROR_NO_MATCHING_STATE);
@@ -147,7 +147,7 @@ class AccountMappingBySeller extends AbstractController implements LoggerAwareIn
         }
 
         try {
-            $response = $this->stripeClient->loginWithCode($code);
+            $response = $this->stripeClient->loginWithCode((string) $code);
             $stripeUserId = $response->stripe_user_id;
             $stripeAccount = $this->stripeClient->setPayoutToManual($stripeUserId);
         } catch (ApiErrorException $e) {
