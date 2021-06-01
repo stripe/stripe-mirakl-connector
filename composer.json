@@ -13,7 +13,7 @@
     "require": {
         "php": "^7.3",
         "antishov/doctrine-extensions-bundle": "^1.4",
-        "api-platform/api-pack": "1.2.*",
+        "api-platform/api-pack": "^1.2",
         "doctrine/doctrine-migrations-bundle": "^2.0",
         "nelmio/api-doc-bundle": "^3.4",
         "sensio/framework-extra-bundle": "^5.4",
