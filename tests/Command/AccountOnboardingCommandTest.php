@@ -21,7 +21,6 @@ class AccountOnboardingCommandTest extends KernelTestCase
 
         $container = self::$container;
 
-        ClockMock::register(__CLASS__);
         $this->command = $application->find('connector:sync:onboarding');
     }
 
@@ -33,18 +32,5 @@ class AccountOnboardingCommandTest extends KernelTestCase
             ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
-    }
-
-    public function testExecute()
-    {
-        ClockMock::withClockMock(date_create('2019-10-01 00:05 UTC')->getTimestamp());
-        $commandTester = new CommandTester($this->command);
-        $commandTester->execute([
-            'command' => $this->command->getName(),
-            'delay' => '5',
-        ]);
-
-        $this->assertEquals(0, $commandTester->getStatusCode());
-        ClockMock::withClockMock(false);
     }
 }
