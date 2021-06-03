@@ -265,6 +265,12 @@ class AccountMappingBySellerTest extends TestCase
             ->method('setPayoutToManual')
             ->with('acct_valid')
             ->willReturn($stripeAccount);
+        $this
+            ->stripeClient
+            ->expects($this->once())
+            ->method('setMiraklShopId')
+            ->with('acct_valid', 4242)
+            ->willReturn($stripeAccount);
 
         $response = $this->controller->linkShop($request);
         $this->assertEquals(Response::HTTP_FOUND, $response->getStatusCode());

@@ -150,6 +150,7 @@ class AccountMappingBySeller extends AbstractController implements LoggerAwareIn
             $response = $this->stripeClient->loginWithCode((string) $code);
             $stripeUserId = $response->stripe_user_id;
             $stripeAccount = $this->stripeClient->setPayoutToManual($stripeUserId);
+            $stripeAccount = $this->stripeClient->setMiraklShopId($stripeUserId, $miraklShopId);
         } catch (ApiErrorException $e) {
             return $this->getRedirectResponse([
                 'code' => $e->getStripeCode(),

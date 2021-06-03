@@ -79,6 +79,17 @@ class StripeClient
         ]);
     }
 
+    public function setMiraklShopId(string $stripeAccountId, int $miraklShopId): Account
+    {
+        $params = [
+            'metadata' => [
+                'miraklShopId' => $miraklShopId
+            ]
+        ];
+
+        return \Stripe\Account::update($stripeAccountId, $params);
+    }
+
     public function setPayoutToManual(string $stripeAccountId): Account
     {
         $params = [
