@@ -11,6 +11,8 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
+use App\Helper\LoggerHelper;
+
 
 class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInterface
 {
@@ -26,12 +28,19 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
      */
     private $stripeTransferRepository;
 
+    /**
+     * @var LoggerHelper
+     */
+    private $loggerHelper;
+
     public function __construct(
         StripeClient $stripeClient,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        LoggerHelper $loggerHelper
     ) {
         $this->stripeClient = $stripeClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->loggerHelper = $loggerHelper;
     }
 
     public function __invoke(ProcessTransferMessage $message)
@@ -95,12 +104,26 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                 $transfer->setTransferId($response->id);
                 $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
                 $transfer->setStatusReason(null);
+
+                $this->loggerHelper->getLogger()->debug('Stripe Transfer created',
+                    ['miraklId' => $transfer->getMiraklId(),
+                     'transferId' => $response->id,
+                     'extra'=> ['type'=>$type]
+                ]);
             }
         } catch (ApiErrorException $e) {
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
             $this->logger->error($message, [
                 'miraklId' => $transfer->getMiraklId(),
                 'stripeErrorCode' => $e->getStripeCode()
+            ]);
+
+            $this->loggerHelper->getLogger()->error($message, [
+                'miraklId' => $transfer->getMiraklId(),
+                'extra' =>[
+                    'stripeErrorCode' => $e->getStripeCode(),
+                    'error' => $e->getMessage()
+                    ]
             ]);
 
             $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);

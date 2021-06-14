@@ -3,6 +3,7 @@
 namespace App\Handler;
 
 use App\Entity\StripeRefund;
+use App\Helper\LoggerHelper;
 use App\Message\ProcessRefundMessage;
 use App\Repository\StripeRefundRepository;
 use App\Service\MiraklClient;
@@ -31,15 +32,21 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
      * @var StripeRefundRepository
      */
     private $stripeRefundRepository;
+    /**
+     * @var LoggerHelper
+     */
+    private $loggerHelper;
 
     public function __construct(
         MiraklClient $miraklClient,
         StripeClient $stripeClient,
-        StripeRefundRepository $stripeRefundRepository
+        StripeRefundRepository $stripeRefundRepository,
+        LoggerHelper $loggerHelper
     ) {
         $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
         $this->stripeRefundRepository = $stripeRefundRepository;
+        $this->loggerHelper = $loggerHelper;
     }
 
     public function __invoke(ProcessRefundMessage $message)
@@ -83,6 +90,12 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             $refund->setMiraklValidationTime(new \DateTime());
             $refund->setStatus(StripeRefund::REFUND_CREATED);
             $refund->setStatusReason(null);
+
+            $this->loggerHelper->getLogger()->error('Refund created ' . $refund->getMiraklOrderId(), [
+                'miraklRefundId' => $refund->getMiraklRefundId(),
+                'miraklOrderId' => $refund->getMiraklOrderId()
+            ]);
+
         } catch (ApiErrorException $e) {
             $this->logger->error(
                 sprintf('Could not create refund in Stripe: %s.', $e->getMessage()),
@@ -92,6 +105,14 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 ]
             );
 
+            $this->loggerHelper->getLogger()->error($message, [
+                'miraklRefundId' => $refund->getMiraklRefundId(),
+                'miraklOrderId' => $refund->getMiraklOrderId(),
+                'extra' =>[
+                    'stripeErrorCode' => $e->getStripeCode(),
+                    'error' => $e->getMessage()
+                ]
+            ]);
             $refund->setStatus(StripeRefund::REFUND_FAILED);
             $refund->setStatusReason(substr($e->getMessage(), 0, 1024));
         } catch (ClientException $e) {
@@ -103,6 +124,14 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                     'miraklOrderId' => $refund->getMiraklOrderId()
                 ]
             );
+
+            $this->loggerHelper->getLogger()->error($message, [
+                'miraklRefundId' => $refund->getMiraklRefundId(),
+                'miraklOrderId' => $refund->getMiraklOrderId(),
+                'extra' =>[
+                    'error' => $message
+                ]
+            ]);
 
             $refund->setStatus(StripeRefund::REFUND_FAILED);
             $refund->setStatusReason(substr($message, 0, 1024));
