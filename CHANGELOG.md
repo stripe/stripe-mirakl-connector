@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 2.1.3
+
+- Added miraklShopId to Stripe Account metadata (#85 thanks @christophersjchow)
+- Improved logs readability + added option to output externally via Filebeat
+- Bumped dependencies
+
 ## Version 2.1.2
 
 - Added: fetch payment ID from PaymentMapping if not provided in order transaction_number
