@@ -54,7 +54,6 @@ class GrayLogHandler extends AbstractProcessingHandler
         $curl->setHeader('Content-Type', 'application/json');
         $curl->setHeader('Content-Length', strlen($payload_data));
         $curl->post('', $payload_data);
-	var_dump($this->apiLog);
         if($curl->getErrorCode() > 0){
             echo($curl->getCurlErrorMessage(). 'data sent: '. json_encode($payload_data));
         }
