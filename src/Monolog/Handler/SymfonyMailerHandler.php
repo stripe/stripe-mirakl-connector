@@ -39,7 +39,7 @@ class SymfonyMailerHandler extends MailHandler
      */
     protected function send($content, array $records): void
     {
-        $this->mailer->send($this->buildMessage($content, $records));
+     //   $this->mailer->send($this->buildMessage($content, $records));
     }
 
     /**

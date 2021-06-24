@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Handler\Monolog;
+namespace App\Monolog\Handler;
 
 use Curl\Curl;
 use ErrorException;
