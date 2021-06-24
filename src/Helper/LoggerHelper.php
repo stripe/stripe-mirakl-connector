@@ -2,7 +2,7 @@
 
 namespace App\Helper;
 
-use App\Monolog\Handler\GrayLogHandler;
+use App\Handler\Monolog\GrayLogHandler;
 use App\Monolog\Processor\ExceptionProcessor;
 use App\Monolog\Processor\UserProcessor;
 use Doctrine\Common\Persistence\ManagerRegistry;
