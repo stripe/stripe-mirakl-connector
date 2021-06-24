@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Exception\InvalidArgumentException;
 use App\Factory\MiraklPatchShopFactory;
 use App\Factory\AccountOnboardingFactory;
+use App\Helper\LoggerHelper;
 use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -40,17 +41,23 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
      * @var string
      */
     private $customFieldCode;
+    /**
+     * @var LoggerHelper
+     */
+    private $loggerHelper;
 
     public function __construct(
         AccountOnboardingFactory $accountOnboardingFactory,
         MiraklClient $miraklClient,
         MiraklPatchShopFactory $patchFactory,
-        string $customFieldCode
+        string $customFieldCode,
+        LoggerHelper $loggerHelper
     ) {
         $this->accountOnboardingFactory = $accountOnboardingFactory;
         $this->miraklClient = $miraklClient;
         $this->patchFactory = $patchFactory;
         $this->customFieldCode = $customFieldCode;
+        $this->loggerHelper = $loggerHelper;
 
         parent::__construct();
     }
@@ -117,6 +124,8 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
         try {
             $stripeUrl = $this->accountOnboardingFactory->createFromMiraklShop($miraklShop);
 
+            $this->loggerHelper->getLogger()->info('Url onboarding created',['miraklShopId' => $miraklShop['shop_id'],'extra'=>['stripeUrl' =>$stripeUrl]]);
+
             return $this->patchFactory
                 ->setMiraklShopId($miraklShop['shop_id'])
                 ->setStripeUrl($stripeUrl)
@@ -126,6 +135,9 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
             $this->logger->error($e->getMessage(), [
                 'miraklShopId' => $miraklShop['shop_id'],
             ]);
+
+            $this->loggerHelper->getLogger()->error($e->getMessage(),['miraklShopId' => $miraklShop['shop_id']]);
+
         }
 
         return null;

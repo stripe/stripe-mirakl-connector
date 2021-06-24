@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\DTO\AccountMappingDTO;
 use App\Factory\AccountMappingFactory;
+use App\Helper\LoggerHelper;
 use App\Repository\AccountMappingRepository;
 use App\Service\StripeClient;
 use Nelmio\ApiDocBundle\Annotation\Security;
@@ -46,19 +47,25 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
      * @var ValidatorInterface
      */
     private $validator;
+    /**
+     * @var LoggerHelper
+     */
+    private $loggerHelper;
 
     public function __construct(
         AccountMappingFactory $accountMappingFactory,
         AccountMappingRepository $accountMappingRepository,
         StripeClient $stripeClient,
         SerializerInterface $serializer,
-        ValidatorInterface $validator
+        ValidatorInterface $validator,
+        LoggerHelper $loggerHelper
     ) {
         $this->accountMappingFactory = $accountMappingFactory;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->stripeClient = $stripeClient;
         $this->serializer = $serializer;
         $this->validator = $validator;
+        $this->loggerHelper = $loggerHelper;
     }
 
     /**
@@ -115,6 +122,11 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
         $mapping->setDisabledReason($stripeAccount->requirements['disabled_reason']);
 
         $this->accountMappingRepository->persistAndFlush($mapping);
+
+        $this->loggerHelper->getLogger()->info('Mirakl - Stripe mapping created',
+            ['miraklShopId' => $mapping->getMiraklShopId(),
+            'extra' => ['stripeAccountId' => $mapping->getStripeAccountId()]]
+        );
 
         return new Response('Mirakl - Stripe mapping created', Response::HTTP_CREATED);
     }
