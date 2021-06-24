@@ -16,6 +16,7 @@
         "api-platform/api-pack": "^1.2",
         "doctrine/doctrine-migrations-bundle": "^2.0",
         "nelmio/api-doc-bundle": "^3.4",
+        "php-curl-class/php-curl-class": "^9.2",
         "sensio/framework-extra-bundle": "^5.4",
         "shivas/versioning-bundle": "^3.2",
         "stripe/stripe-php": "7.75.*",
@@ -34,8 +35,7 @@
         "symfony/serializer-pack": "^1.0",
         "symfony/twig-bundle": "4.4.*",
         "symfony/validator": "4.4.*",
-        "symfony/yaml": "4.4.*",
-        "php-curl-class/php-curl-class": "^8.6"
+        "symfony/yaml": "4.4.*"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^2.18",
