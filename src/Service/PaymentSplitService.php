@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Helper\LoggerHelper;
 use App\Service\MiraklClient;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeTransferRepository;
@@ -18,13 +19,19 @@ class PaymentSplitService
      * @var StripeTransferRepository
      */
     private $stripeTransferRepository;
+    /**
+     * @var LoggerHelper
+     */
+    private $loggerHelper;
 
     public function __construct(
         StripeTransferFactory $stripeTransferFactory,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        LoggerHelper $loggerHelper
     ) {
         $this->stripeTransferFactory = $stripeTransferFactory;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->loggerHelper = $loggerHelper;
     }
 
     /**
@@ -73,8 +80,11 @@ class PaymentSplitService
         }
 
         // Save
-        $this->stripeTransferRepository->flush();
-
+        try{
+            $this->stripeTransferRepository->flush();
+        } catch (\Throwable $exception){
+            $this->loggerHelper->getLogger()->error($exception->getMessage(), []);
+        }
         return $transfers;
     }
 
@@ -94,7 +104,11 @@ class PaymentSplitService
         }
 
         // Save
-        $this->stripeTransferRepository->flush();
+        try {
+            $this->stripeTransferRepository->flush();
+        } catch (\Throwable $exception){
+            $this->loggerHelper->getLogger()->error($exception->getMessage(), []);
+        }
 
         return $updated;
     }
