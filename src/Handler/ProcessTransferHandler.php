@@ -133,7 +133,7 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
 
         try {
             $this->stripeTransferRepository->flush();
-        } catch (\Throwable $exception){
+        } catch (\Throwable $e){
             $this->loggerHelper->getLogger()->error($e->getMessage(), [
                 'miraklId' => $transfer->getMiraklId(),
                 'extra' =>[
