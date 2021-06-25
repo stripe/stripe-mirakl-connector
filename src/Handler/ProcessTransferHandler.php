@@ -111,7 +111,8 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                      'extra'=> ['type'=>$type]
                 ]);
             }
-        } catch (ApiErrorException $e) {
+        }
+        catch (ApiErrorException $e) {
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
             $this->logger->error($message, [
                 'miraklId' => $transfer->getMiraklId(),
@@ -130,6 +131,17 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
             $transfer->setStatusReason(substr($e->getMessage(), 0, 1024));
         }
 
-        $this->stripeTransferRepository->flush();
+        try {
+            $this->stripeTransferRepository->flush();
+        } catch (\Throwable $exception){
+            $this->loggerHelper->getLogger()->error($e->getMessage(), [
+                'miraklId' => $transfer->getMiraklId(),
+                'extra' =>[
+                    'stripeErrorCode' => $e->getStripeCode(),
+                    'error' => $e->getMessage()
+                ]
+            ]);
+            return false;
+        }
     }
 }
