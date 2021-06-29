@@ -120,7 +120,7 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                 'stripeErrorCode' => $e->getStripeCode()
             ]);
 
-            if($e->getMessage() != 'Cannot use an uncaptured charge as a source_transaction.') {
+            if($e->getMessage() != 'Cannot use an uncaptured charge as a source_transaction') {
                 $this->loggerHelper->getLogger()->error($message, [
                     'miraklId' => $transfer->getMiraklId(),
                     'extra' => [

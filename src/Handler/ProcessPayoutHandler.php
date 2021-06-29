@@ -65,7 +65,7 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
             $payout->setStatus(StripePayout::PAYOUT_CREATED);
             $payout->setStatusReason(null);
 
-            $this->loggerHelper->getLogger()->debug('Payout processed', [
+            $this->loggerHelper->getLogger()->info('Payout processed', [
                 'miraklShopId' => $accountMapping->getMiraklShopId(),
                 'invoiceId' => $payout->getMiraklInvoiceId(),
             ]);
@@ -79,7 +79,7 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
                 ]
             );
 
-            $this->loggerHelper->getLogger()->errro('Could not create Stripe Payout', [
+            $this->loggerHelper->getLogger()->error('Could not create Stripe Payout', [
                 'miraklShopId' => $accountMapping->getMiraklShopId(),
                 'stripePayoutId' => $payout->getMiraklInvoiceId(),
                 'extra' => [
