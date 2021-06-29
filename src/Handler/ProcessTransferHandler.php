@@ -105,10 +105,10 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                 $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
                 $transfer->setStatusReason(null);
 
-                $this->loggerHelper->getLogger()->debug('Stripe Transfer created',
+                $this->loggerHelper->getLogger()->info('Stripe Transfer created',
                     ['miraklId' => $transfer->getMiraklId(),
                      'transferId' => $response->id,
-                     'extra'=> ['type'=>$type]
+                     'extra'=> ['type'=>$type, 'amount' => $transfer->getAmount()]
                 ]);
             }
         }
@@ -116,16 +116,19 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
             $this->logger->error($message, [
                 'miraklId' => $transfer->getMiraklId(),
+                'amount' => $transfer->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode()
             ]);
 
-            $this->loggerHelper->getLogger()->error($message, [
-                'miraklId' => $transfer->getMiraklId(),
-                'extra' =>[
-                    'stripeErrorCode' => $e->getStripeCode(),
-                    'error' => $e->getMessage()
+            if($e->getMessage() != 'Cannot use an uncaptured charge as a source_transaction.') {
+                $this->loggerHelper->getLogger()->error($message, [
+                    'miraklId' => $transfer->getMiraklId(),
+                    'extra' => [
+                        'stripeErrorCode' => $e->getStripeCode(),
+                        'error' => $e->getMessage()
                     ]
-            ]);
+                ]);
+            }
 
             $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);
             $transfer->setStatusReason(substr($e->getMessage(), 0, 1024));

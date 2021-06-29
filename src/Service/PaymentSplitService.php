@@ -83,6 +83,7 @@ class PaymentSplitService
         try{
             $this->stripeTransferRepository->flush();
         } catch (\Throwable $exception){
+            if($exception->getMessage() != '')
             $this->loggerHelper->getLogger()->error($exception->getMessage(), []);
         }
         return $transfers;
