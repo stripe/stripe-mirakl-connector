@@ -116,6 +116,7 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
     private function generateShopPatch(array $miraklShop): ?array
     {
         $fieldValue = $this->getStripeCustomFieldValue($miraklShop['shop_additional_fields']);
+$this->loggerHelper->getLogger()->info('getStripeCustomFieldValue', ['miraklShopId' => $miraklShop['shop_id'], 'extra' => ['fieldValue' => $fieldValue]]);
         if (null !== $fieldValue) {
             // Link has already been generated, skip
             return null;

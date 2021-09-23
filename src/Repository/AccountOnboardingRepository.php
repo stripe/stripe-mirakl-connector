@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\AccountOnboarding;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use App\Helper\LoggerHelper;
 
 /**
  * @method AccountOnboarding|null find($id, $lockMode = null, $lockVersion = null)
@@ -14,13 +15,17 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class AccountOnboardingRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
+private $loggerHelper;
+
+    public function __construct(ManagerRegistry $registry, LoggerHelper $loggerHelper)
     {
+$this->loggerHelper = $loggerHelper;
         parent::__construct($registry, AccountOnboarding::class);
     }
 
     public function createAccountOnboarding(int $miraklShopId): AccountOnboarding
     {
+$this->loggerHelper->getLogger()->info("Se va a intentar crear un Onboarding para la tienda ".$miraklShopId,['miraklShopId' => $miraklShopId]);
         $accountOnboarding = new AccountOnboarding();
         $accountOnboarding
             ->setMiraklShopId($miraklShopId)
@@ -29,6 +34,10 @@ class AccountOnboardingRepository extends ServiceEntityRepository
 
         $entityManager->persist($accountOnboarding);
         $entityManager->flush();
+
+$accountOnboardingSecure = $this->findOneBy(['miraklShopId' => $miraklShopId]);
+$varAccountOnboardingSecure = !empty($accountOnboardingSecure) ? $accountOnboardingSecure->getId() : 'ha fallado';
+$this->loggerHelper->getLogger()->info("Se ha intentando crear un Onboarding para la tienda ".$miraklShopId,['miraklShopId' => $miraklShopId, 'extra'=> ['AccountOnboarding' => $varAccountOnboardingSecure]]);
 
         return $accountOnboarding;
     }

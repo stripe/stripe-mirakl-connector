@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use App\Helper\LoggerHelper;
 
 class AccountMappingBySeller extends AbstractController implements LoggerAwareInterface
 {
@@ -57,21 +58,26 @@ class AccountMappingBySeller extends AbstractController implements LoggerAwareIn
      */
     private $accountOnboardingRepository;
 
+private $loggerHelper;
+
     public function __construct(
         StripeClient $stripeClient,
         string $redirectOnboarding,
         AccountMappingRepository $accountMappingRepository,
-        AccountOnboardingRepository $accountOnboardingRepository
+        AccountOnboardingRepository $accountOnboardingRepository,
+	LoggerHelper $loggerHelper
     ) {
         $this->stripeClient = $stripeClient;
         $this->redirectOnboarding = $redirectOnboarding;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->accountOnboardingRepository = $accountOnboardingRepository;
+$this->loggerHelper = $loggerHelper;
     }
 
     private function getRedirectResponse(array $error): RedirectResponse
     {
         $this->logger->error('Could not process return from Stripe', $error);
+$this->loggerHelper->getLogger()->error('getRedirectResponse', ['extra' => [$error]]);
 
         $queryParams = \http_build_query([
             'error' => 'true',
@@ -156,7 +162,7 @@ class AccountMappingBySeller extends AbstractController implements LoggerAwareIn
                 'description' => $e->getMessage(),
             ]);
         }
-
+$this->loggerHelper->getLogger()->info('Se intenta crear el mapping', ['miraklShopId'=> $miraklShopId]);
         $mapping = new AccountMapping();
         $mapping->setMiraklShopId($miraklShopId);
         $mapping->setStripeAccountId($stripeUserId);
@@ -165,6 +171,9 @@ class AccountMappingBySeller extends AbstractController implements LoggerAwareIn
         $mapping->setPayinEnabled($stripeAccount->charges_enabled);
 
         $this->accountMappingRepository->persistAndFlush($mapping);
+$mappingSecure = $this->accountMappingRepository->findOneByMiraklShopId($miraklShopId);
+$varMappingSecure = !empty($mappingSecure) ? $mappingSecure->getId() : 'ha fallado';
+$this->loggerHelper->getLogger()->error('Se ha intentado crear el mapping', ['miraklShopId'=> $miraklShopId, 'extra' => ['mappingSecure' => $varMappingSecure]]);
 
         $queryParams = \http_build_query([
             'success' => 'true',
