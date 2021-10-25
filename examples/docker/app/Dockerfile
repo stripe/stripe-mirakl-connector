@@ -25,6 +25,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Copy configuration files
 COPY examples/docker/app/config/filebeat.yml /usr/share/filebeat/filebeat.yml
+RUN chmod go-w /usr/share/filebeat/filebeat.yml
 COPY examples/docker/app/config/php.ini /etc/php7/conf.d/settings.ini
 COPY examples/docker/app/config/nginx.conf /etc/nginx/nginx.conf
 COPY examples/docker/app/certs/* /etc/letsencrypt/
