@@ -237,11 +237,17 @@ class MiraklMockedHttpClient extends MockHttpClient
 												$orderIds = explode(',', $params['order_ids']);
 										case isset($params['order_id']): // Service
 												$orderIds = $orderIds ?? (array) $params['order_id'];
+												if (count($orderIds) > 100) {
+													throw new \Exception("Bad Request", 400);
+												}
 												return [ $key => $this->mockOrdersById($isService, $orderIds) ];
 										case isset($params['commercial_ids']): // Product
 												$commercialIds = explode(',', $params['commercial_ids']);
 										case isset($params['commercial_order_id']): // Service
 												$commercialIds = $commercialIds ?? (array) $params['commercial_order_id'];
+												if (count($commercialIds) > 100) {
+													throw new \Exception("Bad Request", 400);
+												}
 												return [ $key => $this->mockOrdersByCommercialId($isService, $commercialIds) ];
 										default:
 												return [ $key => [] ];
