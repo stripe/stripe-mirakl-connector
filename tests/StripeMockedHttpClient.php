@@ -278,7 +278,7 @@ class StripeMockedHttpClient implements ClientInterface
             case self::ACCOUNT_PAYOUT_DISABLED:
                 throw new ApiConnectionException("Payouts disabled", 400);
             default:
-                throw new ApiConnectionException("$id not found", 404);
+                throw new ApiConnectionException("$stripeAccount not found", 404);
         }
     }
 

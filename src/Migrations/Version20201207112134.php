@@ -56,7 +56,7 @@ final class Version20201207112134 extends AbstractMigration implements Container
 
     private function fetchAndUpdateMissingAmounts()
     {
-        $stripeCharges = $this->connection->fetchAll('SELECT id, stripe_charge_id FROM stripe_charge');
+        $stripeCharges = $this->connection->fetchAllAssociative('SELECT id, stripe_charge_id FROM stripe_charge');
 
         $updateQuery = 'UPDATE stripe_charge SET stripe_amount = :amount WHERE id = :id';
         // Fetch matching amount from Stripe and update them in DB

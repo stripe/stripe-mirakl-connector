@@ -64,7 +64,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
     private function changePaymentIntentIdForChargeId()
     {
         // Retrieve stripe_payment records linked to a PI
-        $stripePayments = $this->connection->fetchAll('SELECT id, stripe_payment_id FROM stripe_payment WHERE stripe_payment_id LIKE \'pi_%\' AND status IN (\'to_capture\', \'captured\')');
+        $stripePayments = $this->connection->fetchAllAssociative('SELECT id, stripe_payment_id FROM stripe_payment WHERE stripe_payment_id LIKE \'pi_%\' AND status IN (\'to_capture\', \'captured\')');
 
         $updateQuery = 'UPDATE stripe_payment SET stripe_payment_id = :stripePaymentId WHERE id = :id';
 

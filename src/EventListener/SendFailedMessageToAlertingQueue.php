@@ -48,7 +48,7 @@ class SendFailedMessageToAlertingQueue implements EventSubscriberInterface, Logg
         if ($throwable instanceof HandlerFailedException) {
             $throwable = $throwable->getNestedExceptions()[0];
         }
-        $flattenedException = class_exists(FlattenException::class) ? FlattenException::createFromThrowable($throwable) : null;
+
         $this->messageBus->dispatch(new NotificationFailedMessage($throwable, $envelope->getMessage()));
     }
 
