@@ -45,6 +45,35 @@ class MiraklClientTest extends KernelTestCase {
         $link  = $this->miraklClient->getNextLink($responsePrevNext);
         $this->assertEquals($nextLink, $link);
     }
+
+    public function testGetMoreThanOneHundredOrdersById()
+    {
+        $orderIds = [];
+        $orderIds[] = MiraklMockedHttpClient::ORDER_STATUS_SHIPPING;
+        for ($i = 0; $i < 100; $i += 1) {
+            $orderIds[] = "random_order_$i";
+        }
+        $orderIds[] = MiraklMockedHttpClient::ORDER_STATUS_SHIPPED;
+
+        $res = $this->miraklClient->listProductOrdersById($orderIds);
+
+        $this->assertCount(102, $res);
+        $this->assertArrayHasKey(MiraklMockedHttpClient::ORDER_STATUS_SHIPPING, $res);
+        $this->assertArrayHasKey(MiraklMockedHttpClient::ORDER_STATUS_SHIPPED, $res);
+    }
+
+    public function testGetMoreThanOneHundredOrdersByCommercialId()
+    {
+        $commercialIds = array_fill(0, 99, MiraklMockedHttpClient::ORDER_COMMERCIAL_NONE_VALIDATED);
+        $commercialIds[] = MiraklMockedHttpClient::ORDER_COMMERCIAL_PARTIALLY_VALIDATED;
+        $commercialIds[] = MiraklMockedHttpClient::ORDER_COMMERCIAL_ALL_VALIDATED;
+
+        $res = $this->miraklClient->listProductOrdersByCommercialId($commercialIds);
+
+        $this->assertArrayHasKey(MiraklMockedHttpClient::ORDER_COMMERCIAL_NONE_VALIDATED, $res);
+        $this->assertArrayHasKey(MiraklMockedHttpClient::ORDER_COMMERCIAL_PARTIALLY_VALIDATED, $res);
+        $this->assertArrayHasKey(MiraklMockedHttpClient::ORDER_COMMERCIAL_ALL_VALIDATED, $res);
+    }
 }
 
 ?>
