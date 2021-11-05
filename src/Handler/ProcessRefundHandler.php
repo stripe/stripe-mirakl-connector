@@ -55,7 +55,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 $response = $this->stripeClient->createRefund(
                     $refund->getTransactionId(),
                     $refund->getAmount(),
-                    [ 'miraklRefundId' => $refund->getMiraklRefundId() ]
+                    ['miraklRefundId' => $refund->getMiraklRefundId()]
                 );
 
                 $refund->setStripeRefundId($response->id);

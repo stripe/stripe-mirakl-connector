@@ -28,7 +28,7 @@ class AccountOnboardingCommandTest extends KernelTestCase
         $commandTester = new CommandTester($this->command);
         $commandTester->execute([
             'command' => $this->command->getName(),
-            ]);
+        ]);
 
         $this->assertEquals(0, $commandTester->getStatusCode());
     }

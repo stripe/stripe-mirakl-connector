@@ -75,5 +75,3 @@ class MiraklClientTest extends KernelTestCase {
         $this->assertArrayHasKey(MiraklMockedHttpClient::ORDER_COMMERCIAL_ALL_VALIDATED, $res);
     }
 }
-
-?>

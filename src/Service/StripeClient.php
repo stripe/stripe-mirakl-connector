@@ -143,7 +143,7 @@ class StripeClient
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
             'destination' => $platformAccount->id
-        ], [ 'stripe_account' => $accountId ]);
+        ], ['stripe_account' => $accountId]);
     }
 
     // Reversal
@@ -188,7 +188,7 @@ class StripeClient
         switch (substr($paymentId, 0, 3)) {
             case 'pi_':
                 $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
-                return $pi->capture([ 'amount_to_capture' =>  $amount]);
+                return $pi->capture(['amount_to_capture' =>  $amount]);
             case 'ch_':
             case 'py_':
                 $charge = $this->chargeRetrieve($paymentId);
@@ -199,7 +199,7 @@ class StripeClient
                     return $this->capturePayment($paymentIntentId, $amount);
                 }
 
-                return $charge->capture([ 'amount' =>  $amount]);
+                return $charge->capture(['amount' =>  $amount]);
             default:
                 throw new \Exception('Unexpected payment type: ' . $paymentId);
         }

@@ -56,14 +56,14 @@ class MiraklProductOrder extends MiraklOrder
 
     public function isAborted(): bool
     {
-        return in_array($this->getState(), [ 'REFUSED', 'CANCELED' ]);
+        return in_array($this->getState(), ['REFUSED', 'CANCELED']);
     }
 
     public function getAmountDue(): float
     {
         $amount = $this->order['total_price']; // REFUSED/CANCELED are already not included
         foreach ($this->getOrderLines() as $orderLine) {
-            if (!in_array($orderLine['order_line_state'], [ 'REFUSED', 'CANCELED' ])) {
+            if (!in_array($orderLine['order_line_state'], ['REFUSED', 'CANCELED'])) {
                 $amount += $this->getOrderLineTaxes($orderLine);
             }
         }

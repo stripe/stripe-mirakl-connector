@@ -67,10 +67,12 @@ class StripePayoutFactory implements LoggerAwareInterface
             );
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                // Problem is final, let's abort
-                case 10: return $this->abortPayout($payout, $e->getMessage());
-                // Problem is just temporary, let's put on hold
-                case 20: return $this->putPayoutOnHold($payout, $e->getMessage());
+                    // Problem is final, let's abort
+                case 10:
+                    return $this->abortPayout($payout, $e->getMessage());
+                    // Problem is just temporary, let's put on hold
+                case 20:
+                    return $this->putPayoutOnHold($payout, $e->getMessage());
             }
         }
 
@@ -139,7 +141,7 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Payout on hold: ' . $reason,
-            [ 'invoice_id' => $payout->getMiraklInvoiceId() ]
+            ['invoice_id' => $payout->getMiraklInvoiceId()]
         );
 
         $payout->setStatusReason($reason);
@@ -155,7 +157,7 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Payout aborted: ' . $reason,
-            [ 'invoice_id' => $payout->getMiraklInvoiceId() ]
+            ['invoice_id' => $payout->getMiraklInvoiceId()]
         );
 
         $payout->setStatusReason($reason);
@@ -170,7 +172,7 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Payout created',
-            [ 'invoice_id' => $payout->getMiraklInvoiceId() ]
+            ['invoice_id' => $payout->getMiraklInvoiceId()]
         );
 
         $payout->setStatusReason(null);
