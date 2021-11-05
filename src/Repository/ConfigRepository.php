@@ -52,6 +52,6 @@ class ConfigRepository extends ServiceEntityRepository
      */
     public function findByKey(string $key): ?Config
     {
-        return $this->findOneBy([ 'key' => $key ]);
+        return $this->findOneBy(['key' => $key]);
     }
 }

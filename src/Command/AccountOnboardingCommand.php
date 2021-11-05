@@ -60,8 +60,7 @@ class AccountOnboardingCommand extends Command implements LoggerAwareInterface
         $this
             ->setDescription('Generates Stripe Express onboarding links for new Mirakl Shops.')
             ->setHelp('This command will fetch Mirakl shops newly created, without any link in the configured custom field, will generate a link and update the Mirakl custom field.')
-            ->addArgument(self::DELAY_ARGUMENT_NAME, InputArgument::OPTIONAL, 'Fetch shops updated in the last <delay> minutes. If empty, fetches all Mirakl Shops.')
-    ;
+            ->addArgument(self::DELAY_ARGUMENT_NAME, InputArgument::OPTIONAL, 'Fetch shops updated in the last <delay> minutes. If empty, fetches all Mirakl Shops.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int

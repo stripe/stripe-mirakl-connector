@@ -48,7 +48,7 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
         assert(null !== $amount && null !== $currency);
 
         try {
-            $metadata = [ 'miraklId' => $transfer->getMiraklId() ];
+            $metadata = ['miraklId' => $transfer->getMiraklId()];
             switch ($type) {
                 case StripeTransfer::TRANSFER_PRODUCT_ORDER:
                 case StripeTransfer::TRANSFER_SERVICE_ORDER:

@@ -73,9 +73,9 @@ class AlertingCommandTest extends TestCase
             ->method('findBy')
             ->willReturn([$failedPayouts]);
         $this->refundRepository
-                ->expects($this->once())
-                ->method('findBy')
-                ->willReturn([$failedRefunds]);
+            ->expects($this->once())
+            ->method('findBy')
+            ->willReturn([$failedRefunds]);
         $this->mailer
             ->expects($this->once())
             ->method('send');

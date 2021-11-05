@@ -44,32 +44,32 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
         $this->paymentMappingRepository = $container->get('doctrine')->getRepository(PaymentMapping::class);
 
         $this->handler = new CapturePendingPaymentHandler(
-						$this->stripeClient,
-						$this->paymentMappingRepository
-				);
+            $this->stripeClient,
+            $this->paymentMappingRepository
+        );
         $this->handler->setLogger(new NullLogger());
     }
 
     private function executeHandler($paymentMappingId)
     {
-				($this->handler)(new CapturePendingPaymentMessage($paymentMappingId, 100));
+        ($this->handler)(new CapturePendingPaymentMessage($paymentMappingId, 100));
     }
 
     private function mockPaymentMapping($orderId, $chargeId)
     {
         $mapping = new PaymentMapping();
-				$mapping->setMiraklCommercialOrderId($orderId);
-				$mapping->setStripeChargeId($chargeId);
+        $mapping->setMiraklCommercialOrderId($orderId);
+        $mapping->setStripeChargeId($chargeId);
 
-				$this->paymentMappingRepository->persist($mapping);
-				$this->paymentMappingRepository->flush();
+        $this->paymentMappingRepository->persist($mapping);
+        $this->paymentMappingRepository->flush();
 
-				return $mapping;
+        return $mapping;
     }
 
     private function getPaymentMapping($id)
     {
-				return $this->paymentMappingRepository->findOneBy([
+        return $this->paymentMappingRepository->findOneBy([
             'id' => $id
         ]);
     }
@@ -77,9 +77,9 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
     public function testCapturePaymentIntent()
     {
         $mapping = $this->mockPaymentMapping(
-						MiraklMock::ORDER_BASIC,
-						StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE
-				);
+            MiraklMock::ORDER_BASIC,
+            StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE
+        );
 
         $this->executeHandler($mapping->getId());
 
@@ -90,9 +90,9 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
     public function testCaptureCharge()
     {
         $mapping = $this->mockPaymentMapping(
-						MiraklMock::ORDER_BASIC,
-						StripeMock::CHARGE_STATUS_AUTHORIZED
-				);
+            MiraklMock::ORDER_BASIC,
+            StripeMock::CHARGE_STATUS_AUTHORIZED
+        );
 
         $this->executeHandler($mapping->getId());
 
@@ -103,9 +103,9 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
     public function testCapturePaymentIntentWithApiError()
     {
         $mapping = $this->mockPaymentMapping(
-						MiraklMock::ORDER_BASIC,
-						StripeMock::PAYMENT_INTENT_STATUS_SUCCEEDED
-				);
+            MiraklMock::ORDER_BASIC,
+            StripeMock::PAYMENT_INTENT_STATUS_SUCCEEDED
+        );
 
         $this->executeHandler($mapping->getId());
 
@@ -116,9 +116,9 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
     public function testCaptureChargeWithApiError()
     {
         $mapping = $this->mockPaymentMapping(
-						MiraklMock::ORDER_BASIC,
-						StripeMock::CHARGE_STATUS_CAPTURED
-				);
+            MiraklMock::ORDER_BASIC,
+            StripeMock::CHARGE_STATUS_CAPTURED
+        );
 
         $this->executeHandler($mapping->getId());
 

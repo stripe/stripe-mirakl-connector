@@ -75,11 +75,11 @@ class SellerSettlementService
 
                     // Use existing transfer
                     $transfer = $this->stripeTransferFactory
-                                                ->updateFromInvoice($transfer, $invoice, $type);
+                        ->updateFromInvoice($transfer, $invoice, $type);
                 } else {
                     // Create new transfer
                     $transfer = $this->stripeTransferFactory
-                                                ->createFromInvoice($invoice, $type);
+                        ->createFromInvoice($invoice, $type);
                     $this->stripeTransferRepository->persist($transfer);
                 }
 
@@ -154,11 +154,11 @@ class SellerSettlementService
 
                 // Use existing payout
                 $payout = $this->stripePayoutFactory
-                                            ->updateFromInvoice($payout, $invoice);
+                    ->updateFromInvoice($payout, $invoice);
             } else {
                 // Create new payout
                 $payout = $this->stripePayoutFactory
-                                            ->createFromInvoice($invoice);
+                    ->createFromInvoice($invoice);
                 $this->stripePayoutRepository->persist($payout);
             }
 

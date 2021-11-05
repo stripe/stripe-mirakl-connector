@@ -38,8 +38,8 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
         $this->miraklClient = $this->createMock(MiraklClient::class);
         $this->stripeClient = $this->createMock(StripeClient::class);
         $this->patchFactory = $this->getMockBuilder(MiraklPatchShopFactory::class)
-                         ->setConstructorArgs(['stripe-link'])
-                         ->getMock();
+            ->setConstructorArgs(['stripe-link'])
+            ->getMock();
 
         $this->handler = new UpdateAccountLoginLinkHandler(
             $this->miraklClient,

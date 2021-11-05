@@ -119,7 +119,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
             if (!isset($ordersByCommercialId[$commercialId])) {
                 $this->logger->info(
                     'Skipping payment capture for non-existing commercial order.',
-                    [ 'commercial_id' => $commercialId ]
+                    ['commercial_id' => $commercialId]
                 );
                 continue;
             }
@@ -131,7 +131,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
                 if (!$order->isValidated()) {
                     $this->logger->info(
                         'Skipping payment capture for non-accepted logistical order.',
-                        [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+                        ['commercial_id' => $commercialId, 'order_id' => $orderId]
                     );
                     continue 2;
                 }
@@ -140,7 +140,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
                 if (!$order->isAborted() && !$order->isPaid()) {
                     $this->logger->info(
                         'Skipping payment capture for non-validated logistical order payment.',
-                        [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+                        ['commercial_id' => $commercialId, 'order_id' => $orderId]
                     );
                     continue 2;
                 }
@@ -150,7 +150,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
                 if ($abortedAmount > 0) {
                     $this->logger->info(
                         "Deducting order aborted amount {$abortedAmount} from capture amount.",
-                        [ 'commercial_id' => $commercialId, 'order_id' => $orderId ]
+                        ['commercial_id' => $commercialId, 'order_id' => $orderId]
                     );
                     $captureAmount -= gmp_intval((string) ($abortedAmount * 100));
                 }

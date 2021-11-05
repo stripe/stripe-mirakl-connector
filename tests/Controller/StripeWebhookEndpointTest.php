@@ -83,14 +83,14 @@ class StripeWebhookEndpointTest extends TestCase
     private function mockPaymentMapping(string $orderId, string $chargeId, bool $captured = false)
     {
         $paymentMapping = new PaymentMapping();
-				$paymentMapping->setMiraklCommercialOrderId($orderId);
-				$paymentMapping->setStripeChargeId($chargeId);
-				$paymentMapping->setStatus($captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE);
+        $paymentMapping->setMiraklCommercialOrderId($orderId);
+        $paymentMapping->setStripeChargeId($chargeId);
+        $paymentMapping->setStatus($captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE);
 
-				$this->paymentMappingRepository->persist($paymentMapping);
-				$this->paymentMappingRepository->flush();
+        $this->paymentMappingRepository->persist($paymentMapping);
+        $this->paymentMappingRepository->flush();
 
-				return $paymentMapping;
+        return $paymentMapping;
     }
 
     public function testHandleStripeWebhookWithInvalidPayload()

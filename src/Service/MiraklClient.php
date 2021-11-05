@@ -44,7 +44,7 @@ class MiraklClient
 
     private function put(string $endpoint, array $params): ResponseInterface
     {
-        $options = [ 'json' => $params ];
+        $options = ['json' => $params];
         return $this->client->request('PUT', $endpoint, $options);
     }
 
@@ -70,7 +70,7 @@ class MiraklClient
 
     private function paginateByOffset(string $endpoint, array $params = [], string ...$path)
     {
-        $response = $this->get($endpoint, array_merge([ 'max' => 10 ], $params));
+        $response = $this->get($endpoint, array_merge(['max' => 10], $params));
         $body = $this->parseResponse($response, ...$path);
 
         while ($next = $this->getNextLink($response)) {
@@ -88,11 +88,11 @@ class MiraklClient
 
     private function paginateByPage(string $endpoint, array $params = [], string ...$path)
     {
-        $response = $this->get($endpoint, array_merge([ 'limit' => 10 ], $params));
+        $response = $this->get($endpoint, array_merge(['limit' => 10], $params));
         $body = $this->parseResponse($response, ...$path);
 
         while ($next = $this->getNextPage($response)) {
-            $response = $this->get($endpoint, [ 'page_token' => $next ]);
+            $response = $this->get($endpoint, ['page_token' => $next]);
             $objects = $this->parseResponse($response, ...$path);
             if (empty($objects)) {
                 break;
@@ -137,7 +137,7 @@ class MiraklClient
         $map = [];
         foreach ($objects as $object) {
             if ($getter2) {
-                $map[$object->$getter1()] = $map[$object->$getter1()] ?? [] ;
+                $map[$object->$getter1()] = $map[$object->$getter1()] ?? [];
                 $map[$object->$getter1()][$object->$getter2()] = $object;
             } else {
                 $map[$object->$getter1()] = $object;
@@ -164,7 +164,7 @@ class MiraklClient
     // OR11 by date
     public function listProductOrdersByDate(string $datetime)
     {
-        $res = $this->paginateByOffset('/api/orders', [ 'start_date' => $datetime ], 'orders');
+        $res = $this->paginateByOffset('/api/orders', ['start_date' => $datetime], 'orders');
         $res = $this->arraysToObjects($res, MiraklProductOrder::class);
         return $this->objectsToMap($res, 'getId');
     }
@@ -172,10 +172,9 @@ class MiraklClient
     // OR11 by order_id
     public function listProductOrdersById(array $orderIds)
     {
-        $orderIdChunks = array_chunk($orderIds, 100);
         $res = [];
-        foreach ($orderIdChunks as $orderIdsChunk) {
-            $res = array_merge($res, $this->paginateByOffset('/api/orders', [ 'order_ids' => implode(',', $orderIdsChunk) ], 'orders'));
+        foreach (array_chunk($orderIds, 100) as $chunk) {
+            $res = array_merge($res, $this->paginateByOffset('/api/orders', ['order_ids' => implode(',', $chunk)], 'orders'));
         }
         $res = $this->arraysToObjects($res, MiraklProductOrder::class);
         return $this->objectsToMap($res, 'getId');
@@ -184,10 +183,9 @@ class MiraklClient
     // OR11 by commercial_id
     public function listProductOrdersByCommercialId(array $commercialIds)
     {
-        $commercialIdChunks = array_chunk($commercialIds, 100);
         $res = [];
-        foreach ($commercialIdChunks as $commercialIdsChunk) {
-            $res = array_merge($res, $this->paginateByOffset('/api/orders', [ 'commercial_ids' => implode(',', $commercialIdsChunk) ], 'orders'));
+        foreach (array_chunk($commercialIds, 100) as $chunk) {
+            $res = array_merge($res, $this->paginateByOffset('/api/orders', ['commercial_ids' => implode(',', $chunk)], 'orders'));
         }
         $res = $this->arraysToObjects($res, MiraklProductOrder::class);
         return $this->objectsToMap($res, 'getCommercialId', 'getId');
@@ -204,7 +202,7 @@ class MiraklClient
     // PA01
     public function validateProductPendingDebits(array $orders)
     {
-        $this->put('/api/payment/debit', [ 'orders' => $orders ]);
+        $this->put('/api/payment/debit', ['orders' => $orders]);
     }
 
     // PA12
@@ -235,7 +233,7 @@ class MiraklClient
     // PA02
     public function validateProductPendingRefunds(array $refunds)
     {
-        $this->put('/api/payment/refund', [ 'refunds' => $refunds ]);
+        $this->put('/api/payment/refund', ['refunds' => $refunds]);
     }
 
     // SOR11
@@ -249,7 +247,7 @@ class MiraklClient
     // SOR11 by date
     public function listServiceOrdersByDate(string $datetime)
     {
-        $res = $this->paginateByPage('/api/mms/orders', [ 'date_created_start' => $datetime ], 'data');
+        $res = $this->paginateByPage('/api/mms/orders', ['date_created_start' => $datetime], 'data');
         $res = $this->arraysToObjects($res, MiraklServiceOrder::class);
         return $this->objectsToMap($res, 'getId');
     }
@@ -257,7 +255,7 @@ class MiraklClient
     // SOR11 by order_id
     public function listServiceOrdersById(array $orderIds)
     {
-        $res = $this->paginateByPage('/api/mms/orders', [ 'order_id' => $orderIds ], 'data');
+        $res = $this->paginateByPage('/api/mms/orders', ['order_id' => $orderIds], 'data');
         $res = $this->arraysToObjects($res, MiraklServiceOrder::class);
         return $this->objectsToMap($res, 'getId');
     }
@@ -265,7 +263,7 @@ class MiraklClient
     // SOR11 by commercial_id
     public function listServiceOrdersByCommercialId(array $commercialIds)
     {
-        $res = $this->paginateByPage('/api/mms/orders', [ 'commercial_order_id' => $commercialIds ], 'data');
+        $res = $this->paginateByPage('/api/mms/orders', ['commercial_order_id' => $commercialIds], 'data');
         $res = $this->arraysToObjects($res, MiraklServiceOrder::class);
         return $this->objectsToMap($res, 'getCommercialId', 'getId');
     }
@@ -281,7 +279,7 @@ class MiraklClient
     // SPA11 by order ID
     public function listServicePendingDebitsByOrderIds(array $orderIds)
     {
-        $res = $this->paginateByPage('/api/mms/debits', [ 'order_id' => $orderIds ], 'data');
+        $res = $this->paginateByPage('/api/mms/debits', ['order_id' => $orderIds], 'data');
         $res = $this->arraysToObjects($res, MiraklServicePendingDebit::class);
         return $this->objectsToMap($res, 'getOrderId');
     }
@@ -289,7 +287,7 @@ class MiraklClient
     // SPA01
     public function validateServicePendingDebits(array $orders)
     {
-        $this->put('/api/mms/debits', [ 'orders' => $orders ]);
+        $this->put('/api/mms/debits', ['orders' => $orders]);
     }
 
     // SPA12
@@ -316,14 +314,14 @@ class MiraklClient
     // IV01 by date
     public function listInvoicesByDate(string $datetime)
     {
-        $res = $this->paginateByOffset('/api/invoices', [ 'start_date' => $datetime ], 'invoices');
+        $res = $this->paginateByOffset('/api/invoices', ['start_date' => $datetime], 'invoices');
         return $this->arraysToMap($res, 'invoice_id');
     }
 
     // IV01 by shop
     public function listInvoicesByShopId(int $shopId)
     {
-        $res = $this->paginateByOffset('/api/invoices', [ 'shop' => $shopId ], 'invoices');
+        $res = $this->paginateByOffset('/api/invoices', ['shop' => $shopId], 'invoices');
         return $this->arraysToMap($res, 'invoice_id');
     }
 
@@ -349,7 +347,7 @@ class MiraklClient
     // S07
     public function patchShops(array $patchedShops)
     {
-        $res = $this->put('/api/shops', [ 'shops' => $patchedShops ]);
+        $res = $this->put('/api/shops', ['shops' => $patchedShops]);
         return $this->parseResponse($res, 'shop_returns');
     }
 

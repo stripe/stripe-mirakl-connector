@@ -104,7 +104,7 @@ class OperatorHttpNotificationHandlerTest extends TestCase
 
         $this->response
             ->method('getInfo')
-            ->withConsecutive([ 'http_code' ], [ 'url' ], [ 'response_headers' ])
+            ->withConsecutive(['http_code'], ['url'], ['response_headers'])
             ->willReturnOnConsecutiveCalls(400, 'http://badrequest', []);;
 
         $this->response

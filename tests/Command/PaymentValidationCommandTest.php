@@ -52,31 +52,32 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->paymentMappingRepository = self::$container->get('doctrine')->getRepository(PaymentMapping::class);
     }
 
-		private function executeCommand() {
-				$this->validateReceiver->reset();
-				$this->captureReceiver->reset();
-				$this->cancelReceiver->reset();
-        $this->commandTester->execute([ 'command' => $this->command->getName() ]);
+    private function executeCommand()
+    {
+        $this->validateReceiver->reset();
+        $this->captureReceiver->reset();
+        $this->cancelReceiver->reset();
+        $this->commandTester->execute(['command' => $this->command->getName()]);
         $this->assertEquals(0, $this->commandTester->getStatusCode());
-		}
+    }
 
     private function mockPaymentMapping($commercialId, $paymentId, $amount)
     {
         $mapping = new PaymentMapping();
-				$mapping->setMiraklCommercialOrderId($commercialId);
-				$mapping->setStripeChargeId($paymentId);
+        $mapping->setMiraklCommercialOrderId($commercialId);
+        $mapping->setStripeChargeId($paymentId);
         $mapping->setStripeAmount($amount);
-				$mapping->setStatus(PaymentMapping::TO_CAPTURE);
+        $mapping->setStatus(PaymentMapping::TO_CAPTURE);
 
-				$this->paymentMappingRepository->persist($mapping);
-				$this->paymentMappingRepository->flush();
+        $this->paymentMappingRepository->persist($mapping);
+        $this->paymentMappingRepository->flush();
 
-				return $mapping;
+        return $mapping;
     }
 
     public function testPendingValidationNoMapping()
     {
-				// 2 pending debits but 0 mapping
+        // 2 pending debits but 0 mapping
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(0, $this->captureReceiver->getSent());
@@ -85,17 +86,17 @@ class PaymentValidationCommandTest extends KernelTestCase
 
     public function testPendingValidationWithMapping()
     {
-				// 2 pending debits with a mapping
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_NONE_VALIDATED,
-						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						12345
-				);
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_PARTIALLY_VALIDATED,
-						StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE,
-						12345
-				);
+        // 2 pending debits with a mapping
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_NONE_VALIDATED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            12345
+        );
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_PARTIALLY_VALIDATED,
+            StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE,
+            12345
+        );
         $this->executeCommand();
         $this->assertCount(1, $messages = $this->validateReceiver->getSent());
         $this->assertCount(2, $messages[0]->getMessage()->getOrders());
@@ -105,12 +106,12 @@ class PaymentValidationCommandTest extends KernelTestCase
 
     public function testCaptureForNonExistingOrder()
     {
-				// 1 payment mapped to an order not created yet
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_NOT_FOUND,
-						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						8472
-				);
+        // 1 payment mapped to an order not created yet
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_NOT_FOUND,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            8472
+        );
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(0, $this->captureReceiver->getSent());
@@ -119,12 +120,12 @@ class PaymentValidationCommandTest extends KernelTestCase
 
     public function testCaptureFullAmount()
     {
-				// 1 payment mapped to a fully validated order
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
-						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						16944
-				);
+        // 1 payment mapped to a fully validated order
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            16944
+        );
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(1, $messages = $this->captureReceiver->getSent());
@@ -134,12 +135,12 @@ class PaymentValidationCommandTest extends KernelTestCase
 
     public function testCaptureIncludingOperatorAmount()
     {
-				// 1 payment mapped to a fully validated order and amount > total
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
-						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						16944 + 1234 // 1234 from operator order
-				);
+        // 1 payment mapped to a fully validated order and amount > total
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            16944 + 1234 // 1234 from operator order
+        );
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(1, $messages = $this->captureReceiver->getSent());
@@ -149,12 +150,12 @@ class PaymentValidationCommandTest extends KernelTestCase
 
     public function testCaptureOperatorAmountOnly()
     {
-				// 1 payment mapped to a fully canceled order
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_CANCELED,
-						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						8472 + 1234 // 1234 from operator order
-				);
+        // 1 payment mapped to a fully canceled order
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_CANCELED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            8472 + 1234 // 1234 from operator order
+        );
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(1, $messages = $this->captureReceiver->getSent());
@@ -164,12 +165,12 @@ class PaymentValidationCommandTest extends KernelTestCase
 
     public function testCapturePartialAmount()
     {
-				// 1 payment mapped to a partially refused order
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_PARTIALLY_REFUSED,
-						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						16944
-				);
+        // 1 payment mapped to a partially refused order
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_PARTIALLY_REFUSED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            16944
+        );
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(1, $messages = $this->captureReceiver->getSent());
@@ -179,12 +180,12 @@ class PaymentValidationCommandTest extends KernelTestCase
 
     public function testCancelPayment()
     {
-				// 1 payment mapped to a canceled order
-				$this->mockPaymentMapping(
-						MiraklMock::ORDER_COMMERCIAL_CANCELED,
-						StripeMock::CHARGE_STATUS_AUTHORIZED,
-						8472
-				);
+        // 1 payment mapped to a canceled order
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_CANCELED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            8472
+        );
         $this->executeCommand();
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(0, $this->captureReceiver->getSent());

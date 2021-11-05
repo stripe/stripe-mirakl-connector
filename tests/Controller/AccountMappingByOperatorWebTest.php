@@ -18,8 +18,8 @@ class AccountMappingByOperatorWebTest extends ConnectorWebTestCase
     {
         $client = static::createClient();
 
-				$miraklShopId = MiraklMock::SHOP_NEW;
-				$stripeUserId = StripeMock::ACCOUNT_NEW;
+        $miraklShopId = MiraklMock::SHOP_NEW;
+        $stripeUserId = StripeMock::ACCOUNT_NEW;
         $client->request(
             'POST',
             '/api/mappings',
@@ -110,8 +110,8 @@ class AccountMappingByOperatorWebTest extends ConnectorWebTestCase
     {
         $client = static::createClient();
 
-				$stripeUserId = StripeMock::ACCOUNT_BASIC;
-				$miraklShopId = MiraklMock::SHOP_BASIC;
+        $stripeUserId = StripeMock::ACCOUNT_BASIC;
+        $miraklShopId = MiraklMock::SHOP_BASIC;
         $client->request(
             'POST',
             '/api/mappings',

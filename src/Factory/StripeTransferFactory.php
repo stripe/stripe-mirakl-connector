@@ -140,7 +140,7 @@ class StripeTransferFactory implements LoggerAwareInterface
 
             $paymentId = $order->getTransactionNumber();
         } elseif (is_a($order, MiraklServiceOrder::class)) {
-            $pendingDebit = current($this->miraklClient->listServicePendingDebitsByOrderIds([ $order->getId() ]));
+            $pendingDebit = current($this->miraklClient->listServicePendingDebitsByOrderIds([$order->getId()]));
             if (!$pendingDebit || !$pendingDebit->isPaid()) {
                 return $this->putTransferOnHold(
                     $transfer,
@@ -157,7 +157,7 @@ class StripeTransferFactory implements LoggerAwareInterface
                 if (!$paymentId) {
                     // Check for a payment mapping
                     $paymentMapping = current($this->paymentMappingRepository->findPaymentsByCommercialOrderIds(
-                        [ $order->getCommercialId() ]
+                        [$order->getCommercialId()]
                     ));
 
                     if ($paymentMapping && $paymentMapping->getStripeChargeId()) {
@@ -177,10 +177,12 @@ class StripeTransferFactory implements LoggerAwareInterface
                 );
             } catch (InvalidArgumentException $e) {
                 switch ($e->getCode()) {
-                    // Problem is final, let's abort
-                    case 10: return $this->abortTransfer($transfer, $e->getMessage());
-                    // Problem is just temporary, let's put on hold
-                    case 20: return $this->putTransferOnHold($transfer, $e->getMessage());
+                        // Problem is final, let's abort
+                    case 10:
+                        return $this->abortTransfer($transfer, $e->getMessage());
+                        // Problem is just temporary, let's put on hold
+                    case 20:
+                        return $this->putTransferOnHold($transfer, $e->getMessage());
                 }
             }
         }
@@ -233,7 +235,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             $refund = $this->findRefundFromRefundId($transfer->getMiraklId());
 
             // Fetch transfer to be reversed
-            $orderIds = [ $refund->getMiraklOrderId() ];
+            $orderIds = [$refund->getMiraklOrderId()];
             $orderTransfer = current($this->stripeTransferRepository->findTransfersByOrderIds($orderIds));
 
             // Check order transfer status
@@ -264,10 +266,12 @@ class StripeTransferFactory implements LoggerAwareInterface
             $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                // Problem is final, let's abort
-                case 10: return $this->abortTransfer($transfer, $e->getMessage());
-                // Problem is just temporary, let's put on hold
-                case 20: return $this->putTransferOnHold($transfer, $e->getMessage());
+                    // Problem is final, let's abort
+                case 10:
+                    return $this->abortTransfer($transfer, $e->getMessage());
+                    // Problem is just temporary, let's put on hold
+                case 20:
+                    return $this->putTransferOnHold($transfer, $e->getMessage());
             }
         }
 
@@ -316,10 +320,12 @@ class StripeTransferFactory implements LoggerAwareInterface
             $transfer->setAccountMapping($this->getAccountMapping($invoice['shop_id'] ?? 0));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                // Problem is final, let's abort
-                case 10: return $this->abortTransfer($transfer, $e->getMessage());
-                // Problem is just temporary, let's put on hold
-                case 20: return $this->putTransferOnHold($transfer, $e->getMessage());
+                    // Problem is final, let's abort
+                case 10:
+                    return $this->abortTransfer($transfer, $e->getMessage());
+                    // Problem is just temporary, let's put on hold
+                case 20:
+                    return $this->putTransferOnHold($transfer, $e->getMessage());
             }
         }
 
@@ -409,33 +415,33 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         switch ($ch->status) {
             case 'succeeded':
-                  if (false === $ch->captured) {
-                      throw new InvalidArgumentException(sprintf(
-                          StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_NOT_READY,
-                          $ch->id,
-                          $ch->status . ' (not captured)'
-                      ), 20);
-                  }
+                if (false === $ch->captured) {
+                    throw new InvalidArgumentException(sprintf(
+                        StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_NOT_READY,
+                        $ch->id,
+                        $ch->status . ' (not captured)'
+                    ), 20);
+                }
 
-                  if (true === $ch->refunded) {
-                      throw new InvalidArgumentException(sprintf(
-                          StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_CANCELED,
-                          $ch->id
-                      ), 10);
-                  }
+                if (true === $ch->refunded) {
+                    throw new InvalidArgumentException(sprintf(
+                        StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_CANCELED,
+                        $ch->id
+                    ), 10);
+                }
 
-                  return $ch->id;
+                return $ch->id;
             case 'failed':
-                  throw new InvalidArgumentException(sprintf(
-                      StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_FAILED,
-                      $ch->id
-                  ), 10);
+                throw new InvalidArgumentException(sprintf(
+                    StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_FAILED,
+                    $ch->id
+                ), 10);
             default:
-                  throw new InvalidArgumentException(sprintf(
-                      StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_NOT_READY,
-                      $ch->id,
-                      $ch->status
-                  ), 20);
+                throw new InvalidArgumentException(sprintf(
+                    StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_NOT_READY,
+                    $ch->id,
+                    $ch->status
+                ), 20);
         }
     }
 
@@ -446,7 +452,7 @@ class StripeTransferFactory implements LoggerAwareInterface
     private function findRefundFromRefundId(string $refundId): StripeRefund
     {
         $refund = current($this->stripeRefundRepository->findRefundsByRefundIds(
-            [ $refundId ]
+            [$refundId]
         ));
 
         if (!$refund) {
@@ -507,12 +513,12 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Transfer on hold: ' . $reason,
-            [ 'order_id' => $transfer->getMiraklId() ]
+            ['order_id' => $transfer->getMiraklId()]
         );
 
         return $transfer
-                        ->setStatus(StripeTransfer::TRANSFER_ON_HOLD)
-                        ->setStatusReason(substr($reason, 0, 1024));
+            ->setStatus(StripeTransfer::TRANSFER_ON_HOLD)
+            ->setStatusReason(substr($reason, 0, 1024));
     }
 
     /**
@@ -524,12 +530,12 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Transfer aborted: ' . $reason,
-            [ 'order_id' => $transfer->getMiraklId() ]
+            ['order_id' => $transfer->getMiraklId()]
         );
 
         return $transfer
-                        ->setStatus(StripeTransfer::TRANSFER_ABORTED)
-                        ->setStatusReason(substr($reason, 0, 1024));
+            ->setStatus(StripeTransfer::TRANSFER_ABORTED)
+            ->setStatusReason(substr($reason, 0, 1024));
     }
 
     /**
@@ -540,11 +546,11 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Transfer created',
-            [ 'order_id' => $transfer->getMiraklId() ]
+            ['order_id' => $transfer->getMiraklId()]
         );
 
         return $transfer
-                        ->setStatus(StripeTransfer::TRANSFER_CREATED)
-                        ->setStatusReason(null);
+            ->setStatus(StripeTransfer::TRANSFER_CREATED)
+            ->setStatusReason(null);
     }
 }

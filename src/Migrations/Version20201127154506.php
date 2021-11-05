@@ -23,7 +23,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
      */
     private $container;
 
-    public function getDescription() : string
+    public function getDescription(): string
     {
         return '';
     }
@@ -32,7 +32,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
      * @param Schema $schema
      * @throws \Exception
      */
-    public function up(Schema $schema) : void
+    public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
@@ -44,7 +44,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
         $this->addSql('ALTER TABLE stripe_payment RENAME TO stripe_charge');
     }
 
-    public function down(Schema $schema) : void
+    public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
@@ -64,7 +64,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
     private function changePaymentIntentIdForChargeId()
     {
         // Retrieve stripe_payment records linked to a PI
-        $stripePayments = $this->connection->fetchAll('SELECT id, stripe_payment_id FROM stripe_payment WHERE stripe_payment_id LIKE \'pi_%\' AND status IN (\'to_capture\', \'captured\')');
+        $stripePayments = $this->connection->fetchAllAssociative('SELECT id, stripe_payment_id FROM stripe_payment WHERE stripe_payment_id LIKE \'pi_%\' AND status IN (\'to_capture\', \'captured\')');
 
         $updateQuery = 'UPDATE stripe_payment SET stripe_payment_id = :stripePaymentId WHERE id = :id';
 

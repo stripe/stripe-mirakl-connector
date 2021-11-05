@@ -83,7 +83,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
 
     private function processProvidedShopId(int $shopId)
     {
-        $this->logger->info('Executing provided shop', [ 'shop_id' => $shopId ]);
+        $this->logger->info('Executing provided shop', ['shop_id' => $shopId]);
         $invoices = $this->miraklClient->listInvoicesByShopId($shopId);
 
         $this->dispatchTransfers(
@@ -110,11 +110,11 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         $invoices = $this->miraklClient->listInvoicesByDate($firstDateCreated);
 
         $transfersByInvoiceId = $this->sellerSettlementService
-                            ->updateTransfersFromInvoices($retriableTransfers, $invoices);
+            ->updateTransfersFromInvoices($retriableTransfers, $invoices);
         $this->dispatchTransfers($transfersByInvoiceId);
 
         $payouts = $this->sellerSettlementService
-                            ->updatePayoutsFromInvoices($retriablePayouts, $invoices);
+            ->updatePayoutsFromInvoices($retriablePayouts, $invoices);
         $this->dispatchPayouts($payouts);
     }
 
@@ -140,7 +140,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         } else {
             $invoices = $this->miraklClient->listInvoices();
         }
-                
+
         if (empty($invoices)) {
             $this->logger->info('No new invoice');
             return;

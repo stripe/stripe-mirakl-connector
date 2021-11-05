@@ -38,7 +38,7 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
 
         $this->httpNotificationReceiver = self::$container->get('messenger.transport.operator_http_notification');
 
-				$this->accountMappingRepository = $container->get('doctrine')->getRepository(AccountMapping::class);
+        $this->accountMappingRepository = $container->get('doctrine')->getRepository(AccountMapping::class);
         $this->stripePayoutRepository = $container->get('doctrine')->getRepository(StripePayout::class);
 
         $this->handler = new ProcessPayoutHandler(
@@ -51,48 +51,48 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
 
     private function executeHandler($stripePayoutId)
     {
-				($this->handler)(new ProcessPayoutMessage($stripePayoutId));
+        ($this->handler)(new ProcessPayoutMessage($stripePayoutId));
     }
 
     private function mockPayout($accountId = StripeMock::ACCOUNT_BASIC)
     {
-				$accountMapping = $this->accountMappingRepository->findOneBy([
-						'stripeAccountId' => $accountId
-				]);
+        $accountMapping = $this->accountMappingRepository->findOneBy([
+            'stripeAccountId' => $accountId
+        ]);
 
         $payout = new StripePayout();
-				$payout->setAccountMapping($accountMapping);
-				$payout->setMiraklInvoiceId(MiraklMock::INVOICE_BASIC);
+        $payout->setAccountMapping($accountMapping);
+        $payout->setMiraklInvoiceId(MiraklMock::INVOICE_BASIC);
         $payout->setAmount(1234);
         $payout->setCurrency('eur');
-				$payout->setStatus(StripePayout::PAYOUT_PENDING);
+        $payout->setStatus(StripePayout::PAYOUT_PENDING);
 
-				$this->stripePayoutRepository->persistAndFlush($payout);
+        $this->stripePayoutRepository->persistAndFlush($payout);
 
-				return $payout;
+        return $payout;
     }
 
     public function testValidPayout()
     {
-				$payout = $this->mockPayout(StripeMock::ACCOUNT_BASIC);
-				$this->executeHandler($payout->getId());
+        $payout = $this->mockPayout(StripeMock::ACCOUNT_BASIC);
+        $this->executeHandler($payout->getId());
 
-				$payout = $this->stripePayoutRepository->findOneBy([
-						'id' => $payout->getId()
-				]);
+        $payout = $this->stripePayoutRepository->findOneBy([
+            'id' => $payout->getId()
+        ]);
 
         $this->assertEquals(StripePayout::PAYOUT_CREATED, $payout->getStatus());
         $this->assertEquals(StripeMock::PAYOUT_BASIC, $payout->getPayoutId());
-		}
+    }
 
     public function testPayoutWithStripeError()
     {
-				$payout = $this->mockPayout(StripeMock::ACCOUNT_PAYOUT_DISABLED);
-				$this->executeHandler($payout->getId());
+        $payout = $this->mockPayout(StripeMock::ACCOUNT_PAYOUT_DISABLED);
+        $this->executeHandler($payout->getId());
 
-				$payout = $this->stripePayoutRepository->findOneBy([
-						'id' => $payout->getId()
-				]);
+        $payout = $this->stripePayoutRepository->findOneBy([
+            'id' => $payout->getId()
+        ]);
 
         $this->assertEquals(StripePayout::PAYOUT_FAILED, $payout->getStatus());
         $this->assertTrue($this->hasNotification(
@@ -111,7 +111,7 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
                 ]
             ]
         ));
-		}
+    }
 
     private function hasNotification($class, $content): bool
     {

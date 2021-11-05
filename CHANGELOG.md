@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.1.4
+- Fetch orders by id in batches of 100 (#91 thanks @cysp)
+- Minor syntax improvements and fixes
+
 ## Version 2.1.3
 
 - Added miraklShopId to Stripe Account metadata (#85 thanks @christophersjchow)

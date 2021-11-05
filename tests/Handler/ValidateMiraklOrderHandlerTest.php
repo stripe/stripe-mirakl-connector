@@ -40,10 +40,10 @@ class ValidateMiraklOrderHandlerTest extends TestCase
 
     private function executeHandler($orders, $paymentMappings)
     {
-				($this->handler)(new ValidateMiraklOrderMessage(
-						$orders,
-						$paymentMappings
-				));
+        ($this->handler)(new ValidateMiraklOrderMessage(
+            $orders,
+            $paymentMappings
+        ));
     }
 
     public function testNominalExecute()
@@ -73,7 +73,7 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $this
             ->miraklClient
             ->expects($this->once())
-             ->method('validateProductPendingDebits');
+            ->method('validateProductPendingDebits');
 
         $this->executeHandler($orders, $paymentMappings);
     }
@@ -94,5 +94,4 @@ class ValidateMiraklOrderHandlerTest extends TestCase
 
         $this->executeHandler([], $paymentMappings);
     }
-
 }

@@ -56,7 +56,7 @@ class MiraklServiceOrder extends MiraklOrder
 
     public function isAborted(): bool
     {
-        return in_array($this->getState(), [ 'ORDER_REFUSED', 'ORDER_EXPIRED', 'ORDER_CANCELLED' ]);
+        return in_array($this->getState(), ['ORDER_REFUSED', 'ORDER_EXPIRED', 'ORDER_CANCELLED']);
     }
 
     public function getAmountDue(): float

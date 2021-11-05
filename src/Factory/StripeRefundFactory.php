@@ -104,10 +104,12 @@ class StripeRefundFactory implements LoggerAwareInterface
             );
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                // Problem is final, let's abort
-                case 10: return $this->abortRefund($refund, $e->getMessage());
-                // Problem is just temporary, let's put on hold
-                case 20: return $this->putRefundOnHold($refund, $e->getMessage());
+                    // Problem is final, let's abort
+                case 10:
+                    return $this->abortRefund($refund, $e->getMessage());
+                    // Problem is just temporary, let's put on hold
+                case 20:
+                    return $this->putRefundOnHold($refund, $e->getMessage());
             }
         }
 
@@ -123,7 +125,7 @@ class StripeRefundFactory implements LoggerAwareInterface
     {
         // Check for a transfer from the payment split workflow
         $transfer = current($this->stripeTransferRepository->findTransfersByOrderIds(
-            [ $refund->getMiraklOrderId() ]
+            [$refund->getMiraklOrderId()]
         ));
 
         if ($transfer && $transfer->getTransactionId()) {
@@ -134,7 +136,7 @@ class StripeRefundFactory implements LoggerAwareInterface
         $commercialId = $refund->getMiraklCommercialOrderId();
         if ($commercialId) {
             $paymentMapping = current($this->paymentMappingRepository->findPaymentsByCommercialOrderIds(
-                [ $commercialId ]
+                [$commercialId]
             ));
 
             if ($paymentMapping && $paymentMapping->getStripeChargeId()) {
@@ -164,7 +166,7 @@ class StripeRefundFactory implements LoggerAwareInterface
                         $this->checkChargeStatus($ch);
                         return;
                     }
-                                        break;
+                    break;
                 case 'canceled':
                     throw new InvalidArgumentException(sprintf(
                         StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED,
@@ -195,33 +197,33 @@ class StripeRefundFactory implements LoggerAwareInterface
     {
         switch ($ch->status) {
             case 'succeeded':
-                  if (false === $ch->captured) {
-                      throw new InvalidArgumentException(sprintf(
-                          StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY,
-                          $ch->id,
-                          $ch->status . ' (not captured)'
-                      ), 20);
-                  }
+                if (false === $ch->captured) {
+                    throw new InvalidArgumentException(sprintf(
+                        StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY,
+                        $ch->id,
+                        $ch->status . ' (not captured)'
+                    ), 20);
+                }
 
-                  if (true === $ch->refunded) {
-                      throw new InvalidArgumentException(sprintf(
-                          StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED,
-                          $ch->id
-                      ), 10);
-                  }
+                if (true === $ch->refunded) {
+                    throw new InvalidArgumentException(sprintf(
+                        StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED,
+                        $ch->id
+                    ), 10);
+                }
 
-                  return;
+                return;
             case 'failed':
-                  throw new InvalidArgumentException(sprintf(
-                      StripeRefund::REFUND_STATUS_REASON_PAYMENT_FAILED,
-                      $ch->id
-                  ), 10);
+                throw new InvalidArgumentException(sprintf(
+                    StripeRefund::REFUND_STATUS_REASON_PAYMENT_FAILED,
+                    $ch->id
+                ), 10);
             default:
-                  throw new InvalidArgumentException(sprintf(
-                      StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY,
-                      $ch->id,
-                      $ch->status
-                  ), 20);
+                throw new InvalidArgumentException(sprintf(
+                    StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY,
+                    $ch->id,
+                    $ch->status
+                ), 20);
         }
     }
 
@@ -234,12 +236,12 @@ class StripeRefundFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Refund on hold: ' . $reason,
-            [ 'refund_id' => $refund->getMiraklRefundId() ]
+            ['refund_id' => $refund->getMiraklRefundId()]
         );
 
         return $refund
-                        ->setStatus(StripeRefund::REFUND_ON_HOLD)
-                        ->setStatusReason(substr($reason, 0, 1024));
+            ->setStatus(StripeRefund::REFUND_ON_HOLD)
+            ->setStatusReason(substr($reason, 0, 1024));
     }
 
     /**
@@ -251,12 +253,12 @@ class StripeRefundFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Refund aborted: ' . $reason,
-            [ 'refund_id' => $refund->getMiraklRefundId() ]
+            ['refund_id' => $refund->getMiraklRefundId()]
         );
 
         return $refund
-                        ->setStatus(StripeRefund::REFUND_ABORTED)
-                        ->setStatusReason(substr($reason, 0, 1024));
+            ->setStatus(StripeRefund::REFUND_ABORTED)
+            ->setStatusReason(substr($reason, 0, 1024));
     }
 
     /**
@@ -267,11 +269,11 @@ class StripeRefundFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Refund created',
-            [ 'refund_id' => $refund->getMiraklRefundId() ]
+            ['refund_id' => $refund->getMiraklRefundId()]
         );
 
         return $refund
-                        ->setStatus(StripeRefund::REFUND_CREATED)
-                        ->setStatusReason(null);
+            ->setStatus(StripeRefund::REFUND_CREATED)
+            ->setStatusReason(null);
     }
 }

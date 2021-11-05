@@ -19,7 +19,7 @@ final class Version20201207112134 extends AbstractMigration implements Container
      */
     private $container;
 
-    public function getDescription() : string
+    public function getDescription(): string
     {
         return '';
     }
@@ -28,7 +28,7 @@ final class Version20201207112134 extends AbstractMigration implements Container
      * @param Schema $schema
      * @throws \Exception
      */
-    public function up(Schema $schema) : void
+    public function up(Schema $schema): void
     {
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
 
@@ -39,7 +39,7 @@ final class Version20201207112134 extends AbstractMigration implements Container
         $this->addSql('ALTER TABLE stripe_charge ALTER COLUMN stripe_amount SET NOT NULL; ');
     }
 
-    public function down(Schema $schema) : void
+    public function down(Schema $schema): void
     {
         $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
 
@@ -56,7 +56,7 @@ final class Version20201207112134 extends AbstractMigration implements Container
 
     private function fetchAndUpdateMissingAmounts()
     {
-        $stripeCharges = $this->connection->fetchAll('SELECT id, stripe_charge_id FROM stripe_charge');
+        $stripeCharges = $this->connection->fetchAllAssociative('SELECT id, stripe_charge_id FROM stripe_charge');
 
         $updateQuery = 'UPDATE stripe_charge SET stripe_amount = :amount WHERE id = :id';
         // Fetch matching amount from Stripe and update them in DB

@@ -51,37 +51,37 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     private function executeHandler($stripeTransferId)
     {
-				($this->handler)(new ProcessTransferMessage($stripeTransferId));
+        ($this->handler)(new ProcessTransferMessage($stripeTransferId));
     }
 
     private function mockTransfer($type, $transactionId = null, $accountId = StripeMock::ACCOUNT_BASIC)
     {
-				$accountMapping = $this->accountMappingRepository->findOneBy([
-						'stripeAccountId' => $accountId
-				]);
+        $accountMapping = $this->accountMappingRepository->findOneBy([
+            'stripeAccountId' => $accountId
+        ]);
 
         $transfer = new StripeTransfer();
-				$transfer->setType($type);
-				$transfer->setAccountMapping($accountMapping);
-				$transfer->setMiraklId('random');
+        $transfer->setType($type);
+        $transfer->setAccountMapping($accountMapping);
+        $transfer->setMiraklId('random');
         $transfer->setAmount(1234);
         $transfer->setCurrency('eur');
-				$transfer->setTransactionId($transactionId);
-				$transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+        $transfer->setTransactionId($transactionId);
+        $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
 
-				$this->stripeTransferRepository->persistAndFlush($transfer);
+        $this->stripeTransferRepository->persistAndFlush($transfer);
 
-				return $transfer;
+        return $transfer;
     }
 
     public function testProductOrderTransfer()
     {
-				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_PRODUCT_ORDER);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
@@ -89,15 +89,15 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testProductOrderTransferWithTransactionId()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_PRODUCT_ORDER,
-						StripeMock::CHARGE_BASIC
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_PRODUCT_ORDER,
+            StripeMock::CHARGE_BASIC
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
@@ -105,15 +105,15 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testProductOrderTransferWithApiError()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_PRODUCT_ORDER,
-						StripeMock::CHARGE_WITH_TRANSFER
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_PRODUCT_ORDER,
+            StripeMock::CHARGE_WITH_TRANSFER
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_FAILED, $transfer->getStatus());
         $this->assertNotNull($transfer->getStatusReason());
@@ -140,12 +140,12 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testServiceOrderTransfer()
     {
-				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_SERVICE_ORDER);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_SERVICE_ORDER);
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
@@ -153,15 +153,15 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testServiceOrderTransferWithTransactionId()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_SERVICE_ORDER,
-						StripeMock::CHARGE_BASIC
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_SERVICE_ORDER,
+            StripeMock::CHARGE_BASIC
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
@@ -169,15 +169,15 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testServiceOrderTransferWithApiError()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_SERVICE_ORDER,
-						StripeMock::CHARGE_WITH_TRANSFER
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_SERVICE_ORDER,
+            StripeMock::CHARGE_WITH_TRANSFER
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_FAILED, $transfer->getStatus());
         $this->assertNotNull($transfer->getStatusReason());
@@ -204,12 +204,12 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testExtraCreditsTransfer()
     {
-				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_EXTRA_CREDITS);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_EXTRA_CREDITS);
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
@@ -217,14 +217,16 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testExtraCreditsTransferWithApiError()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_EXTRA_CREDITS, null, StripeMock::ACCOUNT_PAYIN_DISABLED
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_EXTRA_CREDITS,
+            null,
+            StripeMock::ACCOUNT_PAYIN_DISABLED
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_FAILED, $transfer->getStatus());
         $this->assertNotNull($transfer->getStatusReason());
@@ -251,12 +253,12 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testSubscriptionTransfer()
     {
-				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_SUBSCRIPTION);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_SUBSCRIPTION);
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
@@ -264,14 +266,16 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testSubscriptionWithApiError()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_SUBSCRIPTION, null, StripeMock::ACCOUNT_PAYIN_DISABLED
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_SUBSCRIPTION,
+            null,
+            StripeMock::ACCOUNT_PAYIN_DISABLED
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_FAILED, $transfer->getStatus());
         $this->assertNotNull($transfer->getStatusReason());
@@ -298,12 +302,12 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testExtraInvoicesTransfer()
     {
-				$transfer = $this->mockTransfer(StripeTransfer::TRANSFER_EXTRA_INVOICES);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_EXTRA_INVOICES);
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
@@ -311,14 +315,16 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testExtraInvoicesWithApiError()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_EXTRA_INVOICES, null, StripeMock::ACCOUNT_PAYIN_DISABLED
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_EXTRA_INVOICES,
+            null,
+            StripeMock::ACCOUNT_PAYIN_DISABLED
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_FAILED, $transfer->getStatus());
         $this->assertNotNull($transfer->getStatusReason());
@@ -345,15 +351,15 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testRefundTransfer()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_REFUND,
-						StripeMock::TRANSFER_BASIC
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_REFUND,
+            StripeMock::TRANSFER_BASIC
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_REVERSAL_BASIC, $transfer->getTransferId());
@@ -361,15 +367,15 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
     public function testRefundWithApiError()
     {
-				$transfer = $this->mockTransfer(
-						StripeTransfer::TRANSFER_REFUND,
-						StripeMock::TRANSFER_WITH_REVERSAL
-				);
-				$this->executeHandler($transfer->getId());
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_REFUND,
+            StripeMock::TRANSFER_WITH_REVERSAL
+        );
+        $this->executeHandler($transfer->getId());
 
-				$transfer = $this->stripeTransferRepository->findOneBy([
-						'id' => $transfer->getId()
-				]);
+        $transfer = $this->stripeTransferRepository->findOneBy([
+            'id' => $transfer->getId()
+        ]);
 
         $this->assertEquals(StripeTransfer::TRANSFER_FAILED, $transfer->getStatus());
         $this->assertNotNull($transfer->getStatusReason());
