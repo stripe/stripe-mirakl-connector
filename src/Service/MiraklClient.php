@@ -172,10 +172,9 @@ class MiraklClient
     // OR11 by order_id
     public function listProductOrdersById(array $orderIds)
     {
-        $orderIdChunks = array_chunk($orderIds, 100);
         $res = [];
-        foreach ($orderIdChunks as $orderIdsChunk) {
-            $res = array_merge($res, $this->paginateByOffset('/api/orders', [ 'order_ids' => implode(',', $orderIdsChunk) ], 'orders'));
+        foreach (array_chunk($orderIds, 100) as $chunk) {
+            $res = array_merge($res, $this->paginateByOffset('/api/orders', [ 'order_ids' => implode(',', $chunk) ], 'orders'));
         }
         $res = $this->arraysToObjects($res, MiraklProductOrder::class);
         return $this->objectsToMap($res, 'getId');
@@ -184,10 +183,9 @@ class MiraklClient
     // OR11 by commercial_id
     public function listProductOrdersByCommercialId(array $commercialIds)
     {
-        $commercialIdChunks = array_chunk($commercialIds, 100);
         $res = [];
-        foreach ($commercialIdChunks as $commercialIdsChunk) {
-            $res = array_merge($res, $this->paginateByOffset('/api/orders', [ 'commercial_ids' => implode(',', $commercialIdsChunk) ], 'orders'));
+        foreach (array_chunk($commercialIds, 100) as $chunk) {
+            $res = array_merge($res, $this->paginateByOffset('/api/orders', [ 'commercial_ids' => implode(',', $chunk) ], 'orders'));
         }
         $res = $this->arraysToObjects($res, MiraklProductOrder::class);
         return $this->objectsToMap($res, 'getCommercialId', 'getId');

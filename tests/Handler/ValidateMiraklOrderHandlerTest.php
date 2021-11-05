@@ -40,10 +40,10 @@ class ValidateMiraklOrderHandlerTest extends TestCase
 
     private function executeHandler($orders, $paymentMappings)
     {
-				($this->handler)(new ValidateMiraklOrderMessage(
-						$orders,
-						$paymentMappings
-				));
+                ($this->handler)(new ValidateMiraklOrderMessage(
+                        $orders,
+                        $paymentMappings
+                ));
     }
 
     public function testNominalExecute()

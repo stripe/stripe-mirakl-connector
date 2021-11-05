@@ -45,10 +45,10 @@ class StripePayoutFactoryTest extends KernelTestCase
     public function testCreateFromInvoice()
     {
         $payout = $this->stripePayoutFactory->createFromInvoice(
-						current($this->miraklClient->listInvoicesByDate(
-								MiraklMockedHttpClient::INVOICE_DATE_1_VALID
-						))
-				);
+                        current($this->miraklClient->listInvoicesByDate(
+                                MiraklMockedHttpClient::INVOICE_DATE_1_VALID
+                        ))
+                );
 
         $this->assertEquals(StripePayout::PAYOUT_PENDING, $payout->getStatus());
         $this->assertNull($payout->getStatusReason());
@@ -63,55 +63,55 @@ class StripePayoutFactoryTest extends KernelTestCase
     public function testUpdateFromInvoice()
     {
         $invoice = current($this->miraklClient->listInvoicesByDate(
-						MiraklMockedHttpClient::INVOICE_DATE_1_INVALID_SHOP
-				));
-				$invoiceId = $invoice['invoice_id'];
+                        MiraklMockedHttpClient::INVOICE_DATE_1_INVALID_SHOP
+                ));
+                $invoiceId = $invoice['invoice_id'];
 
         $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
         $this->assertEquals(StripePayout::PAYOUT_ON_HOLD, $payout->getStatus());
 
-				$invoice = current($this->miraklClient->listInvoicesByDate(
-						MiraklMockedHttpClient::INVOICE_DATE_1_VALID
-				));
-				$invoice['invoice_id'] = $invoiceId;
+                $invoice = current($this->miraklClient->listInvoicesByDate(
+                        MiraklMockedHttpClient::INVOICE_DATE_1_VALID
+                ));
+                $invoice['invoice_id'] = $invoiceId;
         $payout = $this->stripePayoutFactory->updateFromInvoice($payout, $invoice);
         $this->assertEquals(StripePayout::PAYOUT_PENDING, $payout->getStatus());
     }
 
     public function testInvalidInvoices()
     {
-				$invoices = $this->miraklClient->listInvoicesByDate(
-						MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_ALL_INVALID
-				);
-				foreach ($invoices as $invoiceId => $invoice) {
-		        $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
-						switch ($invoiceId) {
-								case MiraklMockedHttpClient::INVOICE_INVALID_NO_SHOP:
-					        	$this->assertEquals(StripePayout::PAYOUT_ABORTED, $payout->getStatus());
-						        $this->assertNotNull($payout->getStatusReason());
-										break;
-								case MiraklMockedHttpClient::INVOICE_INVALID_SHOP:
-					        	$this->assertEquals(StripePayout::PAYOUT_ON_HOLD, $payout->getStatus());
-						        $this->assertNotNull($payout->getStatusReason());
-										break;
-								case MiraklMockedHttpClient::INVOICE_INVALID_AMOUNT:
-					        	$this->assertEquals(StripePayout::PAYOUT_ABORTED, $payout->getStatus());
-						        $this->assertNotNull($payout->getStatusReason());
-										break;
-						}
-				}
+                $invoices = $this->miraklClient->listInvoicesByDate(
+                        MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_ALL_INVALID
+                );
+                foreach ($invoices as $invoiceId => $invoice) {
+                $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
+                        switch ($invoiceId) {
+                                case MiraklMockedHttpClient::INVOICE_INVALID_NO_SHOP:
+                                $this->assertEquals(StripePayout::PAYOUT_ABORTED, $payout->getStatus());
+                                $this->assertNotNull($payout->getStatusReason());
+                                        break;
+                                case MiraklMockedHttpClient::INVOICE_INVALID_SHOP:
+                                $this->assertEquals(StripePayout::PAYOUT_ON_HOLD, $payout->getStatus());
+                                $this->assertNotNull($payout->getStatusReason());
+                                        break;
+                                case MiraklMockedHttpClient::INVOICE_INVALID_AMOUNT:
+                                $this->assertEquals(StripePayout::PAYOUT_ABORTED, $payout->getStatus());
+                                $this->assertNotNull($payout->getStatusReason());
+                                        break;
+                        }
+                }
     }
 
     public function testInvoiceWithPayout()
     {
         $invoice = current($this->miraklClient->listInvoicesByDate(
-						MiraklMockedHttpClient::INVOICE_DATE_1_VALID
-				));
+                        MiraklMockedHttpClient::INVOICE_DATE_1_VALID
+                ));
 
         $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
         $this->assertEquals(StripePayout::PAYOUT_PENDING, $payout->getStatus());
 
-				$payout->setPayoutId(StripeMockedHttpClient::PAYOUT_BASIC);
+                $payout->setPayoutId(StripeMockedHttpClient::PAYOUT_BASIC);
         $payout = $this->stripePayoutFactory->updateFromInvoice($payout, $invoice);
         $this->assertEquals(StripePayout::PAYOUT_CREATED, $payout->getStatus());
     }
