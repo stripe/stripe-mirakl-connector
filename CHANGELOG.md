@@ -1,6 +1,12 @@
 # Changelog
 
+## Version 2.2.0
+- Migrated from the deprecated Oauth flow to Connect Onboarding
+- Stripe accounts are now created during the onboarding job and mapped with the Mirakl shop
+- Auto debit of negative balances is now disabled by default for new Stripe accounts (see #78)
+
 ## Version 2.1.5
+
 - Fixed the Reason column in alerting emails
 
 ## Version 2.1.4
