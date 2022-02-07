@@ -2,7 +2,7 @@
 
 {% block content %}
 	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;">An error occured while creating transfers and/or payouts from Mirakl-Stripe connector.</p>
-	{% if not transfers is empty %}	
+	{% if not transfers is empty %}
 	<p style="font-size: 14px; line-height: 1.5; text-align: left; mso-line-height-alt: 21px;  margin-top: 1em;">Transfers: </p>
 	<table style="width: 100%; text-align: center;">
 		<thead style="background-color: #6772e5; color: #fff;">
@@ -23,7 +23,7 @@
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.amount / 100 | number_format(2) }}</td>
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.status }}</td>
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ transfer.type }}</td>
-				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ transfer.failedReason }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ transfer.statusReason }}</td>
 			</tr>
             {% endfor %}
 		</tbody>
@@ -48,7 +48,7 @@
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ payout.miraklInvoiceId }}</td>
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ payout.amount / 100 | number_format(2) }}</td>
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ payout.status }}</td>
-				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ payout.failedReason }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ payout.statusReason }}</td>
 			</tr>
             {% endfor %}
 		</tbody>
@@ -73,7 +73,7 @@
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ refund.miraklOrderId }}</td>
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ refund.amount / 100 | number_format(2) }}</td>
 				<td style="border: 1px solid rgb(190, 190, 190);">{{ refund.status }}</td>
-				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ refund.failedReason }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{ refund.statusReason }}</td>
 			</tr>
             {% endfor %}
 		</tbody>
