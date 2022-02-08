@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 2.1.5
+- Fixed the Reason column in alerting emails
+
 ## Version 2.1.4
 - Fetch orders by id in batches of 100 (#91 thanks @cysp)
 - Minor syntax improvements and fixes
