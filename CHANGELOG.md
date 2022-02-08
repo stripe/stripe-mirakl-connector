@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 2.2.0
+## Version 2.1.5
 - Fixed the Reason column in alerting emails
 
 ## Version 2.1.4
