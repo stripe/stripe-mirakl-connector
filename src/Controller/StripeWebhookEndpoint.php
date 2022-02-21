@@ -217,6 +217,11 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             return 'Ignoring account.updated event for non-Mirakl Stripe account.';
         }
 
+        if (!$stripeAccount['details_submitted']) {
+            $this->logger->info(sprintf('Ignoring account.updated event until details are submitted for account: %s', $stripeAccount['id']));
+            return 'Ignoring account.updated event until details are submitted for account.';
+        }
+
         $accountMapping->setPayoutEnabled($stripeAccount['payouts_enabled']);
         $accountMapping->setPayinEnabled($stripeAccount['charges_enabled']);
         $accountMapping->setDisabledReason($stripeAccount['disabled_reason']);

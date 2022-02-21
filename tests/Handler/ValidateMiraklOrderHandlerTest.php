@@ -4,18 +4,12 @@ namespace App\Tests\Handler;
 
 use App\Entity\MiraklProductPendingDebit;
 use App\Entity\PaymentMapping;
-use App\Exception\InvalidStripeAccountException;
-use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
-use App\Handler\UpdateKYCStatusHandler;
 use App\Handler\ValidateMiraklOrderHandler;
-use App\Message\AccountUpdateMessage;
 use App\Message\ValidateMiraklOrderMessage;
 use App\Service\MiraklClient;
-use App\Service\StripeClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
-use Stripe\Account;
 
 class ValidateMiraklOrderHandlerTest extends TestCase
 {

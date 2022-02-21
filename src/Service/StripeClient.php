@@ -6,12 +6,18 @@ use Shivas\VersioningBundle\Service\VersionManager;
 use Stripe\Exception\ApiErrorException;
 use Stripe\HttpClient\ClientInterface;
 use Stripe\Stripe;
-use Stripe\StripeObject;
+use Stripe\ApiRequestor;
 use Stripe\Account;
+use Stripe\AccountLink;
 use Stripe\Charge;
 use Stripe\Event;
 use Stripe\LoginLink;
 use Stripe\PaymentIntent;
+use Stripe\Payout;
+use Stripe\Refund;
+use Stripe\Transfer;
+use Stripe\TransferReversal;
+use Stripe\Webhook;
 
 /**
  * @codeCoverageIgnore
@@ -29,6 +35,11 @@ class StripeClient
      */
     private $webhookOperatorSecret;
 
+    /**
+     * @var string
+     */
+    private $redirectOnboarding;
+
     public const APP_NAME = 'MiraklConnector';
     public const APP_REPO = 'https://github.com/stripe/stripe-mirakl-connector';
     public const APP_PARTNER_ID = 'pp_partner_FuvjRG4UuotFXS';
@@ -39,8 +50,13 @@ class StripeClient
      */
     private $version;
 
-    public function __construct(string $stripeClientSecret, VersionManager $versionManager, string $webhookSellerSecret, string $webhookOperatorSecret)
-    {
+    public function __construct(
+        string $stripeClientSecret,
+        VersionManager $versionManager,
+        string $webhookSellerSecret,
+        string $webhookOperatorSecret,
+        string $redirectOnboarding
+    ) {
         $this->version = $versionManager->getVersion();
 
         Stripe::setApiKey($stripeClientSecret);
@@ -49,6 +65,7 @@ class StripeClient
 
         $this->webhookSellerSecret = $webhookSellerSecret;
         $this->webhookOperatorSecret = $webhookOperatorSecret;
+        $this->redirectOnboarding = $redirectOnboarding;
     }
 
     private function getDefaultMetadata(): array
@@ -60,49 +77,35 @@ class StripeClient
     }
 
     // Account
-    public function accountRetrieve(string $stripeUserId): Account
+    public function retrieveAccount(string $accountId): Account
     {
-        return \Stripe\Account::retrieve($stripeUserId);
+        return Account::retrieve($accountId);
     }
 
-    public function accountCreateLoginLink(string $stripeUserId): LoginLink
+    public function createAccountLink(string $accountId, $type = 'account_onboarding'): AccountLink
     {
-        return \Stripe\Account::createLoginLink($stripeUserId);
-    }
-
-    // OAUTH
-    public function loginWithCode(string $code): StripeObject
-    {
-        return \Stripe\OAuth::token([
-            'grant_type' => 'authorization_code',
-            'code' => $code,
+        return AccountLink::create([
+            'account' => $accountId,
+            'refresh_url' => 'https://example.com/reauth',
+            'return_url' => $this->redirectOnboarding,
+            'type' => $type,
         ]);
     }
 
-    public function setMiraklShopId(string $stripeAccountId, int $miraklShopId): Account
+    public function createLoginLink(string $accountId): LoginLink
     {
-        $params = [
-            'metadata' => [
-                'miraklShopId' => $miraklShopId
-            ]
-        ];
-
-        return \Stripe\Account::update($stripeAccountId, $params);
+        return Account::createLoginLink($accountId);
     }
 
-    public function setPayoutToManual(string $stripeAccountId): Account
+    public function createStripeAccount(int $shopId, array $details): Account
     {
-        $params = [
-            'settings' => [
-                'payouts' => [
-                    'schedule' => [
-                        'interval' => 'manual'
-                    ]
-                ]
+        return Account::create(array_merge([
+            'type' => 'express',
+            'settings' => ['payouts' => ['schedule' => ['interval' => 'manual']]],
+            'metadata' => [
+                'miraklShopId' => $shopId
             ]
-        ];
-
-        return \Stripe\Account::update($stripeAccountId, $params);
+        ], $details));
     }
 
     // Signature
@@ -110,7 +113,7 @@ class StripeClient
     {
         $webhookSecret = $isOperatorWebhook ? $this->webhookOperatorSecret : $this->webhookSellerSecret;
 
-        return \Stripe\Webhook::constructEvent(
+        return Webhook::constructEvent(
             $payload,
             $signatureHeader,
             $webhookSecret
@@ -119,13 +122,13 @@ class StripeClient
 
     public function setHttpClient(ClientInterface $client)
     {
-        \Stripe\ApiRequestor::setHttpClient($client);
+        ApiRequestor::setHttpClient($client);
     }
 
     // Transfer
-    public function createTransfer(string $currency, int $amount, string $accountId, ?string $chargeId, array $metadata = [])
+    public function createTransfer(string $currency, int $amount, string $accountId, ?string $chargeId, array $metadata = []): Transfer
     {
-        return \Stripe\Transfer::create([
+        return Transfer::create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
@@ -135,10 +138,10 @@ class StripeClient
     }
 
     // Transfer
-    public function createTransferFromConnectedAccount(string $currency, int $amount, string $accountId, array $metadata = [])
+    public function createTransferFromConnectedAccount(string $currency, int $amount, string $accountId, array $metadata = []): Transfer
     {
-        $platformAccount = \Stripe\Account::retrieve();
-        return \Stripe\Transfer::create([
+        $platformAccount = Account::retrieve();
+        return Transfer::create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
@@ -147,18 +150,18 @@ class StripeClient
     }
 
     // Reversal
-    public function reverseTransfer(int $amount, string $transferId, array $metadata = [])
+    public function reverseTransfer(int $amount, string $transferId, array $metadata = []): TransferReversal
     {
-        return \Stripe\Transfer::createReversal($transferId, [
+        return Transfer::createReversal($transferId, [
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
         ]);
     }
 
     // Payout
-    public function createPayout(string $currency, int $amount, string $stripeAccountId, array $metadata = [])
+    public function createPayout(string $currency, int $amount, string $stripeAccountId, array $metadata = []): Payout
     {
-        return \Stripe\Payout::create([
+        return Payout::create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
@@ -168,9 +171,9 @@ class StripeClient
     }
 
     // Refund
-    public function createRefund(string $charge, ?int $amount, array $metadata = [])
+    public function createRefund(string $charge, ?int $amount, array $metadata = []): Refund
     {
-        return \Stripe\Refund::create([
+        return Refund::create([
             'charge' => $charge,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
@@ -181,7 +184,7 @@ class StripeClient
      * @param string $paymentId
      * @param int $amount
      * @return Charge|PaymentIntent
-     * @throws \Stripe\Exception\ApiErrorException
+     * @throws ApiErrorException
      */
     public function capturePayment(string $paymentId, int $amount)
     {
@@ -207,7 +210,7 @@ class StripeClient
 
     /**
      * @param string $paymentId
-     * @return Charge|PaymentIntent
+     * @return Refund|PaymentIntent
      * @throws ApiErrorException
      */
     public function cancelPayment(string $paymentId)

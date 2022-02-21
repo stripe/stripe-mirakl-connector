@@ -5,7 +5,6 @@ namespace App\Tests\Controller;
 use App\Controller\AccountMappingByOperator;
 use App\DTO\AccountMappingDTO;
 use App\Entity\AccountMapping;
-use App\Factory\AccountMappingFactory;
 use App\Repository\AccountMappingRepository;
 use App\Service\StripeClient;
 use App\Tests\ConnectorWebTestCase;
@@ -23,7 +22,6 @@ class AccountMappingByOperatorTest extends ConnectorWebTestCase
 {
     protected $controller;
     protected $accountMappingRepository;
-    protected $accountMappingFactory;
     protected $stripeClient;
     protected $serializer;
     protected $validator;
@@ -41,15 +39,12 @@ class AccountMappingByOperatorTest extends ConnectorWebTestCase
             ->setMethods(['findOneByMiraklShopId', 'persistAndFlush'])
             ->getMock();
 
-        $this->accountMappingFactory = $this->createMock(AccountMappingFactory::class);
-
         $this->serializer = $this->createMock(SerializerInterface::class);
         $this->validator = $this->createMock(ValidatorInterface::class);
 
         $logger = new NullLogger();
 
         $this->controller = new AccountMappingByOperator(
-            $this->accountMappingFactory,
             $this->accountMappingRepository,
             $this->stripeClient,
             $this->serializer,

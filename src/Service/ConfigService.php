@@ -103,4 +103,24 @@ class ConfigService
         $config->setValue($value);
         return $this->save();
     }
+
+    /**
+     * @return string|null
+     */
+    public function getSellerOnboardingCheckpoint(): ?string
+    {
+        $config = $this->getConfigByKey(Config::SELLER_ONBOARDING_CHECKPOINT);
+        return $config->getValue();
+    }
+
+    /**
+     * @param string|null $value
+     * @return self
+     */
+    public function setSellerOnboardingCheckpoint(?string $value): self
+    {
+        $config = $this->getConfigByKey(Config::SELLER_ONBOARDING_CHECKPOINT);
+        $config->setValue($value);
+        return $this->save();
+    }
 }

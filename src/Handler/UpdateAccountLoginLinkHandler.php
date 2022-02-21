@@ -2,7 +2,6 @@
 
 namespace App\Handler;
 
-use App\Factory\MiraklPatchShopFactory;
 use App\Message\AccountUpdateMessage;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
@@ -26,15 +25,15 @@ class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageS
     private $stripeClient;
 
     /**
-     * @var MiraklPatchShopFactory
+     * @var string
      */
-    private $patchFactory;
+    private $customFieldCode;
 
-    public function __construct(MiraklClient $miraklClient, StripeClient $stripeClient, MiraklPatchShopFactory $patchFactory)
+    public function __construct(MiraklClient $miraklClient, StripeClient $stripeClient, string $customFieldCode)
     {
         $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
-        $this->patchFactory = $patchFactory;
+        $this->customFieldCode = $customFieldCode;
     }
 
     public function __invoke(AccountUpdateMessage $message)
@@ -42,13 +41,8 @@ class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageS
         $messagePayload = $message->getContent()['payload'];
         $this->logger->info('Received Stripe `account.updated` webhook. Updating login link.', $messagePayload);
 
-        $stripeLoginLink = $this->stripeClient->accountCreateLoginLink($messagePayload['stripeUserId']);
-
-        $shopPatch = $this->patchFactory
-            ->setMiraklShopId($messagePayload['miraklShopId'])
-            ->setStripeUrl($stripeLoginLink['url'])
-            ->buildPatch();
-        $this->miraklClient->patchShops([$shopPatch]);
+        $loginLink = $this->stripeClient->createLoginLink($messagePayload['stripeUserId']);
+        $this->miraklClient->updateShopCustomField($messagePayload['miraklShopId'], $this->customFieldCode, $loginLink);
     }
 
     public static function getHandledMessages(): iterable

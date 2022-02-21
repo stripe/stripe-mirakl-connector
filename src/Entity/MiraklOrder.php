@@ -2,8 +2,6 @@
 
 namespace App\Entity;
 
-use App\Service\MiraklClient;
-
 abstract class MiraklOrder
 {
     protected $order;

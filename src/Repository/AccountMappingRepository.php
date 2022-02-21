@@ -45,4 +45,39 @@ class AccountMappingRepository extends ServiceEntityRepository
             'stripeAccountId' => $stripeAccountId
         ]);
     }
+
+    /**
+     * @param array $accountMappings
+     * @return array
+     */
+    private function mapByMiraklShopId(array $accountMappings): array
+    {
+        $map = [];
+        foreach ($accountMappings as $accountMapping) {
+            $map[$accountMapping->getMiraklShopId()] = $accountMapping;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param array $miraklShopIds
+     * @return AccountMapping[]
+     */
+    public function findByMiraklShopIds(array $miraklShopIds): array
+    {
+        return $this->mapByMiraklShopId($this->findBy([
+            'miraklShopId' => $miraklShopIds
+        ]));
+    }
+
+    /**
+     * @return AccountMapping[]
+     */
+    public function findNoStripeAccount(): array
+    {
+        return $this->mapByMiraklShopId($this->findBy([
+            'stripeAccountId' => null
+        ]));
+    }
 }

@@ -15,6 +15,7 @@ parameters:
   env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
   env(ENABLE_SERVICE_PAYMENT_SPLIT): false
   env(ENABLE_SERVICE_PAYMENT_REFUND): false
+  env(ENABLE_SELLER_ONBOARDING): true
 
   default_redirect_onboarding: "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
   default_enable_product_payment_split: false
@@ -39,6 +40,7 @@ parameters:
   app.workflow.enable_service_payment_split: "%env(bool:ENABLE_SERVICE_PAYMENT_SPLIT)%"
   app.workflow.enable_product_payment_refund: "%env(default:deprecated_enable_product_payment_refund:bool:ENABLE_PRODUCT_PAYMENT_REFUND)%"
   app.workflow.enable_service_payment_refund: "%env(bool:ENABLE_SERVICE_PAYMENT_REFUND)%"
+  app.workflow.enable_seller_onboarding: "%env(bool:ENABLE_SELLER_ONBOARDING)%"
   app.workflow.payment_metadata_commercial_order_id: "%env(default:deprecated_payment_metadata_commercial_order_id:PAYMENT_METADATA_COMMERCIAL_ORDER_ID)%"
   app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
@@ -69,6 +71,7 @@ services:
       $enableServicePaymentSplit: "%app.workflow.enable_service_payment_split%"
       $enableProductPaymentRefund: "%app.workflow.enable_product_payment_refund%"
       $enableServicePaymentRefund: "%app.workflow.enable_service_payment_refund%"
+      $enableSellerOnboarding: "%app.workflow.enable_seller_onboarding%"
       $metadataCommercialOrderId: "%app.workflow.payment_metadata_commercial_order_id%"
       $redirectOnboarding: "%app.redirect.onboarding%"
       $operatorNotificationUrl: "%app.operator.notification_url%"
@@ -130,7 +133,7 @@ services:
   json_log_formatter:
     class: Monolog\Formatter\JsonFormatter
 
-  App\Command\AccountOnboardingCommand:
+  App\Command\SellerOnboardingCommand:
     calls:
         - setLogger: ['@monolog.logger.onboarding']
 

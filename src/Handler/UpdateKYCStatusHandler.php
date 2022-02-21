@@ -45,16 +45,9 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
         $messagePayload = $message->getContent()['payload'];
         $this->logger->info('Received Stripe `account.updated` webhook. Updating KYC status.', $messagePayload);
 
-        $stripeAccount = $this->stripeClient->accountRetrieve($messagePayload['stripeUserId']);
+        $stripeAccount = $this->stripeClient->retrieveAccount($messagePayload['stripeUserId']);
 
-        $this->miraklClient->patchShops([
-            [
-                'shop_id' => $messagePayload['miraklShopId'],
-                'kyc' => [
-                    'status' => $this->getKYCStatus($stripeAccount),
-                ]
-            ],
-        ]);
+        $this->miraklClient->updateShopKycStatus($messagePayload['miraklShopId'], $this->getKYCStatus($stripeAccount));
     }
 
     public static function getHandledMessages(): iterable

@@ -1,8 +1,9 @@
 # Changelog
 
-## Version 2.2.0
-- Migrated from the deprecated Oauth flow to Connect Onboarding
-- Stripe accounts are now created during the onboarding job and mapped with the Mirakl shop
+## Version 3.0.0
+- Seller onboarding flow has been migrated from Oauth to Connect Onboarding
+- Consequently, endpoint `/api/onboarding` has been removed and the `AccountOnboarding` entity deleted
+- Stripe accounts are now created during the onboarding job and mapped with the corresponding Mirakl shop
 - Auto debit of negative balances is now disabled by default for new Stripe accounts (see #78)
 
 ## Version 2.1.5
