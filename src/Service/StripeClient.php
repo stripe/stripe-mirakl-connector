@@ -28,6 +28,11 @@ class StripeClient
     /**
      * @var string
      */
+    private $version;
+
+    /**
+     * @var string
+     */
     private $webhookSellerSecret;
 
     /**
@@ -45,27 +50,21 @@ class StripeClient
     public const APP_PARTNER_ID = 'pp_partner_FuvjRG4UuotFXS';
     public const APP_API_VERSION = '2019-08-14';
 
-    /**
-     * @var string
-     */
-    private $version;
-
     public function __construct(
-        string $stripeClientSecret,
         VersionManager $versionManager,
+        string $stripeClientSecret,
         string $webhookSellerSecret,
         string $webhookOperatorSecret,
         string $redirectOnboarding
     ) {
         $this->version = $versionManager->getVersion();
+        $this->webhookSellerSecret = $webhookSellerSecret;
+        $this->webhookOperatorSecret = $webhookOperatorSecret;
+        $this->redirectOnboarding = $redirectOnboarding;
 
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(self::APP_NAME, $this->version, self::APP_REPO, self::APP_PARTNER_ID);
         Stripe::setApiVersion(self::APP_API_VERSION);
-
-        $this->webhookSellerSecret = $webhookSellerSecret;
-        $this->webhookOperatorSecret = $webhookOperatorSecret;
-        $this->redirectOnboarding = $redirectOnboarding;
     }
 
     private function getDefaultMetadata(): array
@@ -101,7 +100,10 @@ class StripeClient
     {
         return Account::create(array_merge([
             'type' => 'express',
-            'settings' => ['payouts' => ['schedule' => ['interval' => 'manual']]],
+            'settings' => ['payouts' => [
+                'debit_negative_balances' => false,
+                'schedule' => ['interval' => 'manual']
+            ]],
             'metadata' => [
                 'miraklShopId' => $shopId
             ]
