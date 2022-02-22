@@ -56,24 +56,16 @@ class UpdateKYCStatusHandlerTest extends TestCase
         $stripeAccount->payouts_enabled = $payoutEnabled;
         $stripeAccount->charges_enabled = $chargesEnabled;
 
-        // TODO: rewrite
-        // $this->stripeClient
-        //     ->expects($this->once())
-        //     ->method('retrieveAccount')
-        //     ->with('acct_valid')
-        //     ->willReturn($stripeAccount);
+        $this->stripeClient
+            ->expects($this->once())
+            ->method('retrieveAccount')
+            ->with('acct_valid')
+            ->willReturn($stripeAccount);
 
-        // $this->miraklClient
-        //     ->expects($this->once())
-        //     ->method('patchShops')
-        //     ->with([
-        //         [
-        //             'shop_id' => 2000,
-        //             'kyc' => [
-        //                 'status' => $KYCStatus,
-        //             ]
-        //         ]
-        //     ]);
+        $this->miraklClient
+            ->expects($this->once())
+            ->method('updateShopKycStatus')
+            ->with(2000, $KYCStatus);
 
         $message = new AccountUpdateMessage(2000, 'acct_valid');
 

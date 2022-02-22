@@ -108,7 +108,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
 
             // Retrieve AccountMappings and create missing Stripe Accounts in the process
             try {
-                $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shops);
+                $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
             } catch (ApiErrorException $e) {
                 $this->logger->error(sprintf('Could not create Stripe Account: %s.', $e->getMessage()), [
                     'shopId' => $shopId,
@@ -126,7 +126,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
             // Add new AccountLink to Mirakl Shop
             $accountLink = $this->stripeClient->createAccountLink($accountMapping->getStripeAccountId());
             try {
-                $this->miraklClient->updateShopCustomField($shopId, $this->customFieldCode, $accountLink);
+                $this->miraklClient->updateShopCustomField($shopId, $this->customFieldCode, $accountLink['url']);
             } catch (ClientException $e) {
                 $message = $e->getResponse()->getContent(false);
                 $this->logger->error(sprintf('Could not add AccountLink to Mirakl Shop: %s.', $message), [

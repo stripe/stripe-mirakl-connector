@@ -48,18 +48,17 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
         $stripeLoginLink = new LoginLink();
         $stripeLoginLink['url'] = 'https://stripe-login-link';
 
-        // TODO: rewrite
-        // $this->stripeClient
-        //     ->expects($this->once())
-        //     ->method('createLoginLink')
-        //     ->with('acct_stripe_account')
-        //     ->willReturn($stripeLoginLink);
+        $this->stripeClient
+            ->expects($this->once())
+            ->method('createLoginLink')
+            ->with('acct_stripe_account')
+            ->willReturn($stripeLoginLink);
 
 
-        // $this->miraklClient
-        //     ->expects($this->once())
-        //     ->method('patchShops')
-        //     ->with([['generatedPatch']]);
+        $this->miraklClient
+            ->expects($this->once())
+            ->method('updateShopCustomField')
+            ->with(2000, 'stripe-url', $stripeLoginLink);
 
         $message = new AccountUpdateMessage(2000, 'acct_stripe_account');
 

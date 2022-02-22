@@ -150,7 +150,7 @@ class StripeWebhookEndpointTest extends WebTestCase
 
     public function testAccountUpdatedUnknownId()
     {
-        $id = StripeMock::ACCOUNT_BASIC;
+        $id = StripeMock::ACCOUNT_NEW;
         $response = $this->executeSellersRequest(<<<PAYLOAD
         {
             "type": "account.updated",
@@ -172,8 +172,8 @@ class StripeWebhookEndpointTest extends WebTestCase
 
     public function testAccountUpdatedButNotSubmittedYet()
     {
-        $id = StripeMock::ACCOUNT_BASIC;
-        $this->mockAccountMapping(MiraklMock::SHOP_BASIC, $id);
+        $id = StripeMock::ACCOUNT_NEW;
+        $this->mockAccountMapping(MiraklMock::SHOP_NEW, $id);
         $response = $this->executeSellersRequest(<<<PAYLOAD
         {
             "type": "account.updated",
@@ -201,8 +201,8 @@ class StripeWebhookEndpointTest extends WebTestCase
 
     public function testAccountUpdatedEnabled()
     {
-        $id = StripeMock::ACCOUNT_BASIC;
-        $this->mockAccountMapping(MiraklMock::SHOP_BASIC, $id);
+        $id = StripeMock::ACCOUNT_NEW;
+        $this->mockAccountMapping(MiraklMock::SHOP_NEW, $id);
         $response = $this->executeSellersRequest(<<<PAYLOAD
         {
             "type": "account.updated",
@@ -230,8 +230,8 @@ class StripeWebhookEndpointTest extends WebTestCase
 
     public function testAccountUpdatedDisabled()
     {
-        $id = StripeMock::ACCOUNT_BASIC;
-        $this->mockAccountMapping(MiraklMock::SHOP_BASIC, $id);
+        $id = StripeMock::ACCOUNT_NEW;
+        $this->mockAccountMapping(MiraklMock::SHOP_NEW, $id);
         $response = $this->executeSellersRequest(<<<PAYLOAD
         {
             "type": "account.updated",

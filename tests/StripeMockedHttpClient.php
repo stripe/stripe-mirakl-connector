@@ -13,6 +13,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const ACCOUNT_PAYIN_DISABLED = 'account_payin_disabled';
     public const ACCOUNT_PAYOUT_DISABLED = 'account_payout_disabled';
     public const ACCOUNT_NOT_FOUND = 'account_not_found';
+    public const ACCOUNT_NEW = 'account_new';
 
     public const CHARGE_BASIC = 'ch_basic';
     public const CHARGE_PAYMENT = 'py_basic';
@@ -92,6 +93,9 @@ class StripeMockedHttpClient implements ClientInterface
             case 'accounts':
                 $response = $this->mockAccounts($id);
                 break;
+            case 'account_links':
+                $response = $this->mockAccountLinks($id);
+                break;
             case 'charges':
                 $response = $this->mockCharges($id, $action);
                 break;
@@ -152,6 +156,13 @@ class StripeMockedHttpClient implements ClientInterface
         $account['requirements'] = [];
         $account['requirements']['disabled_reason'] = $id !== self::ACCOUNT_PAYIN_DISABLED ? null : 'Prohibited business';
         return $account;
+    }
+
+    private function mockAccountLinks($accountId)
+    {
+        $accountLink = $this->getBasicObject(null, 'account_link');
+        $accountLink['url'] = 'https://connect.stripe.com/setup/s/mov7fZc0o4Yx';
+        return $accountLink;
     }
 
     private function mockCharges($id, $action)

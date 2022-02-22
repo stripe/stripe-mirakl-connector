@@ -105,7 +105,7 @@ class StripeClient
     }
 
     // Webhook Event
-    public function webhookConstructEvent(string $payload, ?string $signatureHeader, ?string $webhookSecret): Event
+    public function webhookConstructEvent(string $payload, string $signatureHeader, string $webhookSecret): Event
     {
         if ($this->verifyWebhookSignature || $signatureHeader) {
             return Webhook::constructEvent($payload, $signatureHeader, $webhookSecret);

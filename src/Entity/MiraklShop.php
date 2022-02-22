@@ -2,8 +2,6 @@
 
 namespace App\Entity;
 
-use App\Service\ConfigService;
-
 class MiraklShop
 {
     protected $shop;
@@ -30,7 +28,7 @@ class MiraklShop
 
     public function getCustomFieldValue($code): ?string
     {
-        foreach ($$this->shop['shop_additional_fields'] as $field) {
+        foreach ($this->shop['shop_additional_fields'] as $field) {
             if ($field['code'] === $code) {
                 return $field['value'];
             }

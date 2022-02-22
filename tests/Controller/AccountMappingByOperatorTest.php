@@ -69,7 +69,7 @@ class AccountMappingByOperatorTest extends WebTestCase
 
     public function testInvalidAccountId()
     {
-        $shopId = MiraklMock::SHOP_BASIC;
+        $shopId = MiraklMock::SHOP_NEW;
         $accountId = StripeMock::ACCOUNT_NOT_FOUND;
         $response = $this->executeRequest(<<<PAYLOAD
         {
@@ -84,7 +84,7 @@ class AccountMappingByOperatorTest extends WebTestCase
     public function testInvalidShopId()
     {
         $shopId = MiraklMock::SHOP_INVALID;
-        $accountId = StripeMock::ACCOUNT_BASIC;
+        $accountId = StripeMock::ACCOUNT_NEW;
         $response = $this->executeRequest(<<<PAYLOAD
         {
             "miraklShopId": $shopId,
@@ -97,8 +97,8 @@ class AccountMappingByOperatorTest extends WebTestCase
 
     public function testCreateMappingForEnabledAccount()
     {
-        $shopId = MiraklMock::SHOP_BASIC;
-        $accountId = StripeMock::ACCOUNT_BASIC;
+        $shopId = MiraklMock::SHOP_NEW;
+        $accountId = StripeMock::ACCOUNT_NEW;
         $response = $this->executeRequest(<<<PAYLOAD
         {
             "miraklShopId": $shopId,
@@ -114,30 +114,10 @@ class AccountMappingByOperatorTest extends WebTestCase
         $this->assertNull($accountMapping->getDisabledReason());
     }
 
-    public function testCreateMappingForDisabledAccount()
-    {
-        $shopId = MiraklMock::SHOP_BASIC;
-        $accountId = StripeMock::ACCOUNT_PAYIN_DISABLED;
-        $response = $this->executeRequest(<<<PAYLOAD
-        {
-            "miraklShopId": $shopId,
-            "stripeUserId": "$accountId"
-        }
-        PAYLOAD);
-        $this->assertEquals('Mirakl - Stripe mapping created', $response->getContent());
-        $this->assertEquals(Response::HTTP_CREATED, $response->getStatusCode());
-
-        $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($accountId);
-        $this->assertEquals(false, $accountMapping->getPayinEnabled());
-        $this->assertEquals(false, $accountMapping->getPayoutEnabled());
-        $this->assertEquals('Prohibited business', $accountMapping->getDisabledReason());
-    }
-
     public function testShopIdAlreadyMapped()
     {
         $shopId = MiraklMock::SHOP_BASIC;
-        $accountId = StripeMock::ACCOUNT_BASIC;
-        $this->mockAccountMapping($shopId, StripeMock::ACCOUNT_PAYOUT_DISABLED);
+        $accountId = StripeMock::ACCOUNT_NEW;
         $response = $this->executeRequest(<<<PAYLOAD
         {
             "miraklShopId": $shopId,
@@ -150,9 +130,8 @@ class AccountMappingByOperatorTest extends WebTestCase
 
     public function testAccountIdAlreadyMapped()
     {
-        $shopId = MiraklMock::SHOP_BASIC;
+        $shopId = MiraklMock::SHOP_NEW;
         $accountId = StripeMock::ACCOUNT_BASIC;
-        $this->mockAccountMapping(MiraklMock::SHOP_NEW, $accountId);
         $response = $this->executeRequest(<<<PAYLOAD
         {
             "miraklShopId": $shopId,

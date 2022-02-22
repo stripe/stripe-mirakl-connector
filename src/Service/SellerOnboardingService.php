@@ -41,7 +41,7 @@ class SellerOnboardingService
      * @return AccountMapping
      * @throws ApiErrorException
      */
-    public function getAccountMappingFromShop($shop): AccountMapping
+    public function getAccountMappingFromShop(MiraklShop $shop): AccountMapping
     {
         $accountMapping = current($this->accountMappingRepository->findByMiraklShopIds([$shop->getId()]));
         if (!$accountMapping) {

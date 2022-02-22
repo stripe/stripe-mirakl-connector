@@ -1,18 +1,19 @@
-# App\Entity\AccountMapping:
-#     mapping_1:
-#         mirakl_shop_id: 1
-#         stripe_account_id: 'acct_basic'
-#         payin_enabled: true
-#         payout_enabled: true
-#     mapping_2:
-#         mirakl_shop_id: 2
-#         stripe_account_id: 'account_payin_disabled'
-#         payin_enabled: false
-#         payout_enabled: false
-#         disabled_reason: '<word()>'
-#     mapping_3:
-#         mirakl_shop_id: 3
-#         stripe_account_id: 'account_payout_disabled'
-#         payin_enabled: true
-#         payout_enabled: false
-#         disabled_reason: '<word()>'
+App\Entity\AccountMapping:
+    mapping_1:
+        mirakl_shop_id: 1
+        stripe_account_id: 'acct_basic'
+        payin_enabled: true
+        payout_enabled: true
+        disabled_reason: null
+    mapping_2:
+        mirakl_shop_id: 2
+        stripe_account_id: 'account_payin_disabled'
+        payin_enabled: false
+        payout_enabled: false
+        disabled_reason: 'Prohibited business'
+    mapping_3:
+        mirakl_shop_id: 3
+        stripe_account_id: 'account_payout_disabled'
+        payin_enabled: true
+        payout_enabled: false
+        disabled_reason: null
