@@ -31,7 +31,6 @@ parameters:
   router.request_context.scheme: 'https'
 
   app.base_host: "%env(BASE_HOST)%"
-  app.stripe.client_id: "%env(STRIPE_CLIENT_ID)%"
   app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"
   app.stripe.webhook_seller_secret: "%env(default:deprecated_webhook_secret:STRIPE_SELLERS_WEBHOOK_SECRET)%"
   app.stripe.webhook_operator_secret: "%env(default:deprecated_webhook_secret:STRIPE_OPERATOR_WEBHOOK_SECRET)%"
@@ -58,7 +57,6 @@ services:
     autowire: true # Automatically injects dependencies in your services.
     autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
     bind:
-      $stripeClientId: "%app.stripe.client_id%"
       $stripeClientSecret: "%app.stripe.client_secret%"
       $webhookSellerSecret: "%app.stripe.webhook_seller_secret%"
       $webhookOperatorSecret: "%app.stripe.webhook_operator_secret%"
