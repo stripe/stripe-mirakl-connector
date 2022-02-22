@@ -98,13 +98,20 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
         assert(is_object($dto) && is_a($dto, AccountMappingDTO::class));
 
         if (count($this->validator->validate($dto)) > 0) {
-            return new Response('Invalid Mirakl shop Id format', Response::HTTP_BAD_REQUEST);
+            return new Response('Invalid Mirakl Shop ID', Response::HTTP_BAD_REQUEST);
         }
 
-        $stripeAccount = $this->stripeClient->retrieveAccount($dto->getStripeUserId());
+        $miraklShopId = $dto->getMiraklShopId();
+        $stripeUserId = $dto->getStripeUserId();
+        try {
+            $stripeAccount = $this->stripeClient->retrieveAccount($stripeUserId);
+        } catch (\Exception $e) {
+            return new Response('Invalid Stripe Account ID', Response::HTTP_BAD_REQUEST);
+        }
+
         $mapping = new AccountMapping();
-        $mapping->setMiraklShopId($dto->getMiraklShopId());
-        $mapping->setStripeAccountId($dto->getStripeUserId());
+        $mapping->setMiraklShopId($miraklShopId);
+        $mapping->setStripeAccountId($stripeUserId);
         $mapping->setPayinEnabled($stripeAccount->payouts_enabled);
         $mapping->setPayoutEnabled($stripeAccount->charges_enabled);
         $mapping->setDisabledReason($stripeAccount->requirements['disabled_reason']);

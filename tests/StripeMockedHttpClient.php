@@ -12,8 +12,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const ACCOUNT_BASIC = 'acct_basic';
     public const ACCOUNT_PAYIN_DISABLED = 'account_payin_disabled';
     public const ACCOUNT_PAYOUT_DISABLED = 'account_payout_disabled';
-    public const ACCOUNT_OAUTH = 'account_oauth';
-    public const ACCOUNT_NEW = 'account_new';
+    public const ACCOUNT_NOT_FOUND = 'account_not_found';
 
     public const CHARGE_BASIC = 'ch_basic';
     public const CHARGE_PAYMENT = 'py_basic';
@@ -77,10 +76,6 @@ class StripeMockedHttpClient implements ClientInterface
      */
     public function request($method, $url, $headers, $params, $hasFile = false)
     {
-        if ('https://connect.stripe.com/oauth/token' === $url) {
-            return [json_encode($this->mockOauth()), 200, []];
-        }
-
         $path = str_replace('/v1/', '', parse_url($url, PHP_URL_PATH));
         $composants = explode('/', $path);
 
@@ -148,20 +143,15 @@ class StripeMockedHttpClient implements ClientInterface
 
     private function mockAccounts($id)
     {
-        $account = $this->getBasicObject($id, 'account');
-        $account['charges_enabled'] = true;
-        $account['payouts_enabled'] = true;
-        $account['requirements'] = [];
-        $account['requirements']['disabled_reason'] = null;
-        return $account;
-    }
+        if ($id === self::ACCOUNT_NOT_FOUND)
+            throw new InvalidRequestException("$id not found", 404);
 
-    private function mockOauth()
-    {
-        return [
-            'access_token' => 'token',
-            'stripe_user_id' => self::ACCOUNT_OAUTH,
-        ];
+        $account = $this->getBasicObject($id, 'account');
+        $account['charges_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED;
+        $account['payouts_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED && $id !== self::ACCOUNT_PAYOUT_DISABLED;
+        $account['requirements'] = [];
+        $account['requirements']['disabled_reason'] = $id !== self::ACCOUNT_PAYIN_DISABLED ? null : 'Prohibited business';
+        return $account;
     }
 
     private function mockCharges($id, $action)

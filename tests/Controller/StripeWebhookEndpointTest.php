@@ -75,11 +75,11 @@ class StripeWebhookEndpointTest extends WebTestCase
         return $this->executeRequest('/api/public/webhook/operator', $payload, $signature);
     }
 
-    private function mockAccountMapping(int $shopId, string $id, bool $payinsEnabled = false, bool $payoutsEnabled = false, ?string $disableReason = null)
+    private function mockAccountMapping(int $shopId, string $accountId, bool $payinsEnabled = false, bool $payoutsEnabled = false, ?string $disableReason = null)
     {
         $accountMapping = new AccountMapping();
         $accountMapping->setMiraklShopId($shopId);
-        $accountMapping->setStripeAccountId($id);
+        $accountMapping->setStripeAccountId($accountId);
         $accountMapping->setPayinEnabled($payinsEnabled);
         $accountMapping->setPayoutEnabled($payoutsEnabled);
         $accountMapping->setDisabledReason($disableReason);
