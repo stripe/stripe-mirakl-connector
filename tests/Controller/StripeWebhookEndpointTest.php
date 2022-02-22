@@ -2,10 +2,8 @@
 
 namespace App\Tests\Controller;
 
-use App\Controller\StripeWebhookEndpoint;
 use App\Entity\AccountMapping;
 use App\Entity\PaymentMapping;
-use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
@@ -13,10 +11,7 @@ use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Transport\InMemoryTransport;
 
 class StripeWebhookEndpointTest extends WebTestCase
@@ -188,6 +183,7 @@ class StripeWebhookEndpointTest extends WebTestCase
                     "object": "account",
                     "charges_enabled": true,
                     "payouts_enabled": true,
+                    "requirements": {"disabled_reason": null},
                     "details_submitted": false
                 }
             }
@@ -216,6 +212,7 @@ class StripeWebhookEndpointTest extends WebTestCase
                     "object": "account",
                     "charges_enabled": true,
                     "payouts_enabled": true,
+                    "requirements": {"disabled_reason": null},
                     "details_submitted": true
                 }
             }
@@ -244,7 +241,7 @@ class StripeWebhookEndpointTest extends WebTestCase
                     "object": "account",
                     "charges_enabled": false,
                     "payouts_enabled": false,
-                    "disabled_reason": "PBL",
+                    "requirements": {"disabled_reason": "Prohibited business"},
                     "details_submitted": true
                 }
             }
@@ -257,7 +254,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($id);
         $this->assertEquals(false, $accountMapping->getPayinEnabled());
         $this->assertEquals(false, $accountMapping->getPayoutEnabled());
-        $this->assertEquals("PBL", $accountMapping->getDisabledReason());
+        $this->assertEquals("Prohibited business", $accountMapping->getDisabledReason());
     }
 
     public function testPaymentIntentCreated()

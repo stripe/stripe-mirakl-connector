@@ -235,7 +235,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         $accountMapping->setPayoutEnabled($stripeAccount['payouts_enabled']);
         $accountMapping->setPayinEnabled($stripeAccount['charges_enabled']);
-        $accountMapping->setDisabledReason($stripeAccount['disabled_reason']);
+        $accountMapping->setDisabledReason($stripeAccount['requirements']['disabled_reason']);
 
         $this->accountMappingRepository->flush();
 
