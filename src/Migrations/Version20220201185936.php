@@ -11,7 +11,7 @@ final class Version20220201185936 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Delete AccountOnboarding.';
     }
 
     public function up(Schema $schema): void

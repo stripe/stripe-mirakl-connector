@@ -156,3 +156,7 @@ services:
   App\Command\SellerSettlementCommand:
     calls:
         - setLogger: ['@monolog.logger.process_payout']
+
+  App\Service\StripeClient:
+    bind:
+      $verifyWebhookSignature: true

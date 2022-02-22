@@ -4,6 +4,7 @@ namespace App\Service;
 
 use Shivas\VersioningBundle\Service\VersionManager;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\UnexpectedValueException;
 use Stripe\HttpClient\ClientInterface;
 use Stripe\Stripe;
 use Stripe\ApiRequestor;
@@ -33,17 +34,12 @@ class StripeClient
     /**
      * @var string
      */
-    private $webhookSellerSecret;
-
-    /**
-     * @var string
-     */
-    private $webhookOperatorSecret;
-
-    /**
-     * @var string
-     */
     private $redirectOnboarding;
+
+    /**
+     * @var bool
+     */
+    private $verifyWebhookSignature;
 
     public const APP_NAME = 'MiraklConnector';
     public const APP_REPO = 'https://github.com/stripe/stripe-mirakl-connector';
@@ -53,14 +49,12 @@ class StripeClient
     public function __construct(
         VersionManager $versionManager,
         string $stripeClientSecret,
-        string $webhookSellerSecret,
-        string $webhookOperatorSecret,
-        string $redirectOnboarding
+        string $redirectOnboarding,
+        bool $verifyWebhookSignature
     ) {
         $this->version = $versionManager->getVersion();
-        $this->webhookSellerSecret = $webhookSellerSecret;
-        $this->webhookOperatorSecret = $webhookOperatorSecret;
         $this->redirectOnboarding = $redirectOnboarding;
+        $this->verifyWebhookSignature = $verifyWebhookSignature;
 
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(self::APP_NAME, $this->version, self::APP_REPO, self::APP_PARTNER_ID);
@@ -110,16 +104,21 @@ class StripeClient
         ], $details));
     }
 
-    // Signature
-    public function webhookConstructEvent(string $payload, string $signatureHeader, bool $isOperatorWebhook = false): Event
+    // Webhook Event
+    public function webhookConstructEvent(string $payload, ?string $signatureHeader, ?string $webhookSecret): Event
     {
-        $webhookSecret = $isOperatorWebhook ? $this->webhookOperatorSecret : $this->webhookSellerSecret;
-
-        return Webhook::constructEvent(
-            $payload,
-            $signatureHeader,
-            $webhookSecret
-        );
+        if ($this->verifyWebhookSignature || $signatureHeader) {
+            return Webhook::constructEvent($payload, $signatureHeader, $webhookSecret);
+        } else {
+            $data = \json_decode($payload, true);
+            $jsonError = \json_last_error();
+            if (null === $data && \JSON_ERROR_NONE !== $jsonError) {
+                throw new UnexpectedValueException(
+                    "Invalid payload: {$payload} (json_last_error() was {$jsonError})"
+                );
+            }
+            return Event::constructFrom($data);
+        }
     }
 
     public function setHttpClient(ClientInterface $client)

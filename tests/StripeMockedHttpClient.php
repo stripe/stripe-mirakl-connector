@@ -35,6 +35,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const PAYMENT_INTENT_STATUS_SUCCEEDED = 'pi_status_succeeded';
     public const PAYMENT_INTENT_REFUNDED = 'pi_refunded';
     public const PAYMENT_INTENT_NOT_FOUND = 'pi_not_found';
+    public const PAYMENT_INTENT_WITH_METADATA = 'pi_with_metadata';
 
     public const PAYOUT_BASIC = 'po_basic';
 
@@ -46,8 +47,9 @@ class StripeMockedHttpClient implements ClientInterface
     public const TRANSFER_REVERSAL_BASIC = 'trr_basic';
 
     protected $errorMessage;
+    protected $metadataCommercialOrderId;
 
-    public function __construct()
+    public function __construct(string $metadataCommercialOrderId)
     {
         $this->errorMessage = json_encode([
             'error' => [
@@ -55,6 +57,7 @@ class StripeMockedHttpClient implements ClientInterface
                 'type' => 'invalid_request_error',
             ],
         ]);
+        $this->metadataCommercialOrderId = $metadataCommercialOrderId;
     }
 
     /**
@@ -250,6 +253,11 @@ class StripeMockedHttpClient implements ClientInterface
                 $pi['status'] = 'succeeded';
                 $pi['charges'] = $this->getBasicList('charges');
                 $pi['charges']['data'][] = $this->mockCharges(self::CHARGE_REFUNDED, null);
+                break;
+            case self::PAYMENT_INTENT_WITH_METADATA:
+                $pi['status'] = 'requires_capture';
+                $pi['metadata'] = [];
+                $pi['metadata'][$this->metadataCommercialOrderId] = '123';
                 break;
             case self::PAYMENT_INTENT_NOT_FOUND:
             default:
