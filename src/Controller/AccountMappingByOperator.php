@@ -103,11 +103,7 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
 
         $miraklShopId = $dto->getMiraklShopId();
         $stripeUserId = $dto->getStripeUserId();
-        try {
-            $stripeAccount = $this->stripeClient->retrieveAccount($stripeUserId);
-        } catch (\Exception $e) {
-            return new Response('Invalid Stripe Account ID', Response::HTTP_BAD_REQUEST);
-        }
+        $stripeAccount = $this->stripeClient->retrieveAccount($stripeUserId);
 
         $mapping = new AccountMapping();
         $mapping->setMiraklShopId($miraklShopId);

@@ -185,6 +185,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             return new Response('Unhandled event type', Response::HTTP_BAD_REQUEST);
         }
 
+        $message = '';
         $status = Response::HTTP_OK;
         try {
             switch ($event->type) {
@@ -195,19 +196,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 case 'charge.updated':
                     $message = $this->handleChargeEvent($event);
                     break;
-                default:
-                    // should never be triggered
-                    $message = 'Not managed yet';
-                    $status = Response::HTTP_BAD_REQUEST;
-                    break;
             }
         } catch (\Exception $e) {
             $message = $e->getMessage();
             $status = $e->getCode();
-
-            if (!isset(Response::$statusTexts[$status])) {
-                $status = Response::HTTP_INTERNAL_SERVER_ERROR;
-            }
         }
 
         return new Response($message, $status);

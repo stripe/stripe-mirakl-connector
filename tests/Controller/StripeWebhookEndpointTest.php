@@ -512,7 +512,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals(100, $paymentMapping->getStripeAmount());
     }
 
-    public function testChargeUpdatedMetadataInPaymentIntentExpanded()
+    public function testChargeUpdatedMetadataInExpandedPaymentIntent()
     {
         $chargeId = StripeMock::CHARGE_BASIC;
         $paymentIntentId = StripeMock::PAYMENT_INTENT_BASIC;
@@ -548,5 +548,36 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals($orderId, $paymentMapping->getMiraklCommercialOrderId());
         $this->assertEquals(PaymentMapping::TO_CAPTURE, $paymentMapping->getStatus());
         $this->assertEquals(100, $paymentMapping->getStripeAmount());
+    }
+
+    public function testChargeUpdatedMetadataInExpandedPaymentIntentIsEmpty()
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $paymentIntentId = StripeMock::PAYMENT_INTENT_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100,
+                    "payment_intent": {
+                        "id": "$paymentIntentId",
+                        "object": "payment_intent",
+                        "metadata": {
+                            "$this->paymentKey": ""
+                        }
+                    }
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals("$this->paymentKey is empty in PaymentIntent.", $response->getContent());
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
     }
 }

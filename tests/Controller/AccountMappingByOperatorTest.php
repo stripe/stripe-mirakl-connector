@@ -84,7 +84,7 @@ class AccountMappingByOperatorTest extends WebTestCase
             "stripeUserId": "$accountId"
         }
         PAYLOAD);
-        $this->assertEquals('Invalid Stripe Account ID', $response->getContent());
+        $this->assertEquals('Cannot find the Stripe account corresponding to this stripe Id', $response->getContent());
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
     }
 

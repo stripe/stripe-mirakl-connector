@@ -4,6 +4,7 @@ namespace App\Tests;
 
 use Stripe\Exception\ApiConnectionException;
 use Stripe\Exception\InvalidRequestException;
+use Stripe\Exception\PermissionException;
 use Stripe\HttpClient\ClientInterface;
 use App\Tests\MiraklMockedHttpClient AS MiraklMock;
 
@@ -149,7 +150,7 @@ class StripeMockedHttpClient implements ClientInterface
     private function mockAccounts($id, $method = 'get', $params = [])
     {
         if ($id === self::ACCOUNT_NOT_FOUND)
-            throw new InvalidRequestException("$id not found", 404);
+            throw new PermissionException("The provided key does not have access to account '$id' (or that account does not exist). Application access may have been revoked.", 403);
 
         if ($method === 'post' && $params['metadata']['miraklShopId'] === MiraklMock::SHOP_STRIPE_ERROR)
             throw new InvalidRequestException("Can't create Stripe Account", 400);
@@ -166,7 +167,7 @@ class StripeMockedHttpClient implements ClientInterface
     {
         $account = $params['account'];
         if ($account === self::ACCOUNT_NOT_FOUND)
-            throw new InvalidRequestException("$account not found", 404);
+            throw new PermissionException("The provided key does not have access to account '$account' (or that account does not exist). Application access may have been revoked.", 403);
 
         $accountLink = $this->getBasicObject(null, 'account_link');
         $accountLink['url'] = 'https://connect.stripe.com/setup/s/mov7fZc0o4Yx';
