@@ -137,4 +137,14 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
     }
+
+    public function testExistingShopWithStripeError()
+    {
+        $this->deleteAllAccountMappingsFromRepository();
+        $this->mockAccountMapping(MiraklMock::SHOP_BASIC, StripeMock::ACCOUNT_NOT_FOUND);
+        $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_EXISTING_WITHOUT_URL);
+        $this->executeCommand();
+        $this->assertCount(1, $this->getAccountMappingsFromRepository());
+    }
 }
