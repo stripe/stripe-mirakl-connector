@@ -5,6 +5,7 @@ namespace App\Tests;
 use Stripe\Exception\ApiConnectionException;
 use Stripe\Exception\InvalidRequestException;
 use Stripe\HttpClient\ClientInterface;
+use App\Tests\MiraklMockedHttpClient AS MiraklMock;
 
 class StripeMockedHttpClient implements ClientInterface
 {
@@ -91,10 +92,10 @@ class StripeMockedHttpClient implements ClientInterface
                 $response = $this->mockPlatformAccount();
                 break;
             case 'accounts':
-                $response = $this->mockAccounts($id);
+                $response = $this->mockAccounts($id, $method, $params);
                 break;
             case 'account_links':
-                $response = $this->mockAccountLinks($id);
+                $response = $this->mockAccountLinks($params);
                 break;
             case 'charges':
                 $response = $this->mockCharges($id, $action);
@@ -145,12 +146,15 @@ class StripeMockedHttpClient implements ClientInterface
         return $this->mockAccounts(self::ACCOUNT_PLATFORM);
     }
 
-    private function mockAccounts($id)
+    private function mockAccounts($id, $method = 'get', $params = [])
     {
         if ($id === self::ACCOUNT_NOT_FOUND)
             throw new InvalidRequestException("$id not found", 404);
 
-        $account = $this->getBasicObject($id, 'account');
+        if ($method === 'post' && $params['metadata']['miraklShopId'] === MiraklMock::SHOP_STRIPE_ERROR)
+            throw new InvalidRequestException("Can't create Stripe Account", 400);
+
+        $account = $this->getBasicObject($id ?? self::ACCOUNT_NEW, 'account');
         $account['charges_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED;
         $account['payouts_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED && $id !== self::ACCOUNT_PAYOUT_DISABLED;
         $account['requirements'] = [];
@@ -158,8 +162,12 @@ class StripeMockedHttpClient implements ClientInterface
         return $account;
     }
 
-    private function mockAccountLinks($accountId)
+    private function mockAccountLinks($params)
     {
+        $account = $params['account'];
+        if ($account === self::ACCOUNT_NOT_FOUND)
+            throw new InvalidRequestException("$account not found", 404);
+
         $accountLink = $this->getBasicObject(null, 'account_link');
         $accountLink['url'] = 'https://connect.stripe.com/setup/s/mov7fZc0o4Yx';
         return $accountLink;

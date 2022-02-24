@@ -19,6 +19,12 @@ class AccountMappingRepository extends ServiceEntityRepository
         parent::__construct($registry, AccountMapping::class);
     }
 
+    public function removeAndFlush(AccountMapping $accountMapping): void
+    {
+        $this->getEntityManager()->remove($accountMapping);
+        $this->getEntityManager()->flush();
+    }
+
     public function persistAndFlush(AccountMapping $accountMapping): AccountMapping
     {
         $this->getEntityManager()->persist($accountMapping);
@@ -68,16 +74,6 @@ class AccountMappingRepository extends ServiceEntityRepository
     {
         return $this->mapByMiraklShopId($this->findBy([
             'miraklShopId' => $miraklShopIds
-        ]));
-    }
-
-    /**
-     * @return AccountMapping[]
-     */
-    public function findNoStripeAccount(): array
-    {
-        return $this->mapByMiraklShopId($this->findBy([
-            'stripeAccountId' => null
         ]));
     }
 }

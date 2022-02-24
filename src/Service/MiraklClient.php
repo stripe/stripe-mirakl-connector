@@ -352,19 +352,19 @@ class MiraklClient
     // S07
     public function updateShopCustomField(int $shopId, string $code, $value)
     {
-        $this->put('/api/shops', ['shops' => [
+        $this->put('/api/shops', ['shops' => [[
             'shop_id' => $shopId,
             'shop_additional_fields' => [['code' => $code, 'value' => $value]]
-        ]]);
+        ]]]);
     }
 
     // S07
     public function updateShopKycStatus(int $shopId, string $status)
     {
-        $this->put('/api/shops', ['shops' => [
+        $this->put('/api/shops', ['shops' => [[
             'shop_id' => $shopId,
             'kyc' => ['status' => $status]
-        ]]);
+        ]]]);
     }
 
     // parse a date based on the format used by Mirakl

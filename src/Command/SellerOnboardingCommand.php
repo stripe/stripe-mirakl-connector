@@ -2,11 +2,9 @@
 
 namespace App\Command;
 
-use App\Exception\InvalidArgumentException;
 use App\Service\ConfigService;
 use App\Service\MiraklClient;
 use App\Service\SellerOnboardingService;
-use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -14,18 +12,12 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\HttpClient\Exception\ClientException;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 class SellerOnboardingCommand extends Command implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
     protected static $defaultName = 'connector:sync:onboarding';
-
-    /**
-     * @var MessageBusInterface
-     */
-    private $bus;
 
     /**
      * @var bool
@@ -43,36 +35,20 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
     private $miraklClient;
 
     /**
-     * @var StripeClient
-     */
-    private $stripeClient;
-
-    /**
      * @var SellerOnboardingService
      */
     private $sellerOnboardingService;
 
-    /**
-     * @var string
-     */
-    private $customFieldCode;
-
     public function __construct(
-        MessageBusInterface $bus,
         ConfigService $configService,
         MiraklClient $miraklClient,
-        StripeClient $stripeClient,
         SellerOnboardingService $sellerOnboardingService,
-        bool $enableSellerOnboarding,
-        string $customFieldCode
+        bool $enableSellerOnboarding
     ) {
-        $this->bus = $bus;
         $this->configService = $configService;
         $this->miraklClient = $miraklClient;
-        $this->stripeClient = $stripeClient;
         $this->sellerOnboardingService = $sellerOnboardingService;
         $this->enableSellerOnboarding = $enableSellerOnboarding;
-        $this->customFieldCode = $customFieldCode;
         parent::__construct();
     }
 
@@ -104,7 +80,10 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         }
 
         foreach ($shops as $shopId => $shop) {
-            $this->logger->info("Processing Mirkal Shop: $shopId.");
+            $this->logger->info("Processing Mirakl Shop: $shopId.");
+
+            // New checkpoint
+            $newCheckpoint = $shop->getLastUpdatedDate();
 
             // Retrieve AccountMappings and create missing Stripe Accounts in the process
             try {
@@ -117,26 +96,27 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                 continue;
             }
 
-            // Ignore if custom field already has a value other than the oauth URL (for backward compatibility)
-            $customFieldValue = $shop->getCustomFieldValue($this->customFieldCode);
-            if (!empty($customFieldValue) && !strpos($customFieldValue, 'express/oauth/authorize')) {
-                continue;
-            }
-
-            // Add new AccountLink to Mirakl Shop
-            $accountLink = $this->stripeClient->createAccountLink($accountMapping->getStripeAccountId());
             try {
-                $this->miraklClient->updateShopCustomField($shopId, $this->customFieldCode, $accountLink['url']);
+                $url = $this->sellerOnboardingService->updateCustomField($shop, $accountMapping);
+                if ($url === null) {
+                    $this->logger->info("Ignoring Mirakl Shop $shopId with custom field already filled.");
+                } else {
+                    $this->logger->info("Updated URL for Mirakl Shop $shopId to: $url.");
+                }
             } catch (ClientException $e) {
                 $message = $e->getResponse()->getContent(false);
                 $this->logger->error(sprintf('Could not add AccountLink to Mirakl Shop: %s.', $message), [
                     'shopId' => $shopId,
-                    'accountLink' => $accountLink
+                    'accountId' => $accountMapping->getStripeAccountId()
                 ]);
+            } catch (ApiErrorException $e) {
+                $this->logger->error(sprintf('Could not create Stripe AccountLink: %s.', $e->getMessage()), [
+                    'shopId' => $shopId,
+                    'accountId' => $accountMapping->getStripeAccountId(),
+                    'stripeErrorCode' => $e->getStripeCode()
+                ]);
+                continue;
             }
-
-            // New checkpoint
-            $newCheckpoint = $shop->getLastUpdatedDate();
         }
 
         // Save new checkpoint

@@ -32,9 +32,9 @@ class AccountMappingByOperatorTest extends WebTestCase
         $this->accountMappingRepository = self::$container->get('doctrine')->getRepository(AccountMapping::class);
     }
 
-    private function executeRequest(string $payload, bool $authenticate = true)
+    private function executeRequest(string $payload, ?string $authenticate = 'operator-test')
     {
-        $server = $authenticate ? ['HTTP_' . TokenAuthenticator::AUTH_HEADER_NAME => 'operator-test'] : [];
+        $server = $authenticate ? ['HTTP_' . TokenAuthenticator::AUTH_HEADER_NAME => $authenticate] : [];
         $this->client->request('POST', '/api/mappings', [], [], $server, $payload);
         return $this->client->getResponse();
     }
@@ -55,9 +55,16 @@ class AccountMappingByOperatorTest extends WebTestCase
 
     public function testMissingAuthentication()
     {
-        $response = $this->executeRequest("{}", false);
+        $response = $this->executeRequest("{}", null);
         $this->assertEquals('{"message":"Authentication Required"}', $response->getContent());
         $this->assertEquals(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+    }
+
+    public function testBadAuthentication()
+    {
+        $response = $this->executeRequest("{}", 'Bad password');
+        $this->assertEquals('{"message":"Invalid credentials."}', $response->getContent());
+        $this->assertEquals(Response::HTTP_FORBIDDEN, $response->getStatusCode());
     }
 
     public function testInvalidPayload()
