@@ -1,7 +1,7 @@
 # Changelog
 
 ## Version 3.0.0
-- Seller onboarding flow has been migrated from Oauth to Connect Onboarding.
+- Seller onboarding flow has been migrated from Oauth to Connect Onboarding. Make sure to configure your [Connect branding settings](https://dashboard.stripe.com/settings/connect) before upgrading.
 - Consequently, the `/api/onboarding` endpoint has been removed, the `AccountOnboarding` entity has been deleted, and the `STRIPE_CLIENT_ID` environment variable is no longer needed.
 - The `connector:sync:onboarding` command no longer uses the delay parameter. This parameter is now deprecated, please remove it from your crontab settings.
 - You can now use the `SCHEME` environment variable to force HTTP when working locally or in a development environment.

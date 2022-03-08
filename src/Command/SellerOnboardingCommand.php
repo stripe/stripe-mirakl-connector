@@ -86,7 +86,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         }
 
         foreach ($shops as $shopId => $shop) {
-            $this->logger->info("Processing Mirakl Shop: $shopId.");
+            $this->logger->debug("Processing Mirakl Shop: $shopId.");
 
             // New checkpoint
             $newCheckpoint = $shop->getLastUpdatedDate();
@@ -106,7 +106,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                 // Ignore if custom field already has a value other than the oauth URL (for backward compatibility)
                 $customFieldValue = $this->sellerOnboardingService->getCustomFieldValue($shop);
                 if (!empty($customFieldValue) && !strpos($customFieldValue, 'express/oauth/authorize')) {
-                    $this->logger->info("Ignoring Mirakl Shop $shopId with custom field already filled.");
+                    $this->logger->debug("Ignoring Mirakl Shop $shopId with custom field already filled.");
                     continue;
                 }
 
@@ -131,7 +131,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         // Save new checkpoint
         if (isset($newCheckpoint) && $checkpoint !== $newCheckpoint) {
             $this->configService->setSellerOnboardingCheckpoint($newCheckpoint);
-            $this->logger->info("Setting new checkpoint:  . $newCheckpoint.");
+            $this->logger->info("Setting new checkpoint: $newCheckpoint.");
         }
     }
 }

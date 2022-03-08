@@ -1,5 +1,5 @@
 # Every minute.
-*       *       *   *       *       php /var/www/bin/console connector:sync:onboarding 5 > /dev/null 2>&1
+*       *       *   *       *       php /var/www/bin/console connector:sync:onboarding -q > /dev/null 2>&1
 # Every 5 minutes starting from 0. E.g. 10:00.
 0-59/5  *       *   *       *       php /var/www/bin/console connector:validate:pending-debit -q > /dev/null 2>&1
 # Every 5 minutes starting from 1. E.g. 10:01.
