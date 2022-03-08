@@ -4,6 +4,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
+  env(SCHEME): "https"
   env(CORS_ALLOW_ORIGIN): "^https?://localhost(:[0-9]+)?$"
   env(MAILER_DSN): "smtp://null"
   env(TECHNICAL_ALERT_EMAIL): ""
@@ -27,8 +28,8 @@ parameters:
   deprecated_enable_product_payment_refund: "%env(default:default_enable_product_payment_refund:bool:ENABLES_AUTOMATIC_REFUND_CREATION)%"
   deprecated_payment_metadata_commercial_order_id: "%env(default:default_payment_metadata_commercial_order_id:MIRAKL_METADATA_ORDER_ID)%"
 
+  router.request_context.scheme: '%env(SCHEME)%'
   router.request_context.host: "%env(BASE_HOST)%"
-  router.request_context.scheme: 'https'
 
   app.base_host: "%env(BASE_HOST)%"
   app.stripe.client_secret: "%env(STRIPE_CLIENT_SECRET)%"

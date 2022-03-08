@@ -9,6 +9,7 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\HttpClient\Exception\ClientException;
@@ -50,6 +51,11 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         $this->sellerOnboardingService = $sellerOnboardingService;
         $this->enableSellerOnboarding = $enableSellerOnboarding;
         parent::__construct();
+    }
+
+    protected function configure()
+    {
+        $this->addArgument('delay', InputArgument::OPTIONAL, 'Deprecated argument kept for backward compatibility. Will be removed in future versions.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): ?int
