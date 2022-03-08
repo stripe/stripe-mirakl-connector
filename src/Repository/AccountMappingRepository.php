@@ -45,6 +45,13 @@ class AccountMappingRepository extends ServiceEntityRepository
         ]);
     }
 
+    public function findOneByOnboardingToken(string $onboardingToken): ?AccountMapping
+    {
+        return $this->findOneBy([
+            'onboardingToken' => $onboardingToken
+        ]);
+    }
+
     /**
      * @param array $accountMappings
      * @return array

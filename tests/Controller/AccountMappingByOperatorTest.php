@@ -39,20 +39,6 @@ class AccountMappingByOperatorTest extends WebTestCase
         return $this->client->getResponse();
     }
 
-    private function mockAccountMapping(int $shopId, string $accountId, bool $payinsEnabled = false, bool $payoutsEnabled = false, ?string $disableReason = null)
-    {
-        $accountMapping = new AccountMapping();
-        $accountMapping->setMiraklShopId($shopId);
-        $accountMapping->setStripeAccountId($accountId);
-        $accountMapping->setPayinEnabled($payinsEnabled);
-        $accountMapping->setPayoutEnabled($payoutsEnabled);
-        $accountMapping->setDisabledReason($disableReason);
-
-        $this->accountMappingRepository->persistAndFlush($accountMapping);
-
-        return $accountMapping;
-    }
-
     public function testMissingAuthentication()
     {
         $response = $this->executeRequest("{}", null);

@@ -8,6 +8,8 @@ use App\Repository\AccountMappingRepository;
 use Stripe\Account;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\HttpClient\Exception\ClientException;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Routing\RouterInterface;
 
 class SellerOnboardingService
 {
@@ -28,6 +30,16 @@ class SellerOnboardingService
     private $stripeClient;
 
     /**
+     * @var RouterInterface
+     */
+    private $router;
+
+    /**
+     * @var string
+     */
+    private $redirectOnboarding;
+
+    /**
      * @var bool
      */
     private $stripePrefillOnboarding;
@@ -41,12 +53,16 @@ class SellerOnboardingService
         AccountMappingRepository $accountMappingRepository,
         MiraklClient $miraklClient,
         StripeClient $stripeClient,
+        RouterInterface $router,
+        string $redirectOnboarding,
         bool $stripePrefillOnboarding,
         string $customFieldCode
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
+        $this->router = $router;
+        $this->redirectOnboarding = $redirectOnboarding;
         $this->stripePrefillOnboarding = $stripePrefillOnboarding;
         $this->customFieldCode = $customFieldCode;
     }
@@ -98,27 +114,91 @@ class SellerOnboardingService
             ];
         }
 
-        return $this->stripeClient->createStripeAccount($shop->getId(), $details);
+        return $this->stripeClient->createStripeAccount($shop->getId(), $details, ['miraklShopId' => $shop->getId()]);
     }
 
     /**
      * @param MiraklShop $shop
+     * @return ?string The custom field value.
+     */
+    public function getCustomFieldValue(MiraklShop $shop): ?string
+    {
+        return $shop->getCustomFieldValue($this->customFieldCode);
+    }
+
+    /**
+     * @param int $shopId
      * @param AccountMapping $accountMapping
-     * @return ?string New URL if updated successfully.
+     * @return string New LoginLink URL.
      * @throws ApiErrorException|ClientException
      */
-    public function updateCustomField(MiraklShop $shop, AccountMapping $accountMapping): ?string
+    public function addLoginLinkToShop(int $shopId, AccountMapping $accountMapping): string
     {
-        // Ignore if custom field already has a value other than the oauth URL (for backward compatibility)
-        $shopId = $shop->getId();
-        $customFieldValue = $shop->getCustomFieldValue($this->customFieldCode);
-        if (!empty($customFieldValue) && !strpos($customFieldValue, 'express/oauth/authorize')) {
-            return null;
+        // Create new LoginLink
+        $url = $this->createLoginLink($accountMapping->getStripeAccountId());
+
+        // Add AccountLink to Mirakl Shop
+        $this->miraklClient->updateShopCustomField($shopId, $this->customFieldCode, $url);
+
+        return $url;
+    }
+
+    /**
+     * @param string $accountId
+     * @return string New LoginLink URL.
+     * @throws ApiErrorException
+     */
+    private function createLoginLink(string $accountId): string
+    {
+        $loginLink = $this->stripeClient->createLoginLink($accountId);
+        return $loginLink['url'];
+    }
+
+    /**
+     * @param int $shopId
+     * @param AccountMapping $accountMapping
+     * @return string New AccountLink URL.
+     * @throws ApiErrorException|ClientException
+     */
+    public function addOnboardingLinkToShop(int $shopId, AccountMapping $accountMapping): string
+    {
+        // Generate unique token
+        $hasToken = $accountMapping->getOnboardingToken() !== null;
+        $token = $accountMapping->getOnboardingToken() ?? bin2hex(random_bytes(16));
+
+        // Create new AccountLink
+        $url = $this->createAccountLink($accountMapping->getStripeAccountId(), $token);
+
+        // Add AccountLink to Mirakl Shop
+        $this->miraklClient->updateShopCustomField($shopId, $this->customFieldCode, $url);
+
+        // Persist token
+        if (!$hasToken) {
+            $accountMapping->setOnboardingToken($token);
+            $this->accountMappingRepository->persistAndFlush($accountMapping);
         }
 
-        // Add new AccountLink to Mirakl Shop
-        $accountLink = $this->stripeClient->createAccountLink($accountMapping->getStripeAccountId());
-        $this->miraklClient->updateShopCustomField($shopId, $this->customFieldCode, $accountLink['url']);
+        return $url;
+    }
+
+    /**
+     * @param string $accountId
+     * @param string $token
+     * @return string New AccountLink URL.
+     * @throws ApiErrorException
+     */
+    private function createAccountLink(string $accountId, string $token): string
+    {
+        $accountLink = $this->stripeClient->createAccountLink(
+            $accountId,
+            $this->router->generate(
+                'onboarding_refresh',
+                ['token' => $token],
+                UrlGeneratorInterface::ABSOLUTE_URL
+            ),
+            $this->redirectOnboarding
+        );
+
         return $accountLink['url'];
     }
 }

@@ -90,6 +90,7 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_NEW);
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertNotNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
 
     public function testStripeError()
@@ -106,45 +107,46 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_MIRAKL_ERROR);
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
 
     public function testExistingShopWithoutUrl()
     {
         $this->deleteAllAccountMappingsFromRepository();
         $this->mockAccountMapping(MiraklMock::SHOP_BASIC);
-        $this->assertCount(1, $this->getAccountMappingsFromRepository());
         $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_EXISTING_WITHOUT_URL);
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertNotNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
 
     public function testExistingShopWithUrl()
     {
         $this->deleteAllAccountMappingsFromRepository();
         $this->mockAccountMapping(MiraklMock::SHOP_WITH_URL);
-        $this->assertCount(1, $this->getAccountMappingsFromRepository());
         $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_EXISTING_WITH_URL);
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
 
     public function testExistingShopWithOauthUrl()
     {
         $this->deleteAllAccountMappingsFromRepository();
         $this->mockAccountMapping(MiraklMock::SHOP_WITH_OAUTH_URL);
-        $this->assertCount(1, $this->getAccountMappingsFromRepository());
         $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_EXISTING_WITH_OAUTH_URL);
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertNotNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
 
     public function testExistingShopWithStripeError()
     {
         $this->deleteAllAccountMappingsFromRepository();
         $this->mockAccountMapping(MiraklMock::SHOP_BASIC, StripeMock::ACCOUNT_NOT_FOUND);
-        $this->assertCount(1, $this->getAccountMappingsFromRepository());
         $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_EXISTING_WITHOUT_URL);
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
 }

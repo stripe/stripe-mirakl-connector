@@ -98,24 +98,16 @@ class SellerOnboardingServiceTest extends KernelTestCase
     {
         $shop = current($this->miraklClient->listShopsByIds([MiraklMock::SHOP_NEW]));
         $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
-        $url = $this->sellerOnboardingService->updateCustomField($shop, $accountMapping);
-        $this->assertNotNull($url);
-    }
-
-    public function testUpdateCustomFieldAlreadyFilled()
-    {
-        $shop = current($this->miraklClient->listShopsByIds([MiraklMock::SHOP_WITH_URL]));
-        $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
-        $url = $this->sellerOnboardingService->updateCustomField($shop, $accountMapping);
-        $this->assertNull($url);
+        $url = $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $accountMapping);
+        $this->assertNotEmpty($url);
     }
 
     public function testUpdateCustomFieldAlreadyFilledWithOauthUrl()
     {
         $shop = current($this->miraklClient->listShopsByIds([MiraklMock::SHOP_WITH_OAUTH_URL]));
         $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
-        $url = $this->sellerOnboardingService->updateCustomField($shop, $accountMapping);
-        $this->assertNotNull($url);
+        $url = $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $accountMapping);
+        $this->assertNotEmpty($url);
     }
 
     public function testUpdateCustomFieldWithStripeError()
@@ -124,7 +116,7 @@ class SellerOnboardingServiceTest extends KernelTestCase
         $shop = current($this->miraklClient->listShopsByIds([MiraklMock::SHOP_NEW]));
         $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
         $this->expectException(ApiErrorException::class);
-        $this->sellerOnboardingService->updateCustomField($shop, $accountMapping);
+        $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $accountMapping);
     }
 
     public function testUpdateCustomFieldWithMiraklError()
@@ -132,6 +124,6 @@ class SellerOnboardingServiceTest extends KernelTestCase
         $shop = current($this->miraklClient->listShopsByIds([MiraklMock::SHOP_MIRAKL_ERROR]));
         $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
         $this->expectException(ClientException::class);
-        $this->sellerOnboardingService->updateCustomField($shop, $accountMapping);
+        $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $accountMapping);
     }
 }

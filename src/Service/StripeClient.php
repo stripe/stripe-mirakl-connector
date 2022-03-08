@@ -32,11 +32,6 @@ class StripeClient
     private $version;
 
     /**
-     * @var string
-     */
-    private $redirectOnboarding;
-
-    /**
      * @var bool
      */
     private $verifyWebhookSignature;
@@ -49,11 +44,9 @@ class StripeClient
     public function __construct(
         VersionManager $versionManager,
         string $stripeClientSecret,
-        string $redirectOnboarding,
         bool $verifyWebhookSignature
     ) {
         $this->version = $versionManager->getVersion();
-        $this->redirectOnboarding = $redirectOnboarding;
         $this->verifyWebhookSignature = $verifyWebhookSignature;
 
         Stripe::setApiKey($stripeClientSecret);
@@ -75,22 +68,7 @@ class StripeClient
         return Account::retrieve($accountId);
     }
 
-    public function createAccountLink(string $accountId, $type = 'account_onboarding'): AccountLink
-    {
-        return AccountLink::create([
-            'account' => $accountId,
-            'refresh_url' => 'https://example.com/reauth',
-            'return_url' => $this->redirectOnboarding,
-            'type' => $type,
-        ]);
-    }
-
-    public function createLoginLink(string $accountId): LoginLink
-    {
-        return Account::createLoginLink($accountId);
-    }
-
-    public function createStripeAccount(int $shopId, array $details): Account
+    public function createStripeAccount(int $shopId, array $details, array $metadata = []): Account
     {
         return Account::create(array_merge([
             'type' => 'express',
@@ -98,10 +76,24 @@ class StripeClient
                 'debit_negative_balances' => false,
                 'schedule' => ['interval' => 'manual']
             ]],
-            'metadata' => [
-                'miraklShopId' => $shopId
-            ]
+            'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
         ], $details));
+    }
+
+    // Account/Login Link
+    public function createAccountLink(string $accountId, string $refreshUrl, string $returnUrl, $type = 'account_onboarding'): AccountLink
+    {
+        return AccountLink::create([
+            'account' => $accountId,
+            'refresh_url' => $refreshUrl,
+            'return_url' => $returnUrl,
+            'type' => $type,
+        ]);
+    }
+
+    public function createLoginLink(string $accountId): LoginLink
+    {
+        return Account::createLoginLink($accountId);
     }
 
     // Webhook Event

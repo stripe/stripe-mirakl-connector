@@ -215,7 +215,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeAccount = $event->data->object;
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccount['id']);
-        if (null === $accountMapping || null === $accountMapping->getMiraklShopId()) {
+        if (null === $accountMapping) {
             $this->logger->info(sprintf('Ignoring account.updated event for non-Mirakl Stripe account: %s', $stripeAccount['id']));
             return 'Ignoring account.updated event for non-Mirakl Stripe account.';
         }
@@ -225,6 +225,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             return 'Ignoring account.updated event until details are submitted for account.';
         }
 
+        $accountMapping->setOnboardingToken(null);
         $accountMapping->setPayoutEnabled($stripeAccount['payouts_enabled']);
         $accountMapping->setPayinEnabled($stripeAccount['charges_enabled']);
         $accountMapping->setDisabledReason($stripeAccount['requirements']['disabled_reason']);

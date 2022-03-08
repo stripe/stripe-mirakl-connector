@@ -38,6 +38,11 @@ class AccountMapping
     private $stripeAccountId;
 
     /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     */
+    private $onboardingToken;
+
+    /**
      * @ORM\Column(type="boolean", options={"default" : false})
      */
     private $payoutEnabled = false;
@@ -64,12 +69,12 @@ class AccountMapping
      */
     private $modificationDatetime;
 
-    public function getId(): ?int
+    public function getId(): int
     {
         return $this->id;
     }
 
-    public function getMiraklShopId(): ?int
+    public function getMiraklShopId(): int
     {
         return $this->miraklShopId;
     }
@@ -89,6 +94,18 @@ class AccountMapping
     public function setStripeAccountId(string $stripeAccountId): self
     {
         $this->stripeAccountId = $stripeAccountId;
+
+        return $this;
+    }
+
+    public function getOnboardingToken(): ?string
+    {
+        return $this->onboardingToken;
+    }
+
+    public function setOnboardingToken(?string $onboardingToken): self
+    {
+        $this->onboardingToken = $onboardingToken;
 
         return $this;
     }

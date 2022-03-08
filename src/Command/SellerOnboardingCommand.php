@@ -97,12 +97,16 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
             }
 
             try {
-                $url = $this->sellerOnboardingService->updateCustomField($shop, $accountMapping);
-                if ($url === null) {
+                // Ignore if custom field already has a value other than the oauth URL (for backward compatibility)
+                $customFieldValue = $this->sellerOnboardingService->getCustomFieldValue($shop);
+                if (!empty($customFieldValue) && !strpos($customFieldValue, 'express/oauth/authorize')) {
                     $this->logger->info("Ignoring Mirakl Shop $shopId with custom field already filled.");
-                } else {
-                    $this->logger->info("Updated URL for Mirakl Shop $shopId to: $url.");
+                    continue;
                 }
+
+                // Add new AccountLink to custom field
+                $url = $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $accountMapping);
+                $this->logger->info("Updated URL for Mirakl Shop $shopId to: $url.");
             } catch (ClientException $e) {
                 $message = $e->getResponse()->getContent(false);
                 $this->logger->error(sprintf('Could not add AccountLink to Mirakl Shop: %s.', $message), [
@@ -115,7 +119,6 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                     'accountId' => $accountMapping->getStripeAccountId(),
                     'stripeErrorCode' => $e->getStripeCode()
                 ]);
-                continue;
             }
         }
 

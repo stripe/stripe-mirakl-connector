@@ -16,6 +16,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const ACCOUNT_PAYOUT_DISABLED = 'account_payout_disabled';
     public const ACCOUNT_NOT_FOUND = 'account_not_found';
     public const ACCOUNT_NEW = 'account_new';
+    public const ACCOUNT_NOT_SUBMITTED = 'account_not_submitted';
 
     public const CHARGE_BASIC = 'ch_basic';
     public const CHARGE_PAYMENT = 'py_basic';
@@ -93,7 +94,11 @@ class StripeMockedHttpClient implements ClientInterface
                 $response = $this->mockPlatformAccount();
                 break;
             case 'accounts':
-                $response = $this->mockAccounts($id, $method, $params);
+                if ('login_links' === $action) {
+                    $response = $this->mockLoginLinks($id);
+                } else {
+                    $response = $this->mockAccounts($id, $method, $params);
+                }
                 break;
             case 'account_links':
                 $response = $this->mockAccountLinks($params);
@@ -160,6 +165,7 @@ class StripeMockedHttpClient implements ClientInterface
         $account['payouts_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED && $id !== self::ACCOUNT_PAYOUT_DISABLED;
         $account['requirements'] = [];
         $account['requirements']['disabled_reason'] = $id !== self::ACCOUNT_PAYIN_DISABLED ? null : 'Prohibited business';
+        $account['details_submitted'] = $id !== self::ACCOUNT_NOT_SUBMITTED;
         return $account;
     }
 
@@ -171,6 +177,16 @@ class StripeMockedHttpClient implements ClientInterface
 
         $accountLink = $this->getBasicObject(null, 'account_link');
         $accountLink['url'] = 'https://connect.stripe.com/setup/s/mov7fZc0o4Yx';
+        return $accountLink;
+    }
+
+    private function mockLoginLinks($account)
+    {
+        if ($account === self::ACCOUNT_NOT_FOUND)
+            throw new PermissionException("The provided key does not have access to account '$account' (or that account does not exist). Application access may have been revoked.", 403);
+
+        $accountLink = $this->getBasicObject('lael_LDREVglS9Cytav', 'login_link');
+        $accountLink['url'] = 'https://connect.stripe.com/express/SgETLzuPbZVg';
         return $accountLink;
     }
 

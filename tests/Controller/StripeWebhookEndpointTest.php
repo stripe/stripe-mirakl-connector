@@ -80,6 +80,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $accountMapping = new AccountMapping();
         $accountMapping->setMiraklShopId($shopId);
         $accountMapping->setStripeAccountId($accountId);
+        $accountMapping->setOnboardingToken('token');
         $accountMapping->setPayinEnabled($payinsEnabled);
         $accountMapping->setPayoutEnabled($payoutsEnabled);
         $accountMapping->setDisabledReason($disableReason);
@@ -194,6 +195,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertCount(0, $this->updateLoginLinkQueue->getSent());
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($id);
+        $this->assertEquals('token', $accountMapping->getOnboardingToken());
         $this->assertEquals(false, $accountMapping->getPayinEnabled());
         $this->assertEquals(false, $accountMapping->getPayoutEnabled());
         $this->assertNull($accountMapping->getDisabledReason());
@@ -223,6 +225,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertCount(1, $this->updateLoginLinkQueue->getSent());
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($id);
+        $this->assertNull($accountMapping->getOnboardingToken());
         $this->assertEquals(true, $accountMapping->getPayinEnabled());
         $this->assertEquals(true, $accountMapping->getPayoutEnabled());
         $this->assertNull($accountMapping->getDisabledReason());
@@ -252,6 +255,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertCount(1, $this->updateLoginLinkQueue->getSent());
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($id);
+        $this->assertNull($accountMapping->getOnboardingToken());
         $this->assertEquals(false, $accountMapping->getPayinEnabled());
         $this->assertEquals(false, $accountMapping->getPayoutEnabled());
         $this->assertEquals("Prohibited business", $accountMapping->getDisabledReason());
