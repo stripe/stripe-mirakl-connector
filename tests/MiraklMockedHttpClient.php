@@ -66,9 +66,18 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 	public const SHOP_BASIC = 1;
 	public const SHOP_WITH_URL = 2;
+	public const SHOP_WITH_OAUTH_URL = 10;
 	public const SHOP_NOT_READY = 99;
 	public const SHOP_INVALID = 199;
 	public const SHOP_NEW = 299;
+	public const SHOP_STRIPE_ERROR = 399;
+	public const SHOP_MIRAKL_ERROR = 499;
+	public const SHOP_DATE_1_NEW = '2019-01-01T00:00:00+0100';
+	public const SHOP_DATE_1_STRIPE_ERROR = '2019-01-02T00:00:00+0100';
+	public const SHOP_DATE_1_MIRAKL_ERROR = '2019-01-03T00:00:00+0100';
+	public const SHOP_DATE_1_EXISTING_WITHOUT_URL = '2019-01-04T00:00:00+0100';
+	public const SHOP_DATE_1_EXISTING_WITH_URL = '2019-01-05T00:00:00+0100';
+	public const SHOP_DATE_1_EXISTING_WITH_OAUTH_URL = '2019-01-06T00:00:00+0100';
 
 	public const INVOICE_BASIC = 1;
 	public const INVOICE_INVALID_AMOUNT = 2;
@@ -288,17 +297,18 @@ class MiraklMockedHttpClient extends MockHttpClient
 				}
 				break;
 			case '/api/shops':
-				if (!isset($params['shop_ids']) || empty($params['shop_ids'])) {
-					$params['shop_ids'] = [self::SHOP_BASIC, self::SHOP_WITH_URL];
-				} elseif (!is_array($params['shop_ids'])) {
-					$params['shop_ids'] = [$params['shop_ids']];
-				}
-
-				switch ($method) {
-					case 'GET':
-						return ['shops' => $this->mockShops($params['shop_ids'])];
-					case 'PUT':
-						return ['shop_returns' => $this->mockShops($params['shop_ids'])];
+				if ($method === 'PUT') {
+					return ['shop_returns' => $this->mockShopUpdate($body)];
+				} elseif ($method === 'GET') {
+					switch (true) {
+						case isset($params['updated_since']):
+							return ['shops' => $this->mockShopsByDate($params['updated_since'], $page)];
+						case isset($params['shop_ids']):
+							$shopIds = $params['shop_ids'];
+							return ['shops' => $this->mockShopsById(is_array($shopIds) ? $shopIds : [$shopIds])];
+						default:
+							return ['shops' => []];
+					}
 				}
 				break;
 			case '/api/invoices':
@@ -776,7 +786,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 				return [];
 			case self::PRODUCT_ORDER_REFUND_VALIDATED:
 			case self::SERVICE_ORDER_REFUND_VALIDATED:
-				throw new \Exception("$id already validated", 400);;
+				throw new \Exception("$id already validated", 400);
 		}
 	}
 
@@ -830,7 +840,34 @@ class MiraklMockedHttpClient extends MockHttpClient
 		];
 	}
 
-	private function mockShops($shopIds)
+	private function mockShopsByDate($date, $page)
+	{
+		switch ($date) {
+			case self::SHOP_DATE_1_NEW:
+				$shops = $this->mockShopsById([self::SHOP_NEW]);
+				break;
+			case self::SHOP_DATE_1_STRIPE_ERROR:
+				$shops = $this->mockShopsById([self::SHOP_STRIPE_ERROR]);
+				break;
+			case self::SHOP_DATE_1_MIRAKL_ERROR:
+				$shops = $this->mockShopsById([self::SHOP_MIRAKL_ERROR]);
+				break;
+			case self::SHOP_DATE_1_EXISTING_WITHOUT_URL:
+				$shops = $this->mockShopsById([self::SHOP_BASIC]);
+				break;
+			case self::SHOP_DATE_1_EXISTING_WITH_URL:
+				$shops = $this->mockShopsById([self::SHOP_WITH_URL]);
+				break;
+			case self::SHOP_DATE_1_EXISTING_WITH_OAUTH_URL:
+				$shops = $this->mockShopsById([self::SHOP_WITH_OAUTH_URL]);
+				break;
+			default:
+				$shops = [];
+		}
+		return $shops;
+	}
+
+	private function mockShopsById($shopIds)
 	{
 		$shops = [];
 		foreach ($shopIds as $shopId) {
@@ -839,12 +876,21 @@ class MiraklMockedHttpClient extends MockHttpClient
 				case self::SHOP_BASIC:
 				case self::SHOP_NOT_READY:
 				case self::SHOP_NEW:
+				case self::SHOP_STRIPE_ERROR:
+				case self::SHOP_MIRAKL_ERROR:
 					$shops[] = $shop;
 					break;
 				case self::SHOP_WITH_URL:
 					$shop['shop_additional_fields'][] = [
 						'code' => $this->customFieldCode,
-						'value' => 'https://onboarding',
+						'value' => 'https://connect.stripe.com/setup/s/mov7fZc0o4Yx',
+					];
+					$shops[] = $shop;
+					break;
+				case self::SHOP_WITH_OAUTH_URL:
+					$shop['shop_additional_fields'][] = [
+						'code' => $this->customFieldCode,
+						'value' => 'https://connect.stripe.com/express/oauth/authorize',
 					];
 					$shops[] = $shop;
 					break;
@@ -885,6 +931,15 @@ class MiraklMockedHttpClient extends MockHttpClient
 				'zip_code' => '12345',
 			]
 		];
+	}
+
+	private function mockShopUpdate($body) {
+		$shopId = $body['shops'][0]['shop_id'];
+		if ($shopId === self::SHOP_MIRAKL_ERROR) {
+			throw new \Exception("$shopId can't be updated", 400);
+		}
+
+		return [$this->getShop($shopId)];
 	}
 
 	private function mockInvoicesByStartDate($date, $page)

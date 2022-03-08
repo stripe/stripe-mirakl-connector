@@ -2,31 +2,26 @@
 
 namespace App\Tests\MessageHandler;
 
-use App\Factory\MiraklPatchShopFactory;
+use App\Entity\AccountMapping;
 use App\Handler\UpdateAccountLoginLinkHandler;
 use App\Message\AccountUpdateMessage;
-use App\Service\MiraklClient;
-use App\Service\StripeClient;
+use App\Repository\AccountMappingRepository;
+use App\Service\SellerOnboardingService;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
-use Stripe\LoginLink;
 
 class UpdateAccountLoginLinkHandlerTest extends TestCase
 {
-    /**
-     * @var MiraklClient
-     */
-    private $miraklClient;
 
     /**
-     * @var StripeClient
+     * @var AccountMappingRepository
      */
-    private $stripeClient;
+    private $accountMappingRepository;
 
     /**
-     * @var MiraklPatchShopFactory
+     * @var SellerOnboardingService
      */
-    private $patchFactory;
+    private $sellerOnboardingService;
 
     /**
      * @var UpdateAccountLoginLinkHandler
@@ -35,16 +30,12 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->miraklClient = $this->createMock(MiraklClient::class);
-        $this->stripeClient = $this->createMock(StripeClient::class);
-        $this->patchFactory = $this->getMockBuilder(MiraklPatchShopFactory::class)
-            ->setConstructorArgs(['stripe-link'])
-            ->getMock();
+        $this->accountMappingRepository = $this->createMock(AccountMappingRepository::class);
+        $this->sellerOnboardingService = $this->createMock(SellerOnboardingService::class);
 
         $this->handler = new UpdateAccountLoginLinkHandler(
-            $this->miraklClient,
-            $this->stripeClient,
-            $this->patchFactory
+            $this->accountMappingRepository,
+            $this->sellerOnboardingService
         );
 
         $logger = new NullLogger();
@@ -54,34 +45,22 @@ class UpdateAccountLoginLinkHandlerTest extends TestCase
 
     public function testNominalShopPatch()
     {
-        $stripeLoginLink = new LoginLink();
-        $stripeLoginLink['url'] = 'https://stripe-login-link';
+        $url = 'https://stripe-login-link';
 
-        $this->stripeClient
+        $accountMapping = new AccountMapping();
+        $accountMapping->setStripeAccountId('acct_stripe_account');
+        $accountMapping->setMiraklShopId(2000);
+        $this->accountMappingRepository
             ->expects($this->once())
-            ->method('accountCreateLoginLink')
+            ->method('findOneByStripeAccountId')
             ->with('acct_stripe_account')
-            ->willReturn($stripeLoginLink);
+            ->willReturn($accountMapping);
 
-        $this->patchFactory
-            ->expects($this->once())
-            ->method('setMiraklShopId')
-            ->with(2000)
-            ->willReturn($this->patchFactory);
-        $this->patchFactory
-            ->expects($this->once())
-            ->method('setStripeUrl')
-            ->with('https://stripe-login-link')
-            ->willReturn($this->patchFactory);
-        $this->patchFactory
-            ->expects($this->once())
-            ->method('buildPatch')
-            ->willReturn(['generatedPatch']);
 
-        $this->miraklClient
+        $this->sellerOnboardingService
             ->expects($this->once())
-            ->method('patchShops')
-            ->with([['generatedPatch']]);
+            ->method('addLoginLinkToShop')
+            ->with(2000, $accountMapping);
 
         $message = new AccountUpdateMessage(2000, 'acct_stripe_account');
 

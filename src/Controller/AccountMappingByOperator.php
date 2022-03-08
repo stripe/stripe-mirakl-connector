@@ -3,7 +3,7 @@
 namespace App\Controller;
 
 use App\DTO\AccountMappingDTO;
-use App\Factory\AccountMappingFactory;
+use App\Entity\AccountMapping;
 use App\Repository\AccountMappingRepository;
 use App\Service\StripeClient;
 use Nelmio\ApiDocBundle\Annotation\Security;
@@ -21,11 +21,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class AccountMappingByOperator extends AbstractController implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
-
-    /**
-     * @var AccountMappingFactory
-     */
-    private $accountMappingFactory;
 
     /**
      * @var AccountMappingRepository
@@ -48,13 +43,11 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
     private $validator;
 
     public function __construct(
-        AccountMappingFactory $accountMappingFactory,
         AccountMappingRepository $accountMappingRepository,
         StripeClient $stripeClient,
         SerializerInterface $serializer,
         ValidatorInterface $validator
     ) {
-        $this->accountMappingFactory = $accountMappingFactory;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->stripeClient = $stripeClient;
         $this->serializer = $serializer;
@@ -104,12 +97,17 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
         $dto = $this->serializer->deserialize($data, AccountMappingDTO::class, JsonEncoder::FORMAT);
         assert(is_object($dto) && is_a($dto, AccountMappingDTO::class));
 
-        $stripeAccount = $this->stripeClient->setPayoutToManual($dto->getStripeUserId());
-
         if (count($this->validator->validate($dto)) > 0) {
-            return new Response('Invalid Mirakl shop Id format', Response::HTTP_BAD_REQUEST);
+            return new Response('Invalid Mirakl Shop ID', Response::HTTP_BAD_REQUEST);
         }
-        $mapping = $this->accountMappingFactory->createMappingFromDTO($dto);
+
+        $miraklShopId = $dto->getMiraklShopId();
+        $stripeUserId = $dto->getStripeUserId();
+        $stripeAccount = $this->stripeClient->retrieveAccount($stripeUserId);
+
+        $mapping = new AccountMapping();
+        $mapping->setMiraklShopId($miraklShopId);
+        $mapping->setStripeAccountId($stripeUserId);
         $mapping->setPayinEnabled($stripeAccount->payouts_enabled);
         $mapping->setPayoutEnabled($stripeAccount->charges_enabled);
         $mapping->setDisabledReason($stripeAccount->requirements['disabled_reason']);

@@ -8,7 +8,7 @@ use App\Entity\MiraklProductPendingRefund;
 use App\Entity\MiraklServiceOrder;
 use App\Entity\MiraklServicePendingDebit;
 use App\Entity\MiraklServicePendingRefund;
-use App\Exception\InvalidArgumentException;
+use App\Entity\MiraklShop;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -326,29 +326,45 @@ class MiraklClient
     }
 
     // S20
-    public function fetchShops(?array $shopIds, ?\DateTimeInterface $updatedAfter = null, bool $paginate = true)
+    public function listShops()
     {
-        $params = [
-            'domains' => 'PRODUCT,SERVICE',
-            'paginate' => $paginate ? 'true' : 'false'
-        ];
+        $res = $this->paginateByOffset('/api/shops', ['domains' => 'PRODUCT,SERVICE'], 'shops');
+        $res = $this->arraysToObjects($res, MiraklShop::class);
+        return $this->objectsToMap($res, 'getId');
+    }
 
-        if (null !== $shopIds) {
-            $params['shop_ids'] = implode(',', $shopIds);
-        }
-        if (null !== $updatedAfter) {
-            $params['updated_since'] = $updatedAfter->format(self::DATE_FORMAT);
-        }
+    // S20 by date
+    public function listShopsByDate(string $datetime)
+    {
+        $res = $this->paginateByOffset('/api/shops', ['domains' => 'PRODUCT,SERVICE', 'updated_since' => $datetime], 'shops');
+        $res = $this->arraysToObjects($res, MiraklShop::class);
+        return $this->objectsToMap($res, 'getId');
+    }
 
-        $res = $this->get('/api/shops', $params);
-        return $this->parseResponse($res, 'shops');
+    // S20 by IDs
+    public function listShopsByIds(array $shopIds)
+    {
+        $res = $this->paginateByOffset('/api/shops', ['domains' => 'PRODUCT,SERVICE', 'shop_ids' => implode(',', $shopIds)], 'shops');
+        $res = $this->arraysToObjects($res, MiraklShop::class);
+        return $this->objectsToMap($res, 'getId');
     }
 
     // S07
-    public function patchShops(array $patchedShops)
+    public function updateShopCustomField(int $shopId, string $code, $value)
     {
-        $res = $this->put('/api/shops', ['shops' => $patchedShops]);
-        return $this->parseResponse($res, 'shop_returns');
+        $this->put('/api/shops', ['shops' => [[
+            'shop_id' => $shopId,
+            'shop_additional_fields' => [['code' => $code, 'value' => $value]]
+        ]]]);
+    }
+
+    // S07
+    public function updateShopKycStatus(int $shopId, string $status)
+    {
+        $this->put('/api/shops', ['shops' => [[
+            'shop_id' => $shopId,
+            'kyc' => ['status' => $status]
+        ]]]);
     }
 
     // parse a date based on the format used by Mirakl

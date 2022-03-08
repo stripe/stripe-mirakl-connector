@@ -21,8 +21,8 @@ class MiraklShopIdValidator extends ConstraintValidator
 
     public function validate($miraklShopId, Constraint $constraint)
     {
-        if ($constraint instanceof \App\Validator\MiraklShopId) {
-            $miraklShop = $this->miraklClient->fetchShops([$miraklShopId]);
+        if ($constraint instanceof MiraklShopId) {
+            $miraklShop = $this->miraklClient->listShopsByIds([$miraklShopId]);
             if (1 !== count($miraklShop)) {
                 $this->context->buildViolation($constraint->message)->addViolation();
                 return false;

@@ -2,10 +2,9 @@
 
 namespace App\Handler;
 
-use App\Factory\MiraklPatchShopFactory;
 use App\Message\AccountUpdateMessage;
-use App\Service\MiraklClient;
-use App\Service\StripeClient;
+use App\Repository\AccountMappingRepository;
+use App\Service\SellerOnboardingService;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
@@ -16,39 +15,28 @@ class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageS
     use LoggerAwareTrait;
 
     /**
-     * @var MiraklClient
+     * @var AccountMappingRepository
      */
-    private $miraklClient;
+    private $accountMappingRepository;
 
     /**
-     * @var StripeClient
+     * @var SellerOnboardingService
      */
-    private $stripeClient;
+    private $sellerOnboardingService;
 
-    /**
-     * @var MiraklPatchShopFactory
-     */
-    private $patchFactory;
-
-    public function __construct(MiraklClient $miraklClient, StripeClient $stripeClient, MiraklPatchShopFactory $patchFactory)
+    public function __construct(AccountMappingRepository $accountMappingRepository, SellerOnboardingService $sellerOnboardingService)
     {
-        $this->miraklClient = $miraklClient;
-        $this->stripeClient = $stripeClient;
-        $this->patchFactory = $patchFactory;
+        $this->accountMappingRepository = $accountMappingRepository;
+        $this->sellerOnboardingService = $sellerOnboardingService;
     }
 
     public function __invoke(AccountUpdateMessage $message)
     {
         $messagePayload = $message->getContent()['payload'];
-        $this->logger->info('Received Stripe `account.updated` webhook. Updating login link.', $messagePayload);
-
-        $stripeLoginLink = $this->stripeClient->accountCreateLoginLink($messagePayload['stripeUserId']);
-
-        $shopPatch = $this->patchFactory
-            ->setMiraklShopId($messagePayload['miraklShopId'])
-            ->setStripeUrl($stripeLoginLink['url'])
-            ->buildPatch();
-        $this->miraklClient->patchShops([$shopPatch]);
+        $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($messagePayload['stripeUserId']);
+        assert(null !== $accountMapping);
+        $url = $this->sellerOnboardingService->addLoginLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
+        $this->logger->info("Received Stripe `account.updated` event, updated custom field to $url.");
     }
 
     public static function getHandledMessages(): iterable

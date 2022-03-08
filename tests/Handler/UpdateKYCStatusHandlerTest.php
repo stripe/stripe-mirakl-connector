@@ -3,7 +3,6 @@
 namespace App\Tests\MessageHandler;
 
 use App\Exception\InvalidStripeAccountException;
-use App\Factory\MiraklPatchShopFactory;
 use App\Handler\UpdateAccountLoginLinkHandler;
 use App\Handler\UpdateKYCStatusHandler;
 use App\Message\AccountUpdateMessage;
@@ -59,21 +58,14 @@ class UpdateKYCStatusHandlerTest extends TestCase
 
         $this->stripeClient
             ->expects($this->once())
-            ->method('accountRetrieve')
+            ->method('retrieveAccount')
             ->with('acct_valid')
             ->willReturn($stripeAccount);
 
         $this->miraklClient
             ->expects($this->once())
-            ->method('patchShops')
-            ->with([
-                [
-                    'shop_id' => 2000,
-                    'kyc' => [
-                        'status' => $KYCStatus,
-                    ]
-                ]
-            ]);
+            ->method('updateShopKycStatus')
+            ->with(2000, $KYCStatus);
 
         $message = new AccountUpdateMessage(2000, 'acct_valid');
 
@@ -157,7 +149,7 @@ class UpdateKYCStatusHandlerTest extends TestCase
 
         $this->stripeClient
             ->expects($this->once())
-            ->method('accountRetrieve')
+            ->method('retrieveAccount')
             ->with('acct_invalid')
             ->willReturn($stripeAccount);
 

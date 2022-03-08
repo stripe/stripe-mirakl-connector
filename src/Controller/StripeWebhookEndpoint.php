@@ -58,6 +58,16 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     /**
      * @var string
      */
+    private $webhookSellerSecret;
+
+    /**
+     * @var string
+     */
+    private $webhookOperatorSecret;
+
+    /**
+     * @var string
+     */
     private $metadataCommercialOrderId;
 
     public function __construct(
@@ -65,13 +75,39 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
+        string $webhookSellerSecret,
+        string $webhookOperatorSecret,
         string $metadataCommercialOrderId
     ) {
         $this->bus = $bus;
         $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
+        $this->webhookSellerSecret = $webhookSellerSecret;
+        $this->webhookOperatorSecret = $webhookOperatorSecret;
         $this->metadataCommercialOrderId = $metadataCommercialOrderId;
+    }
+
+    /**
+     * Should only be called by Stripe Webhooks.
+     *
+     * @SWG\Response(
+     *     response=200,
+     *     description="Webhook ok",
+     * )
+     * @SWG\Response(
+     *     response=400,
+     *     description="Bad request",
+     * )
+     * @SWG\Post(deprecated=true)
+     * @SWG\Tag(name="Webhook")
+     * @Route("/api/public/webhook", methods={"POST"}, name="handle_stripe_webhook")
+     * @param Request $request
+     * @return Response
+     */
+    public function handleStripeWebhookDeprecated(Request $request): Response
+    {
+        return $this->handleStripeSellerWebhook($request);
     }
 
     /**
@@ -96,7 +132,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
         $payload = $request->getContent() ?? '';
 
-        return $this->handleStripeWebhook($payload, $signatureHeader, false);
+        return $this->handleStripeWebhook($payload, $signatureHeader, $this->webhookSellerSecret);
     }
 
     /**
@@ -120,38 +156,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
         $payload = $request->getContent() ?? '';
 
-        return $this->handleStripeWebhook($payload, $signatureHeader, true);
+        return $this->handleStripeWebhook($payload, $signatureHeader, $this->webhookOperatorSecret);
     }
 
-    /**
-     * Should only be called by Stripe Webhooks.
-     *
-     * @SWG\Response(
-     *     response=200,
-     *     description="Webhook ok",
-     * )
-     * @SWG\Response(
-     *     response=400,
-     *     description="Bad request",
-     * )
-     * @SWG\Post(deprecated=true)
-     * @SWG\Tag(name="Webhook")
-     * @Route("/api/public/webhook", methods={"POST"}, name="handle_stripe_webhook")
-     * @param Request $request
-     * @return Response
-     */
-    public function handleStripeWebhookDeprecated(Request $request): Response
-    {
-        $signatureHeader = $request->headers->get('stripe-signature') ?? '';
-        $payload = $request->getContent() ?? '';
-
-        return $this->handleStripeWebhook($payload, $signatureHeader, false);
-    }
-
-    protected function handleStripeWebhook($payload, string $signatureHeader, bool $isOperatorWebhook): Response
+    protected function handleStripeWebhook($payload, string $signatureHeader, string $webhookSecret): Response
     {
         try {
-            $event = $this->stripeClient->webhookConstructEvent($payload, $signatureHeader, $isOperatorWebhook);
+            $event = $this->stripeClient->webhookConstructEvent($payload, $signatureHeader, $webhookSecret);
         } catch (\UnexpectedValueException $e) {
             $this->logger->error('Invalid payload.');
 
@@ -174,6 +185,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             return new Response('Unhandled event type', Response::HTTP_BAD_REQUEST);
         }
 
+        $message = '';
         $status = Response::HTTP_OK;
         try {
             switch ($event->type) {
@@ -184,19 +196,10 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 case 'charge.updated':
                     $message = $this->handleChargeEvent($event);
                     break;
-                default:
-                    // should never be triggered
-                    $message = 'Not managed yet';
-                    $status = Response::HTTP_BAD_REQUEST;
-                    break;
             }
         } catch (\Exception $e) {
             $message = $e->getMessage();
             $status = $e->getCode();
-
-            if (!isset(Response::$statusTexts[$status])) {
-                $status = Response::HTTP_INTERNAL_SERVER_ERROR;
-            }
         }
 
         return new Response($message, $status);
@@ -212,14 +215,20 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $stripeAccount = $event->data->object;
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccount['id']);
-        if (null === $accountMapping || null === $accountMapping->getMiraklShopId()) {
+        if (null === $accountMapping) {
             $this->logger->info(sprintf('Ignoring account.updated event for non-Mirakl Stripe account: %s', $stripeAccount['id']));
             return 'Ignoring account.updated event for non-Mirakl Stripe account.';
         }
 
+        if (!$stripeAccount['details_submitted']) {
+            $this->logger->info(sprintf('Ignoring account.updated event until details are submitted for account: %s', $stripeAccount['id']));
+            return 'Ignoring account.updated event until details are submitted for account.';
+        }
+
+        $accountMapping->setOnboardingToken(null);
         $accountMapping->setPayoutEnabled($stripeAccount['payouts_enabled']);
         $accountMapping->setPayinEnabled($stripeAccount['charges_enabled']);
-        $accountMapping->setDisabledReason($stripeAccount['disabled_reason']);
+        $accountMapping->setDisabledReason($stripeAccount['requirements']['disabled_reason']);
 
         $this->accountMappingRepository->flush();
 

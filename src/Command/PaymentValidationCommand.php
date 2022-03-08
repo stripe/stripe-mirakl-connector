@@ -2,7 +2,6 @@
 
 namespace App\Command;
 
-use App\Entity\PaymentMapping;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
 use App\Message\ValidateMiraklOrderMessage;

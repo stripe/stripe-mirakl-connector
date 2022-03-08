@@ -2,170 +2,136 @@
 
 namespace App\Tests\Controller;
 
-use App\Controller\AccountMappingByOperator;
-use App\DTO\AccountMappingDTO;
 use App\Entity\AccountMapping;
-use App\Factory\AccountMappingFactory;
 use App\Repository\AccountMappingRepository;
-use App\Service\StripeClient;
-use App\Tests\ConnectorWebTestCase;
+use App\Security\TokenAuthenticator;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use App\Tests\StripeMockedHttpClient as StripeMock;
-use Psr\Log\NullLogger;
-use Stripe\Account;
-use Stripe\StripeObject;
-use Symfony\Component\HttpFoundation\Request;
+use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-class AccountMappingByOperatorTest extends ConnectorWebTestCase
+class AccountMappingByOperatorTest extends WebTestCase
 {
-    protected $controller;
+    use RecreateDatabaseTrait;
+
+    /**
+     * @var KernelBrowser
+     */
+    protected $client;
+
+    /**
+     * @var AccountMappingRepository
+     */
     protected $accountMappingRepository;
-    protected $accountMappingFactory;
-    protected $stripeClient;
-    protected $serializer;
-    protected $validator;
-    protected $uniqueConstraintViolationException;
 
     protected function setUp(): void
     {
-        $this->stripeClient = $this->getMockBuilder(StripeClient::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['setPayoutToManual'])
-            ->getMock();
-
-        $this->accountMappingRepository = $this->getMockBuilder(AccountMappingRepository::class)
-            ->disableOriginalConstructor()
-            ->setMethods(['findOneByMiraklShopId', 'persistAndFlush'])
-            ->getMock();
-
-        $this->accountMappingFactory = $this->createMock(AccountMappingFactory::class);
-
-        $this->serializer = $this->createMock(SerializerInterface::class);
-        $this->validator = $this->createMock(ValidatorInterface::class);
-
-        $logger = new NullLogger();
-
-        $this->controller = new AccountMappingByOperator(
-            $this->accountMappingFactory,
-            $this->accountMappingRepository,
-            $this->stripeClient,
-            $this->serializer,
-            $this->validator
-        );
-        $this->controller->setLogger($logger);
+        $this->client =  self::createClient();
+        $this->accountMappingRepository = self::$container->get('doctrine')->getRepository(AccountMapping::class);
     }
 
-    public function testBadMiraklIdFormatMapping()
+    private function executeRequest(string $payload, ?string $authenticate = 'operator-test')
     {
-        $miraklShopId = 4242;
-        $stripeUserId = 'acct_valid';
-        $request = Request::create(
-            '/api/mappings',
-            'POST',
-            ['miraklShopId' => $miraklShopId, 'stripeUserId' => $stripeUserId]
-        );
-        $stripeLoginResponse = new StripeObject();
-        $stripeLoginResponse->stripe_user_id = $stripeUserId;
+        $server = $authenticate ? ['HTTP_' . TokenAuthenticator::AUTH_HEADER_NAME => $authenticate] : [];
+        $this->client->request('POST', '/api/mappings', [], [], $server, $payload);
+        return $this->client->getResponse();
+    }
 
-        $stripeAccount = new Account('acct_valid');
-        $stripeAccount->payouts_enabled = false;
-        $stripeAccount->charges_enabled = true;
-        $stripeAccount->requirements = [
-            'disabled_reason' => 'check in progress',
-        ];
+    public function testMissingAuthentication()
+    {
+        $response = $this->executeRequest("{}", null);
+        $this->assertEquals('{"message":"Authentication Required"}', $response->getContent());
+        $this->assertEquals(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+    }
 
-        $expectedMappingDto = new AccountMappingDTO();
-        $expectedMappingDto
-            ->setMiraklShopId($miraklShopId)
-            ->setStripeUserId($stripeUserId);
+    public function testBadAuthentication()
+    {
+        $response = $this->executeRequest("{}", 'Bad password');
+        $this->assertEquals('{"message":"Invalid credentials."}', $response->getContent());
+        $this->assertEquals(Response::HTTP_FORBIDDEN, $response->getStatusCode());
+    }
 
-        $this
-            ->serializer
-            ->expects($this->once())
-            ->method('deserialize')
-            ->willReturn($expectedMappingDto);
-        $this
-            ->stripeClient
-            ->expects($this->once())
-            ->method('setPayoutToManual')
-            ->with($stripeUserId)
-            ->willReturn($stripeAccount);
-        $this
-            ->validator
-            ->expects($this->once())
-            ->method('validate')
-            ->willReturn(['error']);
-
-        $response = $this->controller->createMapping($request);
-
+    public function testInvalidPayload()
+    {
+        $response = $this->executeRequest("Invalid");
+        $this->assertEquals('Invalid JSON format', $response->getContent());
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
     }
 
-    public function testGenerateMapping()
+    public function testInvalidAccountId()
     {
-        $miraklShopId = 4242;
-        $stripeUserId = 'acct_valid';
-        $request = Request::create(
-            '/api/mappings',
-            'POST',
-            ['miraklShopId' => $miraklShopId, 'stripeUserId' => $stripeUserId]
-        );
-        $stripeLoginResponse = new StripeObject();
-        $stripeLoginResponse->stripe_user_id = $stripeUserId;
+        $shopId = MiraklMock::SHOP_NEW;
+        $accountId = StripeMock::ACCOUNT_NOT_FOUND;
+        $response = $this->executeRequest(<<<PAYLOAD
+        {
+            "miraklShopId": $shopId,
+            "stripeUserId": "$accountId"
+        }
+        PAYLOAD);
+        $this->assertEquals('Cannot find the Stripe account corresponding to this stripe Id', $response->getContent());
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+    }
 
-        $stripeAccount = new Account('acct_valid');
-        $stripeAccount->payouts_enabled = false;
-        $stripeAccount->charges_enabled = true;
-        $stripeAccount->requirements = [
-            'disabled_reason' => 'check in progress',
-        ];
+    public function testInvalidShopId()
+    {
+        $shopId = MiraklMock::SHOP_INVALID;
+        $accountId = StripeMock::ACCOUNT_NEW;
+        $response = $this->executeRequest(<<<PAYLOAD
+        {
+            "miraklShopId": $shopId,
+            "stripeUserId": "$accountId"
+        }
+        PAYLOAD);
+        $this->assertEquals('Invalid Mirakl Shop ID', $response->getContent());
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+    }
 
-        $expectedMappingDto = new AccountMappingDTO();
-        $expectedMappingDto
-            ->setMiraklShopId($miraklShopId)
-            ->setStripeUserId($stripeUserId);
-        $expectedMapping = new AccountMapping();
-        $expectedMapping
-            ->setMiraklShopId($miraklShopId)
-            ->setStripeAccountId($stripeUserId)
-            ->setPayoutEnabled(false)
-            ->setPayinEnabled(true)
-            ->setDisabledReason('check in progress');
-
-        $this
-            ->serializer
-            ->expects($this->once())
-            ->method('deserialize')
-            ->willReturn($expectedMappingDto);
-        $this
-            ->stripeClient
-            ->expects($this->once())
-            ->method('setPayoutToManual')
-            ->with($stripeUserId)
-            ->willReturn($stripeAccount);
-        $this
-            ->accountMappingFactory
-            ->expects($this->once())
-            ->method('createMappingFromDTO')
-            ->with($expectedMappingDto)
-            ->willReturn($expectedMapping);
-        $this
-            ->validator
-            ->expects($this->once())
-            ->method('validate')
-            ->willReturn([]);
-
-        $this
-            ->accountMappingRepository
-            ->expects($this->once())
-            ->method('persistAndFlush')
-            ->with($expectedMapping);
-
-        $response = $this->controller->createMapping($request);
-
+    public function testCreateMappingForEnabledAccount()
+    {
+        $shopId = MiraklMock::SHOP_NEW;
+        $accountId = StripeMock::ACCOUNT_NEW;
+        $response = $this->executeRequest(<<<PAYLOAD
+        {
+            "miraklShopId": $shopId,
+            "stripeUserId": "$accountId"
+        }
+        PAYLOAD);
+        $this->assertEquals('Mirakl - Stripe mapping created', $response->getContent());
         $this->assertEquals(Response::HTTP_CREATED, $response->getStatusCode());
+
+        $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($accountId);
+        $this->assertEquals(true, $accountMapping->getPayinEnabled());
+        $this->assertEquals(true, $accountMapping->getPayoutEnabled());
+        $this->assertNull($accountMapping->getDisabledReason());
+    }
+
+    public function testShopIdAlreadyMapped()
+    {
+        $shopId = MiraklMock::SHOP_BASIC;
+        $accountId = StripeMock::ACCOUNT_NEW;
+        $response = $this->executeRequest(<<<PAYLOAD
+        {
+            "miraklShopId": $shopId,
+            "stripeUserId": "$accountId"
+        }
+        PAYLOAD);
+        $this->assertEquals('The provided Mirakl Shop ID or Stripe User Id is already mapped', $response->getContent());
+        $this->assertEquals(Response::HTTP_CONFLICT, $response->getStatusCode());
+    }
+
+    public function testAccountIdAlreadyMapped()
+    {
+        $shopId = MiraklMock::SHOP_NEW;
+        $accountId = StripeMock::ACCOUNT_BASIC;
+        $response = $this->executeRequest(<<<PAYLOAD
+        {
+            "miraklShopId": $shopId,
+            "stripeUserId": "$accountId"
+        }
+        PAYLOAD);
+        $this->assertEquals('The provided Mirakl Shop ID or Stripe User Id is already mapped', $response->getContent());
+        $this->assertEquals(Response::HTTP_CONFLICT, $response->getStatusCode());
     }
 }

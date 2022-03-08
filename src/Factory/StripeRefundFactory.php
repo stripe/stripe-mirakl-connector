@@ -75,11 +75,6 @@ class StripeRefundFactory implements LoggerAwareInterface
      */
     public function updateRefund(StripeRefund $refund): StripeRefund
     {
-        // Refund already created
-        if ($refund->getMiraklValidationTime()) {
-            return $this->markRefundAsCreated($refund);
-        }
-
         // Find charge ID
         $transactionId = $refund->getTransactionId();
         if (!$transactionId) {
@@ -162,11 +157,9 @@ class StripeRefundFactory implements LoggerAwareInterface
                 case 'succeeded':
                     // Still have to check if it has been refunded
                     $ch = $pi->charges->data[0] ?? null;
-                    if ($ch instanceof Charge) {
-                        $this->checkChargeStatus($ch);
-                        return;
-                    }
-                    break;
+                    assert($ch instanceof Charge);
+                    $this->checkChargeStatus($ch);
+                    return;
                 case 'canceled':
                     throw new InvalidArgumentException(sprintf(
                         StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED,
@@ -259,21 +252,5 @@ class StripeRefundFactory implements LoggerAwareInterface
         return $refund
             ->setStatus(StripeRefund::REFUND_ABORTED)
             ->setStatusReason(substr($reason, 0, 1024));
-    }
-
-    /**
-     * @param StripeRefund $refund
-     * @return StripeRefund
-     */
-    private function markRefundAsCreated(StripeRefund $refund): StripeRefund
-    {
-        $this->logger->info(
-            'Refund created',
-            ['refund_id' => $refund->getMiraklRefundId()]
-        );
-
-        return $refund
-            ->setStatus(StripeRefund::REFUND_CREATED)
-            ->setStatusReason(null);
     }
 }

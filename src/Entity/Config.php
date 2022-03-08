@@ -4,7 +4,6 @@ namespace App\Entity;
 
 use App\Exception\InvalidArgumentException;
 use Doctrine\ORM\Mapping as ORM;
-use Gedmo\Mapping\Annotation as Gedmo;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ConfigRepository")
@@ -14,6 +13,7 @@ class Config
     public const PRODUCT_PAYMENT_SPLIT_CHECKPOINT = 'product_payment_split_checkpoint';
     public const SERVICE_PAYMENT_SPLIT_CHECKPOINT = 'service_payment_split_checkpoint';
     public const SELLER_SETTLEMENT_CHECKPOINT = 'seller_settlement_checkpoint';
+    public const SELLER_ONBOARDING_CHECKPOINT = 'seller_onboarding_checkpoint';
 
     /**
      * @ORM\Id()
@@ -38,6 +38,7 @@ class Config
             self::PRODUCT_PAYMENT_SPLIT_CHECKPOINT,
             self::SERVICE_PAYMENT_SPLIT_CHECKPOINT,
             self::SELLER_SETTLEMENT_CHECKPOINT,
+            self::SELLER_ONBOARDING_CHECKPOINT,
         ];
     }
 

@@ -4,7 +4,9 @@ namespace App\Tests;
 
 use Stripe\Exception\ApiConnectionException;
 use Stripe\Exception\InvalidRequestException;
+use Stripe\Exception\PermissionException;
 use Stripe\HttpClient\ClientInterface;
+use App\Tests\MiraklMockedHttpClient AS MiraklMock;
 
 class StripeMockedHttpClient implements ClientInterface
 {
@@ -12,8 +14,9 @@ class StripeMockedHttpClient implements ClientInterface
     public const ACCOUNT_BASIC = 'acct_basic';
     public const ACCOUNT_PAYIN_DISABLED = 'account_payin_disabled';
     public const ACCOUNT_PAYOUT_DISABLED = 'account_payout_disabled';
-    public const ACCOUNT_OAUTH = 'account_oauth';
+    public const ACCOUNT_NOT_FOUND = 'account_not_found';
     public const ACCOUNT_NEW = 'account_new';
+    public const ACCOUNT_NOT_SUBMITTED = 'account_not_submitted';
 
     public const CHARGE_BASIC = 'ch_basic';
     public const CHARGE_PAYMENT = 'py_basic';
@@ -35,6 +38,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const PAYMENT_INTENT_STATUS_SUCCEEDED = 'pi_status_succeeded';
     public const PAYMENT_INTENT_REFUNDED = 'pi_refunded';
     public const PAYMENT_INTENT_NOT_FOUND = 'pi_not_found';
+    public const PAYMENT_INTENT_WITH_METADATA = 'pi_with_metadata';
 
     public const PAYOUT_BASIC = 'po_basic';
 
@@ -46,8 +50,9 @@ class StripeMockedHttpClient implements ClientInterface
     public const TRANSFER_REVERSAL_BASIC = 'trr_basic';
 
     protected $errorMessage;
+    protected $metadataCommercialOrderId;
 
-    public function __construct()
+    public function __construct(string $metadataCommercialOrderId)
     {
         $this->errorMessage = json_encode([
             'error' => [
@@ -55,6 +60,7 @@ class StripeMockedHttpClient implements ClientInterface
                 'type' => 'invalid_request_error',
             ],
         ]);
+        $this->metadataCommercialOrderId = $metadataCommercialOrderId;
     }
 
     /**
@@ -74,10 +80,6 @@ class StripeMockedHttpClient implements ClientInterface
      */
     public function request($method, $url, $headers, $params, $hasFile = false)
     {
-        if ('https://connect.stripe.com/oauth/token' === $url) {
-            return [json_encode($this->mockOauth()), 200, []];
-        }
-
         $path = str_replace('/v1/', '', parse_url($url, PHP_URL_PATH));
         $composants = explode('/', $path);
 
@@ -92,7 +94,14 @@ class StripeMockedHttpClient implements ClientInterface
                 $response = $this->mockPlatformAccount();
                 break;
             case 'accounts':
-                $response = $this->mockAccounts($id);
+                if ('login_links' === $action) {
+                    $response = $this->mockLoginLinks($id);
+                } else {
+                    $response = $this->mockAccounts($id, $method, $params);
+                }
+                break;
+            case 'account_links':
+                $response = $this->mockAccountLinks($params);
                 break;
             case 'charges':
                 $response = $this->mockCharges($id, $action);
@@ -143,22 +152,42 @@ class StripeMockedHttpClient implements ClientInterface
         return $this->mockAccounts(self::ACCOUNT_PLATFORM);
     }
 
-    private function mockAccounts($id)
+    private function mockAccounts($id, $method = 'get', $params = [])
     {
-        $account = $this->getBasicObject($id, 'account');
-        $account['charges_enabled'] = true;
-        $account['payouts_enabled'] = true;
+        if ($id === self::ACCOUNT_NOT_FOUND)
+            throw new PermissionException("The provided key does not have access to account '$id' (or that account does not exist). Application access may have been revoked.", 403);
+
+        if ($method === 'post' && $params['metadata']['miraklShopId'] === MiraklMock::SHOP_STRIPE_ERROR)
+            throw new InvalidRequestException("Can't create Stripe Account", 400);
+
+        $account = $this->getBasicObject($id ?? self::ACCOUNT_NEW, 'account');
+        $account['charges_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED;
+        $account['payouts_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED && $id !== self::ACCOUNT_PAYOUT_DISABLED;
         $account['requirements'] = [];
-        $account['requirements']['disabled_reason'] = null;
+        $account['requirements']['disabled_reason'] = $id !== self::ACCOUNT_PAYIN_DISABLED ? null : 'Prohibited business';
+        $account['details_submitted'] = $id !== self::ACCOUNT_NOT_SUBMITTED;
         return $account;
     }
 
-    private function mockOauth()
+    private function mockAccountLinks($params)
     {
-        return [
-            'access_token' => 'token',
-            'stripe_user_id' => self::ACCOUNT_OAUTH,
-        ];
+        $account = $params['account'];
+        if ($account === self::ACCOUNT_NOT_FOUND)
+            throw new PermissionException("The provided key does not have access to account '$account' (or that account does not exist). Application access may have been revoked.", 403);
+
+        $accountLink = $this->getBasicObject(null, 'account_link');
+        $accountLink['url'] = 'https://connect.stripe.com/setup/s/mov7fZc0o4Yx';
+        return $accountLink;
+    }
+
+    private function mockLoginLinks($account)
+    {
+        if ($account === self::ACCOUNT_NOT_FOUND)
+            throw new PermissionException("The provided key does not have access to account '$account' (or that account does not exist). Application access may have been revoked.", 403);
+
+        $accountLink = $this->getBasicObject('lael_LDREVglS9Cytav', 'login_link');
+        $accountLink['url'] = 'https://connect.stripe.com/express/SgETLzuPbZVg';
+        return $accountLink;
     }
 
     private function mockCharges($id, $action)
@@ -250,6 +279,11 @@ class StripeMockedHttpClient implements ClientInterface
                 $pi['status'] = 'succeeded';
                 $pi['charges'] = $this->getBasicList('charges');
                 $pi['charges']['data'][] = $this->mockCharges(self::CHARGE_REFUNDED, null);
+                break;
+            case self::PAYMENT_INTENT_WITH_METADATA:
+                $pi['status'] = 'requires_capture';
+                $pi['metadata'] = [];
+                $pi['metadata'][$this->metadataCommercialOrderId] = '123';
                 break;
             case self::PAYMENT_INTENT_NOT_FOUND:
             default:

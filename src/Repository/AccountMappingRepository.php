@@ -19,6 +19,12 @@ class AccountMappingRepository extends ServiceEntityRepository
         parent::__construct($registry, AccountMapping::class);
     }
 
+    public function removeAndFlush(AccountMapping $accountMapping): void
+    {
+        $this->getEntityManager()->remove($accountMapping);
+        $this->getEntityManager()->flush();
+    }
+
     public function persistAndFlush(AccountMapping $accountMapping): AccountMapping
     {
         $this->getEntityManager()->persist($accountMapping);
@@ -32,17 +38,42 @@ class AccountMappingRepository extends ServiceEntityRepository
         $this->getEntityManager()->flush();
     }
 
-    public function findOneByMiraklShopId(int $miraklShopId): ?AccountMapping
-    {
-        return $this->findOneBy([
-            'miraklShopId' => $miraklShopId
-        ]);
-    }
-
     public function findOneByStripeAccountId(string $stripeAccountId): ?AccountMapping
     {
         return $this->findOneBy([
             'stripeAccountId' => $stripeAccountId
         ]);
+    }
+
+    public function findOneByOnboardingToken(string $onboardingToken): ?AccountMapping
+    {
+        return $this->findOneBy([
+            'onboardingToken' => $onboardingToken
+        ]);
+    }
+
+    /**
+     * @param array $accountMappings
+     * @return array
+     */
+    private function mapByMiraklShopId(array $accountMappings): array
+    {
+        $map = [];
+        foreach ($accountMappings as $accountMapping) {
+            $map[$accountMapping->getMiraklShopId()] = $accountMapping;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param array $miraklShopIds
+     * @return AccountMapping[]
+     */
+    public function findByMiraklShopIds(array $miraklShopIds): array
+    {
+        return $this->mapByMiraklShopId($this->findBy([
+            'miraklShopId' => $miraklShopIds
+        ]));
     }
 }

@@ -4,7 +4,7 @@ nelmio_api_doc:
             title: Stripe Mirakl Connector
             description: >
                 This connector allows marketplaces powered by Mirakl to onboard sellers on Stripe and pay them out automatically.
-            version: 2.1.5
+            version: 3.0.0
         securityDefinitions:
             Bearer:
                 type: apiKey
