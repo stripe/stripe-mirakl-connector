@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.0.1
+
+- Bumped dependencies.
+
 ## Version 3.0.0
 - Seller onboarding flow has been migrated from Oauth to Connect Onboarding. Make sure to configure your [Connect branding settings](https://dashboard.stripe.com/settings/connect) before upgrading.
 - Consequently, the `/api/onboarding` endpoint has been removed, the `AccountOnboarding` entity has been deleted, and the `STRIPE_CLIENT_ID` environment variable is no longer needed.
