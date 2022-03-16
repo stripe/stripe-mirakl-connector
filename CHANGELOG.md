@@ -5,10 +5,11 @@
 - Bumped dependencies.
 
 ## Version 3.0.0
-- Seller onboarding flow has been migrated from Oauth to Connect Onboarding. Make sure to configure your [Connect branding settings](https://dashboard.stripe.com/settings/connect) before upgrading.
+- Seller onboarding flow has been migrated from Oauth to Connect Onboarding. Make sure to configure your [Connect branding settings](https://dashboard.stripe.com/settings/connect) before upgrading. You can also disable OAuth for Express accounts in your ’[Connect settings](https://dashboard.stripe.com/test/settings/connect).
 - Consequently, the `/api/onboarding` endpoint has been removed, the `AccountOnboarding` entity has been deleted, and the `STRIPE_CLIENT_ID` environment variable is no longer needed.
 - The `connector:sync:onboarding` command no longer uses the delay parameter. This parameter is now deprecated, please remove it from your crontab settings.
 - You can now use the `SCHEME` environment variable to force HTTP when working locally or in a development environment.
+- The `BASE_HOST` environment variable must now be strictly without the scheme as a prefix, i.e. there must be no `https://` preceding the domain.
 - Stripe accounts are now created during the onboarding job and mapped with the corresponding Mirakl shop.
 - Auto debit of negative balances is now disabled by default for new Stripe accounts (see #78).
 - Improved Controllers tests.
