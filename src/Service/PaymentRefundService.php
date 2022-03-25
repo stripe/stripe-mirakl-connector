@@ -10,7 +10,6 @@ use App\Repository\StripeTransferRepository;
 
 class PaymentRefundService
 {
-
     /**
      * @var StripeRefundFactory
      */

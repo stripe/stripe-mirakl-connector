@@ -8,7 +8,6 @@ use App\Service\MiraklClient;
 
 class ConfigService
 {
-
     /**
      * @var ConfigRepository
      */

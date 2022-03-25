@@ -25,7 +25,6 @@ use Stripe\Webhook;
  */
 class StripeClient
 {
-
     /**
      * @var string
      */
