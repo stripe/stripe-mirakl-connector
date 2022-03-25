@@ -19,5 +19,5 @@ security:
                     - App\Security\TokenAuthenticator
             stateless: true
     access_control:
-      - { path: ^/api/public, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+      - { path: ^/api/public, roles: IS_AUTHENTICATED_ANONYMOUSLY, requires_channel: '%env(SCHEME)%' }
       - { path: ^/api, roles: ROLE_USER }
