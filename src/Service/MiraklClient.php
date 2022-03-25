@@ -17,11 +17,11 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 class MiraklClient
 {
-    const ORDER_TYPE_PRODUCT = 'Product';
-    const ORDER_TYPE_SERVICE = 'Service';
+    public const ORDER_TYPE_PRODUCT = 'Product';
+    public const ORDER_TYPE_SERVICE = 'Service';
 
-    const DATE_FORMAT = \DateTime::ISO8601;
-    const DATE_FORMAT_INVALID_MESSAGE = 'Unexpected date format, expecting %s, input was %s';
+    public const DATE_FORMAT = \DateTime::ISO8601;
+    public const DATE_FORMAT_INVALID_MESSAGE = 'Unexpected date format, expecting %s, input was %s';
 
     /**
      * @var HttpClientInterface

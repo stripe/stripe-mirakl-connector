@@ -8,7 +8,6 @@ use App\Repository\StripeTransferRepository;
 
 class PaymentSplitService
 {
-
     /**
      * @var StripeTransferFactory
      */

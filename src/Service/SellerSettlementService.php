@@ -12,7 +12,6 @@ use App\Repository\StripeTransferRepository;
 
 class SellerSettlementService
 {
-
     /**
      * @var StripePayoutFactory
      */

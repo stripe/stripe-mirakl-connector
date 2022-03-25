@@ -13,7 +13,6 @@ use Symfony\Component\Routing\RouterInterface;
 
 class SellerOnboardingService
 {
-
     /**
      * @var AccountMappingRepository
      */
