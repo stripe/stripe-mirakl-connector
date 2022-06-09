@@ -47,9 +47,7 @@ If you are using Docker, see instead the specific [instructions](examples/docker
 
 ## Contributing to the application
 
-Pull requests are welcome. For major changes, open an issue first to discuss what you would like to change.
-
-Please make sure to update tests accordingly.
+Pull requests are welcome. Please make sure to update tests accordingly.
 
 ## License
 
