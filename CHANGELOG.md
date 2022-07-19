@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.0.3
+
+- Bumped dependencies.
+
 ## Version 3.0.2
 - Fix URL generation when behind a proxy.
 
