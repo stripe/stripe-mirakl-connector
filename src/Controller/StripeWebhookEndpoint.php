@@ -7,12 +7,10 @@ use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Doctrine\ORM\ORMException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Event;
-use Swagger\Annotations as SWG;
+use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -91,16 +89,16 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     /**
      * Should only be called by Stripe Webhooks.
      *
-     * @SWG\Response(
+     * @OA\Response(
      *     response=200,
      *     description="Webhook ok",
      * )
-     * @SWG\Response(
+     * @OA\Response(
      *     response=400,
      *     description="Bad request",
      * )
-     * @SWG\Post(deprecated=true)
-     * @SWG\Tag(name="Webhook")
+     * @OA\Post(deprecated=true)
+     * @OA\Tag(name="Webhook")
      * @Route("/api/public/webhook", methods={"POST"}, name="handle_stripe_webhook")
      * @param Request $request
      * @return Response
@@ -113,16 +111,16 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     /**
      * Should only be called by Stripe Webhooks (with seller secret).
      *
-     * @SWG\Response(
+     * @OA\Response(
      *     response=200,
      *     description="Webhook ok",
      * )
-     * @SWG\Response(
+     * @OA\Response(
      *     response=400,
      *     description="Bad request",
      * )
      *
-     * @SWG\Tag(name="Sellers Webhook")
+     * @OA\Tag(name="Sellers Webhook")
      * @Route("/api/public/webhook/sellers", methods={"POST"}, name="handle_stripe_seller_webhook")
      * @param Request $request
      * @return Response
@@ -138,15 +136,15 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     /**
      * Should only be called by Stripe Webhooks (with operator secret).
      *
-     * @SWG\Response(
+     * @OA\Response(
      *     response=200,
      *     description="Webhook ok",
      * )
-     * @SWG\Response(
+     * @OA\Response(
      *     response=400,
      *     description="Bad request",
      * )
-     * @SWG\Tag(name="Operator Webhook")
+     * @OA\Tag(name="Operator Webhook")
      * @Route("/api/public/webhook/operator", methods={"POST"}, name="handle_stripe_operator_webhook")
      * @param Request $request
      * @return Response
