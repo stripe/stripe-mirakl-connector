@@ -7,7 +7,7 @@ use App\Service\SellerOnboardingService;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use Swagger\Annotations as SWG;
+use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -62,15 +62,15 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
     /**
      * Should only be called by Stripe if the AccountLink expired.
      *
-     * @SWG\Response(
+     * @OA\Response(
      *     response=302,
      *     description="Redirect to Stripe",
      * )
-     * @SWG\Response(
+     * @OA\Response(
      *     response=400,
      *     description="Bad request",
      * )
-     * @SWG\Tag(name="Internal (Stripe Only)")
+     * @OA\Tag(name="Internal (Stripe Only)")
      * @Route("/api/public/onboarding/refresh", methods={"GET"}, name="onboarding_refresh")
      * @param Request $request
      * @return Response

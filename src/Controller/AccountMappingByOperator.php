@@ -9,7 +9,7 @@ use App\Service\StripeClient;
 use Nelmio\ApiDocBundle\Annotation\Security;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use Swagger\Annotations as SWG;
+use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -58,36 +58,35 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
      * Manually creates the Stripe-Mirakl mapping.
      * Should only be called manually.
      *
-     *   @SWG\Parameter(
+     *   @OA\Parameter(
      *     name="ids",
      *     in="body",
-     *     type="string",
      *     description="Mirakl and Stripe Ids to map",
-     *     @SWG\Schema(
+     *     @OA\Schema(
      *         type="object",
      *         example={"miraklShopId": 1, "stripeUserId": "12345"}
      *      )
      * )
      *
-     * @SWG\Response(
+     * @OA\Response(
      *     response=201,
      *     description="Mirakl - Stripe mapping created",
      * )
-     * @SWG\Response(
+     * @OA\Response(
      *     response=400,
      *     description="
      * Invalid Mirakl shop Id format
      * Cannot find the Stripe account corresponding to this stripe Id",
      * )
-     * @SWG\Response(
+     * @OA\Response(
      *     response=401,
      *     description="Unauthorized access"
      * )
-     * @SWG\Response(
+     * @OA\Response(
      *     response=409,
      *     description="The provided Mirakl Shop ID or Stripe User Id is already mapped",
      * )
-     * @SWG\Tag(name="AccountMapping")
+     * @OA\Tag(name="AccountMapping")
      * @Security(name="Bearer")
      * @Route("/api/mappings", methods={"POST"}, name="create_mapping_manually")
      */
