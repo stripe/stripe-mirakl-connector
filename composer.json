@@ -13,7 +13,7 @@
     "require": {
         "php": "^7.3",
         "antishov/doctrine-extensions-bundle": "^1.4",
-        "api-platform/core": "^2.6",
+        "api-platform/core": "2.6.*",
         "doctrine/annotations": "^1.0",
         "doctrine/doctrine-bundle": "^2.5",
         "doctrine/doctrine-migrations-bundle": "^2.0",
@@ -60,7 +60,11 @@
         "preferred-install": {
             "*": "dist"
         },
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "phpstan/extension-installer": true,
+            "symfony/flex": true
+        }
     },
     "autoload": {
         "psr-4": {
