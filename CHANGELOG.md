@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.0.4
+
+- Bumped dependencies.
+
 ## Version 3.0.3
 
 - Bumped dependencies.
