@@ -278,6 +278,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $amounts = [
             'NO_COMMISSION' => 8472,
             'NO_TAX' => 6513,
+            'TAX_INCLUDED' => 6513,
             'PARTIAL_TAX' => 7293,
             'NO_SALES_TAX' => 7205,
             'NO_SHIPPING_TAX' => 7381
@@ -471,6 +472,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $amounts = [
             'NO_COMMISSION' => 1814,
             'NO_TAX' => 1081,
+            'TAX_INCLUDED' => 1081,
             'PARTIAL_TAX' => 1237,
         ];
 
