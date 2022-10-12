@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.0.5
+
+- The connector now takes Mirakl's `order_tax_mode` into account when calculating transfer amounts.
+
 ## Version 3.0.4
 
 - Bumped dependencies.
@@ -9,6 +13,7 @@
 - Bumped dependencies.
 
 ## Version 3.0.2
+
 - Fix URL generation when behind a proxy.
 
 ## Version 3.0.1
@@ -16,6 +21,7 @@
 - Bumped dependencies.
 
 ## Version 3.0.0
+
 - Seller onboarding flow has been migrated from Oauth to Connect Onboarding. Make sure to configure your [Connect branding settings](https://dashboard.stripe.com/settings/connect) before upgrading. You can also disable OAuth for Express accounts in your ’[Connect settings](https://dashboard.stripe.com/test/settings/connect).
 - Consequently, the `/api/onboarding` endpoint has been removed, the `AccountOnboarding` entity has been deleted, and the `STRIPE_CLIENT_ID` environment variable is no longer needed.
 - The `connector:sync:onboarding` command no longer uses the delay parameter. This parameter is now deprecated, please remove it from your crontab settings.
@@ -30,6 +36,7 @@
 - Fixed the Reason column in alerting emails.
 
 ## Version 2.1.4
+
 - Fetch orders by id in batches of 100 (#91 thanks @cysp).
 - Minor syntax improvements and fixes.
 
