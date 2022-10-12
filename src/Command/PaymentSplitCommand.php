@@ -126,7 +126,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         }
 
         // Retrieve new checkpoint
-        usort($orders, function ($o1, $o2) {
+        uasort($orders, function ($o1, $o2) {
             return strtotime($o2->getCreationDate()) - strtotime($o1->getCreationDate());
         });
         $lastOrder = current($orders);
