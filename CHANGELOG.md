@@ -2,7 +2,7 @@
 
 ## Version 3.0.5
 
-- The connector now takes Mirakl's `order_tax_mode` into account when calculating transfer amounts.
+- Fix: take Mirakl's `order_tax_mode` into account when calculating transfer amounts.
 
 ## Version 3.0.4
 
