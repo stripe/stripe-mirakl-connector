@@ -49,7 +49,7 @@ class MiraklServiceOrder extends MiraklOrder
         ]);
     }
 
-    public function taxIncluded(): bool
+    public function isTaxIncluded(): bool
     {
         return isset($this->order['order_tax_mode']) && $this->order['order_tax_mode'] === 'TAX_INCLUDED';
     }
