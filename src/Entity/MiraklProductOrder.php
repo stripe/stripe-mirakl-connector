@@ -49,6 +49,11 @@ class MiraklProductOrder extends MiraklOrder
         ]);
     }
 
+    public function taxIncluded(): bool
+    {
+        return isset($this->order['order_tax_mode']) && $this->order['order_tax_mode'] === 'TAX_INCLUDED';
+    }
+
     public function isPaid(): bool
     {
         return isset($this->order['customer_debited_date']) && !empty($this->order['customer_debited_date']);
@@ -62,6 +67,12 @@ class MiraklProductOrder extends MiraklOrder
     public function getAmountDue(): float
     {
         $amount = $this->order['total_price']; // REFUSED/CANCELED are already not included
+
+        // Don't add taxes to the total_price if taxes are included
+        if ($this->taxIncluded()) {
+            return $amount;
+        }
+
         foreach ($this->getOrderLines() as $orderLine) {
             if (!in_array($orderLine['order_line_state'], ['REFUSED', 'CANCELED'])) {
                 $amount += $this->getOrderLineTaxes($orderLine);
@@ -78,7 +89,10 @@ class MiraklProductOrder extends MiraklOrder
             switch ($orderLine['order_line_state']) {
                 case 'REFUSED':
                     $amount += (float) $orderLine['total_price'];
-                    $amount += (float) $this->getOrderLineTaxes($orderLine);
+
+                    if (!$this->taxIncluded()) {
+                        $amount += (float) $this->getOrderLineTaxes($orderLine);
+                    }
                     break;
                 case 'CANCELED':
                     $amount += (float) $this->getOrderLineCanceledAmountWithTaxes($orderLine['cancelations']);
@@ -135,7 +149,9 @@ class MiraklProductOrder extends MiraklOrder
         $canceledAmount = 0;
         foreach ($canceledOrderLines as $orderLine) {
             $canceledAmount += (float) $orderLine['amount'];
-            $canceledAmount += $this->getOrderLineTaxes($orderLine);
+            if (!$this->taxIncluded()) {
+                $canceledAmount += $this->getOrderLineTaxes($orderLine);
+            }
         }
 
         return $canceledAmount;

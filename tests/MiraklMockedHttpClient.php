@@ -41,6 +41,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const ORDER_AMOUNT_PARTIAL_TAX = 'order_partial_tax';
 	public const ORDER_AMOUNT_NO_SALES_TAX = 'order_no_sales_tax';
 	public const ORDER_AMOUNT_NO_SHIPPING_TAX = 'order_no_shipping_tax';
+	public const ORDER_AMOUNT_TAX_INCLUDED = 'order_tax_mode_tax_included';
 
 	public const ORDER_DATE_NO_NEW_ORDERS = '2019-01-01T00:00:00+0100';
 	public const ORDER_DATE_3_NEW_ORDERS_1_READY = '2019-01-02T00:00:00+0100';
@@ -558,6 +559,9 @@ class MiraklMockedHttpClient extends MockHttpClient
 					unset($order['order_lines'][0]['shipping_taxes']);
 					unset($order['order_lines'][1]['shipping_taxes']);
 					break;
+				case self::ORDER_AMOUNT_TAX_INCLUDED:
+					$order['order_tax_mode'] = 'TAX_INCLUDED';
+					break;
 				case self::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_ID:
 					$key = $isService ? 'date_created' : 'created_date';
 					$order[$key] = self::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_DATE;
@@ -608,6 +612,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 			'currency_iso_code' => 'EUR',
 			'order_id' => $orderId,
 			'order_state' => $status,
+			'order_tax_mode' => 'TAX_EXCLUDED', // TAX_INCLUDED
 			'payment_workflow' => 'PAY_ON_ACCEPTANCE',
 			'shop_id' => self::SHOP_BASIC,
 			'last_updated_date' => date_format(new \Datetime(), MiraklClient::DATE_FORMAT),
@@ -652,6 +657,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 			'date_created' => date_format(new \Datetime(), \Datetime::RFC3339_EXTENDED),
 			'currency_code' => 'EUR',
 			'state' => $status,
+			'order_tax_mode' => 'TAX_EXCLUDED', // TAX_INCLUDED
 			'workflow' => ['type' => 'PAY_ON_ACCEPTANCE'],
 			'shop' => ['id' => self::SHOP_BASIC],
 			'commission' => ['amount_including_taxes' => 3.99],

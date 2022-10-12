@@ -49,6 +49,11 @@ class MiraklServiceOrder extends MiraklOrder
         ]);
     }
 
+    public function taxIncluded(): bool
+    {
+        return isset($this->order['order_tax_mode']) && $this->order['order_tax_mode'] === 'TAX_INCLUDED';
+    }
+
     public function isPaid(): bool
     {
         throw new \Exception('No information about payment in service orders, use SPA11 instead.');
@@ -62,8 +67,11 @@ class MiraklServiceOrder extends MiraklOrder
     public function getAmountDue(): float
     {
         $taxes = 0;
-        foreach (($this->order['price']['taxes'] ?? []) as $tax) {
-            $taxes += (float) $tax['amount'];
+
+        if (!$this->taxIncluded()) {
+            foreach (($this->order['price']['taxes'] ?? []) as $tax) {
+                $taxes += (float) $tax['amount'];
+            }
         }
 
         $options = 0;

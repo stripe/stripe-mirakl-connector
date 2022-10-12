@@ -30,6 +30,7 @@ abstract class MiraklOrder
     abstract public function getTransactionNumber(): string;
 
     abstract public function isValidated(): bool;
+    abstract public function taxIncluded(): bool;
     abstract public function isPaid(): bool;
     abstract public function isAborted(): bool;
     abstract public function getAmountDue(): float;
