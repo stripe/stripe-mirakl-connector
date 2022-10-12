@@ -90,7 +90,7 @@ class MiraklProductOrder extends MiraklOrder
                 case 'REFUSED':
                     $amount += (float) $orderLine['total_price'];
 
-                    if (!$this->taxIncluded()) {
+                    if (!$this->isTaxIncluded()) {
                         $amount += (float) $this->getOrderLineTaxes($orderLine);
                     }
                     break;
