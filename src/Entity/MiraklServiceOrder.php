@@ -68,7 +68,7 @@ class MiraklServiceOrder extends MiraklOrder
     {
         $taxes = 0;
 
-        if (!$this->taxIncluded()) {
+        if (!$this->isTaxIncluded()) {
             foreach (($this->order['price']['taxes'] ?? []) as $tax) {
                 $taxes += (float) $tax['amount'];
             }
