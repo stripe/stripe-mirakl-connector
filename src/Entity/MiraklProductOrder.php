@@ -69,7 +69,7 @@ class MiraklProductOrder extends MiraklOrder
         $amount = $this->order['total_price']; // REFUSED/CANCELED are already not included
 
         // Don't add taxes to the total_price if taxes are included
-        if ($this->taxIncluded()) {
+        if ($this->isTaxIncluded()) {
             return $amount;
         }
 
