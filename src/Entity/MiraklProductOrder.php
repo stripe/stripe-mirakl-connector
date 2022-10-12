@@ -149,7 +149,7 @@ class MiraklProductOrder extends MiraklOrder
         $canceledAmount = 0;
         foreach ($canceledOrderLines as $orderLine) {
             $canceledAmount += (float) $orderLine['amount'];
-            if (!$this->taxIncluded()) {
+            if (!$this->isTaxIncluded()) {
                 $canceledAmount += $this->getOrderLineTaxes($orderLine);
             }
         }
