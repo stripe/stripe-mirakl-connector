@@ -57,7 +57,8 @@ class PaymentSplitServiceTest extends KernelTestCase
 
         $this->paymentSplitService = new PaymentSplitService(
             $stripeTransferFactory,
-            $this->stripeTransferRepository
+            $this->stripeTransferRepository,
+            $this->miraklClient
         );
     }
 

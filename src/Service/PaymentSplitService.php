@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\MiraklServiceOrder;
 use App\Service\MiraklClient;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeTransferRepository;
@@ -18,12 +19,19 @@ class PaymentSplitService
      */
     private $stripeTransferRepository;
 
+    /**
+     * @var MiraklClient
+     */
+    private $miraklClient;
+
     public function __construct(
         StripeTransferFactory $stripeTransferFactory,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        MiraklClient $miraklClient
     ) {
         $this->stripeTransferFactory = $stripeTransferFactory;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->miraklClient = $miraklClient;
     }
 
     /**
@@ -51,6 +59,7 @@ class PaymentSplitService
         // Retrieve existing StripeTransfers with provided order IDs
         $existingTransfers = $this->stripeTransferRepository
             ->findTransfersByOrderIds(array_keys($orders));
+        $pendingDebits = $this->getServiceOrdersPendingDebits($orders);
 
         $transfers = [];
         foreach ($orders as $orderId => $order) {
@@ -61,7 +70,7 @@ class PaymentSplitService
                 }
 
                 // Use existing transfer
-                $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
+                $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order, $pendingDebits);
             } else {
                 // Create new transfer
                 $transfer = $this->stripeTransferFactory->createFromOrder($order);
@@ -84,11 +93,13 @@ class PaymentSplitService
      */
     public function updateTransfersFromOrders(array $existingTransfers, array $orders)
     {
+        $pendingDebits = $this->getServiceOrdersPendingDebits($orders);
         $updated = [];
         foreach ($existingTransfers as $orderId => $transfer) {
             $updated[$orderId] = $this->stripeTransferFactory->updateFromOrder(
                 $transfer,
-                $orders[$orderId]
+                $orders[$orderId],
+                $pendingDebits
             );
         }
 
@@ -96,5 +107,16 @@ class PaymentSplitService
         $this->stripeTransferRepository->flush();
 
         return $updated;
+    }
+
+    private function getServiceOrdersPendingDebits(array $orders): array
+    {
+        $serviceOrders = array_filter($orders, function ($order) {
+            return is_a($order, MiraklServiceOrder::class);
+        });
+        $serviceOrderIds = array_map(function ($order) {
+            return $order->getId();
+        }, $serviceOrders);
+        return $this->miraklClient->listServicePendingDebitsByOrderIds($serviceOrderIds);
     }
 }

@@ -79,8 +79,10 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         if (is_a($order, MiraklServiceOrder::class)) {
             $type = StripeTransfer::TRANSFER_SERVICE_ORDER;
+            $pendingDebits = $this->miraklClient->listServicePendingDebitsByOrderIds([$order->getId()]);
         } else {
             $type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
+            $pendingDebits = [];
         }
 
         $transfer = new StripeTransfer();
@@ -88,7 +90,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $transfer->setMiraklId($order->getId());
         $transfer->setMiraklCreatedDate($order->getCreationDateAsDateTime());
 
-        return $this->updateFromOrder($transfer, $order);
+        return $this->updateFromOrder($transfer, $order, $pendingDebits);
     }
 
     /**
@@ -96,7 +98,7 @@ class StripeTransferFactory implements LoggerAwareInterface
      * @param MiraklOrder $order
      * @return StripeTransfer
      */
-    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order): StripeTransfer
+    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, array $pendingDebits = []): StripeTransfer
     {
         // Transfer already created
         if ($transfer->getTransferId()) {
@@ -140,7 +142,7 @@ class StripeTransferFactory implements LoggerAwareInterface
 
             $paymentId = $order->getTransactionNumber();
         } elseif (is_a($order, MiraklServiceOrder::class)) {
-            $pendingDebit = current($this->miraklClient->listServicePendingDebitsByOrderIds([$order->getId()]));
+            $pendingDebit = isset($pendingDebits[$order->getId()]) ? $pendingDebits[$order->getId()] : null;
             if (!$pendingDebit || !$pendingDebit->isPaid()) {
                 return $this->putTransferOnHold(
                     $transfer,

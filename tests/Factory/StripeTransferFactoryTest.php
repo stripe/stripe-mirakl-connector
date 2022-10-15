@@ -397,7 +397,8 @@ class StripeTransferFactoryTest extends KernelTestCase
         $order = current($this->miraklClient->listServiceOrdersById([
             MiraklMock::ORDER_STATUS_ORDER_ACCEPTED
         ]));
-        $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
+        $pendingDebits = $this->miraklClient->listServicePendingDebitsByOrderIds([$order->getId()]);
+        $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order, $pendingDebits);
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
     }
 
