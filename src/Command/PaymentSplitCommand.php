@@ -126,7 +126,10 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         }
 
         // Retrieve new checkpoint
-        $lastOrder = current(array_reverse($orders));
+        uasort($orders, function ($o1, $o2) {
+            return strtotime($o2->getCreationDate()) - strtotime($o1->getCreationDate());
+        });
+        $lastOrder = current($orders);
         $newCheckpoint = $lastOrder->getCreationDate();
 
         // Create and dispatch transfers

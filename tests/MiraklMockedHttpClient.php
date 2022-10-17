@@ -337,13 +337,13 @@ class MiraklMockedHttpClient extends MockHttpClient
 						self::ORDER_STATUS_WAITING_SCORING,
 						self::ORDER_STATUS_ORDER_PENDING,
 						self::ORDER_STATUS_ORDER_REFUSED
-					]);
+					], $date);
 				} else {
 					return $this->mockOrdersById($isService, [
 						self::ORDER_STATUS_STAGING,
 						self::ORDER_STATUS_SHIPPING,
 						self::ORDER_STATUS_REFUSED
-					]);
+					], $date);
 				}
 			case self::ORDER_DATE_14_NEW_ORDERS_ALL_READY:
 				$ids = [];
@@ -353,7 +353,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 				} else {
 					for ($i = 0; $i < 10; $ids[] = 'random_order_' . ++$i);
 				}
-				return $this->mockOrdersById($isService, $ids);
+				return $this->mockOrdersById($isService, $ids, $date);
 			case self::ORDER_DATE_NO_NEW_ORDERS:
 			default:
 				return [];
@@ -410,53 +410,58 @@ class MiraklMockedHttpClient extends MockHttpClient
 		return $orders;
 	}
 
-	private function mockOrdersById($isService, $orderIds)
+	private function mockOrdersById($isService, $orderIds, $startDate = null)
 	{
+		if ($startDate == null) {
+			$startDate = date_format(new \DateTime(), \DateTime::ATOM);
+		}
 		$orders = [];
-		foreach ($orderIds as $orderId) {
+		foreach ($orderIds as $index => $orderId) {
+			$orderCreationDate = \DateTime::createFromFormat(\DateTime::ATOM, $startDate);
+			$orderCreationDate->modify("-{$index} minutes");
 			$method = $isService ? 'getServiceOrder' : 'getProductOrder';
-			$order = $this->$method($orderId);
+			$order = $this->$method($orderId, $orderCreationDate);
 			switch ($orderId) {
 				case self::ORDER_STATUS_WAITING_ACCEPTANCE:
-					$order = $this->$method($orderId, 'WAITING_ACCEPTANCE');
+					$order = $this->$method($orderId, $orderCreationDate, 'WAITING_ACCEPTANCE');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
 					$order['customer_debited_date'] = null;
 					break;
 				case self::ORDER_STATUS_WAITING_DEBIT:
-					$order = $this->$method($orderId, 'WAITING_DEBIT');
+					$order = $this->$method($orderId, $orderCreationDate, 'WAITING_DEBIT');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
 					$order['customer_debited_date'] = null;
 					break;
 				case self::ORDER_STATUS_WAITING_DEBIT_PAYMENT:
-					$order = $this->$method($orderId, 'WAITING_DEBIT_PAYMENT');
+					$order = $this->$method($orderId, $orderCreationDate, 'WAITING_DEBIT_PAYMENT');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED;
 					$order['customer_debited_date'] = null;
 					break;
 				case self::ORDER_STATUS_STAGING:
-					$order = $this->getProductOrder($orderId, 'STAGING');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'STAGING');
 					$order['customer_debited_date'] = null;
 					break;
 				case self::ORDER_STATUS_SHIPPING:
-					$order = $this->getProductOrder($orderId, 'SHIPPING');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'SHIPPING');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED;
 					break;
 				case self::ORDER_STATUS_SHIPPED:
-					$order = $this->getProductOrder($orderId, 'SHIPPED');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'SHIPPED');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_ALL_VALIDATED;
 					break;
 				case self::ORDER_STATUS_TO_COLLECT:
-					$order = $this->getProductOrder($orderId, 'TO_COLLECT');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'TO_COLLECT');
 					break;
 				case self::ORDER_STATUS_RECEIVED:
-					$order = $this->getProductOrder($orderId, 'RECEIVED');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'RECEIVED');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_ALL_VALIDATED;
 					break;
 				case self::ORDER_STATUS_CLOSED:
-					$order = $this->getProductOrder($orderId, 'CLOSED');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'CLOSED');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_REFUSED;
 					break;
 				case self::ORDER_STATUS_REFUSED:
-					$order = $this->getProductOrder($orderId, 'REFUSED');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'REFUSED');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_PARTIALLY_REFUSED;
 					$order['customer_debited_date'] = null;
 					foreach ($order['order_lines'] as $i => $orderLine) {
@@ -464,7 +469,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 					}
 					break;
 				case self::ORDER_STATUS_CANCELED:
-					$order = $this->getProductOrder($orderId, 'CANCELED');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'CANCELED');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_CANCELED;
 					$order['customer_debited_date'] = null;
 					foreach ($order['order_lines'] as $i => $orderLine) {
@@ -480,32 +485,32 @@ class MiraklMockedHttpClient extends MockHttpClient
 					}
 					break;
 				case self::ORDER_STATUS_PARTIALLY_ACCEPTED:
-					$order = $this->getProductOrder($orderId, 'WAITING_ACCEPTANCE', 'WAITING_DEBIT_PAYMENT');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'WAITING_ACCEPTANCE', 'WAITING_DEBIT_PAYMENT');
 					$order['customer_debited_date'] = null;
 					break;
 				case self::ORDER_STATUS_PARTIALLY_REFUSED:
-					$order = $this->getProductOrder($orderId, 'SHIPPING', 'REFUSED');
+					$order = $this->getProductOrder($orderId, $orderCreationDate, 'SHIPPING', 'REFUSED');
 					break;
 				case self::ORDER_STATUS_WAITING_SCORING:
-					$order = $this->getServiceOrder($orderId, 'WAITING_SCORING');
+					$order = $this->getServiceOrder($orderId, $orderCreationDate, 'WAITING_SCORING');
 					break;
 				case self::ORDER_STATUS_ORDER_PENDING:
-					$order = $this->getServiceOrder($orderId, 'ORDER_PENDING');
+					$order = $this->getServiceOrder($orderId, $orderCreationDate, 'ORDER_PENDING');
 					break;
 				case self::ORDER_STATUS_ORDER_ACCEPTED:
-					$order = $this->getServiceOrder($orderId, 'ORDER_ACCEPTED');
+					$order = $this->getServiceOrder($orderId, $orderCreationDate, 'ORDER_ACCEPTED');
 					break;
 				case self::ORDER_STATUS_ORDER_REFUSED:
-					$order = $this->getServiceOrder($orderId, 'ORDER_REFUSED');
+					$order = $this->getServiceOrder($orderId, $orderCreationDate, 'ORDER_REFUSED');
 					break;
 				case self::ORDER_STATUS_ORDER_EXPIRED:
-					$order = $this->getServiceOrder($orderId, 'ORDER_EXPIRED');
+					$order = $this->getServiceOrder($orderId, $orderCreationDate, 'ORDER_EXPIRED');
 					break;
 				case self::ORDER_STATUS_ORDER_CLOSED:
-					$order = $this->getServiceOrder($orderId, 'ORDER_CLOSED');
+					$order = $this->getServiceOrder($orderId, $orderCreationDate, 'ORDER_CLOSED');
 					break;
 				case self::ORDER_STATUS_ORDER_CANCELLED:
-					$order = $this->getServiceOrder($orderId, 'ORDER_CANCELLED');
+					$order = $this->getServiceOrder($orderId, $orderCreationDate, 'ORDER_CANCELLED');
 					break;
 				case self::ORDER_INVALID_AMOUNT:
 					if ($isService) {
@@ -602,12 +607,12 @@ class MiraklMockedHttpClient extends MockHttpClient
 		return $orders;
 	}
 
-	private function getProductOrder($orderId, $status = 'SHIPPING', $partialStatus = null)
+	private function getProductOrder($orderId, $creationDate, $status = 'SHIPPING', $partialStatus = null)
 	{
 		return [
 			'id' => rand(1, 1000),
 			'commercial_id' => $orderId,
-			'created_date' => date_format(new \Datetime(), MiraklClient::DATE_FORMAT),
+			'created_date' => date_format($creationDate, MiraklClient::DATE_FORMAT),
 			'customer_debited_date' => date_format(new \Datetime(), MiraklClient::DATE_FORMAT),
 			'currency_iso_code' => 'EUR',
 			'order_id' => $orderId,
@@ -649,12 +654,12 @@ class MiraklMockedHttpClient extends MockHttpClient
 		];
 	}
 
-	private function getServiceOrder($orderId, $status = 'ORDER_PENDING')
+	private function getServiceOrder($orderId, $creationDate, $status = 'ORDER_PENDING')
 	{
 		return [
 			'id' => $orderId,
 			'commercial_order_id' => $orderId,
-			'date_created' => date_format(new \Datetime(), \Datetime::RFC3339_EXTENDED),
+			'date_created' => date_format($creationDate, \Datetime::RFC3339_EXTENDED),
 			'currency_code' => 'EUR',
 			'state' => $status,
 			'order_tax_mode' => 'TAX_EXCLUDED', // TAX_INCLUDED

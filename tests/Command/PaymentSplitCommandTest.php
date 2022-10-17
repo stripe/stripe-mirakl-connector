@@ -128,6 +128,16 @@ class PaymentSplitCommandTest extends KernelTestCase
         $this->assertEquals(MiraklMockedHttpClient::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_DATE, $checkpoint);
     }
 
+    public function testProductOrdersCheckpoint()
+    {
+        // 3 new orders, one dispatchable
+        $this->configService->setProductPaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_3_NEW_ORDERS_1_READY);
+        $this->executeCommand();
+
+        $checkpoint = $this->configService->getProductPaymentSplitCheckpoint();
+        $this->assertEquals(MiraklMockedHttpClient::ORDER_DATE_3_NEW_ORDERS_1_READY, $checkpoint);
+    }
+
     public function testProductBacklog()
     {
         // 14 new orders, all dispatchable
@@ -180,6 +190,16 @@ class PaymentSplitCommandTest extends KernelTestCase
 
         $checkpoint = $this->configService->getServicePaymentSplitCheckpoint();
         $this->assertEquals(MiraklMockedHttpClient::ORDER_DATE_14_NEW_ORDERS_ALL_READY_END_DATE, $checkpoint);
+    }
+
+    public function testServiceOrdersCheckpoint()
+    {
+        // 3 new orders, one dispatchable
+        $this->configService->setServicePaymentSplitCheckpoint(MiraklMockedHttpClient::ORDER_DATE_3_NEW_ORDERS_1_READY);
+        $this->executeCommand();
+
+        $checkpoint = $this->configService->getServicePaymentSplitCheckpoint();
+        $this->assertEquals(date_format(\DateTime::createFromFormat(\DateTime::ATOM, MiraklMockedHttpClient::ORDER_DATE_3_NEW_ORDERS_1_READY), \Datetime::RFC3339_EXTENDED), $checkpoint);
     }
 
     public function testServiceBacklog()
