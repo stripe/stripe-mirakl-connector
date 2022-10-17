@@ -114,9 +114,13 @@ class PaymentSplitService
         $serviceOrders = array_filter($orders, function ($order) {
             return is_a($order, MiraklServiceOrder::class);
         });
-        $serviceOrderIds = array_map(function ($order) {
-            return $order->getId();
-        }, $serviceOrders);
-        return $this->miraklClient->listServicePendingDebitsByOrderIds($serviceOrderIds);
+        if (count($serviceOrders) > 0) {
+            $serviceOrderIds = array_map(function ($order) {
+                return $order->getId();
+            }, $serviceOrders);
+            return $this->miraklClient->listServicePendingDebitsByOrderIds($serviceOrderIds);
+        } else {
+            return [];
+        }
     }
 }
