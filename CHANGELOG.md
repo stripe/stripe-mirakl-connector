@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.0.6
+
+- Fix payment split checkpoint for service orders (#112 thanks @fhervieux)
+
 ## Version 3.0.5
 
 - Fix: take Mirakl's `order_tax_mode` into account when calculating transfer amounts.
