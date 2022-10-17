@@ -4,6 +4,7 @@ namespace App\Factory;
 
 use App\Entity\AccountMapping;
 use App\Entity\MiraklOrder;
+use App\Entity\MiraklPendingDebit;
 use App\Entity\MiraklProductOrder;
 use App\Entity\MiraklServiceOrder;
 use App\Entity\MiraklPendingRefund;
@@ -75,14 +76,12 @@ class StripeTransferFactory implements LoggerAwareInterface
      * @param MiraklOrder $order
      * @return StripeTransfer
      */
-    public function createFromOrder(MiraklOrder $order): StripeTransfer
+    public function createFromOrder(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
     {
         if (is_a($order, MiraklServiceOrder::class)) {
             $type = StripeTransfer::TRANSFER_SERVICE_ORDER;
-            $pendingDebits = $this->miraklClient->listServicePendingDebitsByOrderIds([$order->getId()]);
         } else {
             $type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
-            $pendingDebits = [];
         }
 
         $transfer = new StripeTransfer();
@@ -90,7 +89,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $transfer->setMiraklId($order->getId());
         $transfer->setMiraklCreatedDate($order->getCreationDateAsDateTime());
 
-        return $this->updateFromOrder($transfer, $order, $pendingDebits);
+        return $this->updateFromOrder($transfer, $order, $pendingDebit);
     }
 
     /**
@@ -98,7 +97,7 @@ class StripeTransferFactory implements LoggerAwareInterface
      * @param MiraklOrder $order
      * @return StripeTransfer
      */
-    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, array $pendingDebits = []): StripeTransfer
+    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
     {
         // Transfer already created
         if ($transfer->getTransferId()) {
@@ -142,7 +141,6 @@ class StripeTransferFactory implements LoggerAwareInterface
 
             $paymentId = $order->getTransactionNumber();
         } elseif (is_a($order, MiraklServiceOrder::class)) {
-            $pendingDebit = isset($pendingDebits[$order->getId()]) ? $pendingDebits[$order->getId()] : null;
             if (!$pendingDebit || !$pendingDebit->isPaid()) {
                 return $this->putTransferOnHold(
                     $transfer,

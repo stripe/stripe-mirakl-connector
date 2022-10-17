@@ -370,6 +370,9 @@ class StripeTransferFactoryTest extends KernelTestCase
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listServiceOrdersById([
                 MiraklMock::ORDER_BASIC
+            ])),
+            current($this->miraklClient->listServicePendingDebitsByOrderIds([
+                MiraklMock::ORDER_BASIC
             ]))
         );
 
@@ -397,8 +400,10 @@ class StripeTransferFactoryTest extends KernelTestCase
         $order = current($this->miraklClient->listServiceOrdersById([
             MiraklMock::ORDER_STATUS_ORDER_ACCEPTED
         ]));
-        $pendingDebits = $this->miraklClient->listServicePendingDebitsByOrderIds([$order->getId()]);
-        $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order, $pendingDebits);
+        $pendingDebit = current($this->miraklClient->listServicePendingDebitsByOrderIds([
+            MiraklMock::ORDER_STATUS_ORDER_ACCEPTED
+        ]));
+        $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order, $pendingDebit);
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
     }
 
@@ -407,8 +412,11 @@ class StripeTransferFactoryTest extends KernelTestCase
         $order = current($this->miraklClient->listServiceOrdersById([
             MiraklMock::ORDER_BASIC
         ]));
+        $pendingDebit = current($this->miraklClient->listServicePendingDebitsByOrderIds([
+            MiraklMock::ORDER_BASIC
+        ]));
 
-        $transfer = $this->stripeTransferFactory->createFromOrder($order);
+        $transfer = $this->stripeTransferFactory->createFromOrder($order, $pendingDebit);
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
 
         $transfer->setTransferId(StripeMock::TRANSFER_BASIC);
@@ -434,6 +442,9 @@ class StripeTransferFactoryTest extends KernelTestCase
             foreach ($consts as $const) {
                 $transfer = $this->stripeTransferFactory->createFromOrder(
                     current($this->miraklClient->listServiceOrdersById([
+                        constant("App\Tests\MiraklMockedHttpClient::ORDER_STATUS_$const")
+                    ])),
+                    current($this->miraklClient->listServicePendingDebitsByOrderIds([
                         constant("App\Tests\MiraklMockedHttpClient::ORDER_STATUS_$const")
                     ]))
                 );
@@ -462,6 +473,9 @@ class StripeTransferFactoryTest extends KernelTestCase
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listServiceOrdersById([
                 MiraklMock::ORDER_INVALID_AMOUNT
+            ])),
+            current($this->miraklClient->listServicePendingDebitsByOrderIds([
+                MiraklMock::ORDER_INVALID_AMOUNT
             ]))
         );
         $this->assertEquals(StripeTransfer::TRANSFER_ABORTED, $transfer->getStatus());
@@ -480,6 +494,9 @@ class StripeTransferFactoryTest extends KernelTestCase
         foreach ($amounts as $const => $expectedAmount) {
             $transfer = $this->stripeTransferFactory->createFromOrder(
                 current($this->miraklClient->listServiceOrdersById([
+                    constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
+                ])),
+                current($this->miraklClient->listServicePendingDebitsByOrderIds([
                     constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
                 ]))
             );
