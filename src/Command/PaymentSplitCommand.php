@@ -97,7 +97,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         $backlog = array_chunk($backlog, 10, true);
         $method = "list{$orderType}OrdersById";
         foreach ($backlog as $chunk) {
-            $pendingDebits = $orderType == MiraklClient::ORDER_TYPE_SERVICE ? $this->getServiceOrdersPendingDebits($chunk) : [];
+            $pendingDebits = $this->getServiceOrdersPendingDebits($chunk, $orderType);
             $this->dispatchTransfers(
                 $this->paymentSplitService->updateTransfersFromOrders(
                     $chunk,
@@ -134,7 +134,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         // Create and dispatch transfers
         $orders = array_chunk($orders, 100, true);
         foreach ($orders as $chunk) {
-            $pendingDebits = $orderType == MiraklClient::ORDER_TYPE_SERVICE ? $this->getServiceOrdersPendingDebits($chunk) : [];
+            $pendingDebits = $this->getServiceOrdersPendingDebits($chunk, $orderType);
             $this->dispatchTransfers(
                 $this->paymentSplitService->getTransfersFromOrders($chunk, $pendingDebits)
             );
@@ -159,9 +159,9 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         }
     }
 
-    private function getServiceOrdersPendingDebits(array $orders): array
+    private function getServiceOrdersPendingDebits(array $orders, string $orderType): array
     {
-        if (count($orders) > 0) {
+        if ($orderType == MiraklClient::ORDER_TYPE_SERVICE) {
             return $this->miraklClient->listServicePendingDebitsByOrderIds(array_keys($orders));
         } else {
             return [];
