@@ -2,7 +2,6 @@
 
 namespace App\Service;
 
-use App\Service\MiraklClient;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeTransferRepository;
 
@@ -46,7 +45,7 @@ class PaymentSplitService
      * @param array $orders
      * @return array App\Entity\StripeTransfer[]
      */
-    public function getTransfersFromOrders(array $orders): array
+    public function getTransfersFromOrders(array $orders, array $pendingDebits): array
     {
         // Retrieve existing StripeTransfers with provided order IDs
         $existingTransfers = $this->stripeTransferRepository
@@ -54,6 +53,7 @@ class PaymentSplitService
 
         $transfers = [];
         foreach ($orders as $orderId => $order) {
+            $pendingDebit = $pendingDebits[$orderId] ?? null;
             if (isset($existingTransfers[$orderId])) {
                 $transfer = $existingTransfers[$orderId];
                 if (!$transfer->isRetriable()) {
@@ -61,10 +61,10 @@ class PaymentSplitService
                 }
 
                 // Use existing transfer
-                $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order);
+                $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order, $pendingDebit);
             } else {
                 // Create new transfer
-                $transfer = $this->stripeTransferFactory->createFromOrder($order);
+                $transfer = $this->stripeTransferFactory->createFromOrder($order, $pendingDebit);
                 $this->stripeTransferRepository->persist($transfer);
             }
 
@@ -82,13 +82,15 @@ class PaymentSplitService
      * @param array $orders
      * @return array App\Entity\StripeTransfer[]
      */
-    public function updateTransfersFromOrders(array $existingTransfers, array $orders)
+    public function updateTransfersFromOrders(array $existingTransfers, array $orders, array $pendingDebits)
     {
         $updated = [];
         foreach ($existingTransfers as $orderId => $transfer) {
+            $pendingDebit = $pendingDebits[$orderId] ?? null;
             $updated[$orderId] = $this->stripeTransferFactory->updateFromOrder(
                 $transfer,
-                $orders[$orderId]
+                $orders[$orderId],
+                $pendingDebit
             );
         }
 

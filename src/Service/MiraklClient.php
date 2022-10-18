@@ -51,7 +51,7 @@ class MiraklClient
     private function parseQueryParams(array $params)
     {
         $queryString = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-        return preg_replace('/%5B[0-9]*%5D=/U', '=', $queryString);
+        return preg_replace('/%5B[[:alnum:]_-]*%5D=/U', '=', $queryString);
     }
 
     private function parseResponse(ResponseInterface $response, string ...$path)
