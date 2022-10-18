@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 3.0.7
+
+- Fix rate limit error due to pending debits endpoint for service orders (#113 thanks @fhervieux)
+
 ## Version 3.0.6
 
 - Fix payment split checkpoint for service orders (#112 thanks @fhervieux)
