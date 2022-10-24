@@ -149,4 +149,14 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
         $this->assertNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
+
+    public function testShopUpdateDateCheckpoint()
+    {
+        $this->deleteAllAccountMappingsFromRepository();
+        $this->mockAccountMapping(MiraklMock::SHOP_WITH_OAUTH_URL);
+        $this->mockAccountMapping(MiraklMock::SHOP_WITH_URL, StripeMock::ACCOUNT_PAYOUT_DISABLED);
+        $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_MULTIPLE_UNSORTED);
+        $this->executeCommand();
+        $this->assertEquals(MiraklMock::SHOP_DATE_1_EXISTING_WITH_OAUTH_URL, $this->configService->getSellerOnboardingCheckpoint());
+    }
 }
