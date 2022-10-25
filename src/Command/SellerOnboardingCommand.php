@@ -88,9 +88,6 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         foreach ($shops as $shopId => $shop) {
             $this->logger->debug("Processing Mirakl Shop: $shopId.");
 
-            // New checkpoint
-            $newCheckpoint = $shop->getLastUpdatedDate();
-
             // Retrieve AccountMappings and create missing Stripe Accounts in the process
             try {
                 $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
@@ -127,6 +124,12 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                 ]);
             }
         }
+
+        // Retrieve new checkpoint
+        uasort($shops, function ($s1, $s2) {
+            return strtotime($s2->getLastUpdatedDate()) - strtotime($s1->getLastUpdatedDate());
+        });
+        $newCheckpoint = current($shops)->getLastUpdatedDate();
 
         // Save new checkpoint
         if (isset($newCheckpoint) && $checkpoint !== $newCheckpoint) {

@@ -79,6 +79,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const SHOP_DATE_1_EXISTING_WITHOUT_URL = '2019-01-04T00:00:00+0100';
 	public const SHOP_DATE_1_EXISTING_WITH_URL = '2019-01-05T00:00:00+0100';
 	public const SHOP_DATE_1_EXISTING_WITH_OAUTH_URL = '2019-01-06T00:00:00+0100';
+    public const SHOP_DATE_MULTIPLE_UNSORTED = '2019-01-07T00:00:00+0100';
 
 	public const INVOICE_BASIC = 1;
 	public const INVOICE_INVALID_AMOUNT = 2;
@@ -872,6 +873,9 @@ class MiraklMockedHttpClient extends MockHttpClient
 			case self::SHOP_DATE_1_EXISTING_WITH_OAUTH_URL:
 				$shops = $this->mockShopsById([self::SHOP_WITH_OAUTH_URL]);
 				break;
+            case self::SHOP_DATE_MULTIPLE_UNSORTED:
+                $shops = $this->mockShopsById([self::SHOP_WITH_OAUTH_URL, self::SHOP_WITH_URL]);
+                break;
 			default:
 				$shops = [];
 		}
@@ -896,6 +900,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 						'code' => $this->customFieldCode,
 						'value' => 'https://connect.stripe.com/setup/s/mov7fZc0o4Yx',
 					];
+                    $shop['last_updated_date'] = self::SHOP_DATE_1_EXISTING_WITH_URL;
 					$shops[] = $shop;
 					break;
 				case self::SHOP_WITH_OAUTH_URL:
@@ -903,6 +908,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 						'code' => $this->customFieldCode,
 						'value' => 'https://connect.stripe.com/express/oauth/authorize',
 					];
+                    $shop['last_updated_date'] = self::SHOP_DATE_1_EXISTING_WITH_OAUTH_URL;
 					$shops[] = $shop;
 					break;
 				case self::SHOP_INVALID:
