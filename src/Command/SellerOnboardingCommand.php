@@ -101,7 +101,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
 
             $ignoredShop = $this->sellerOnboardingService->isShopIgnored($shop);
             if ($accountMapping->getIgnored() !== $ignoredShop) {
-                $this->logger->info("Shop $shopId is now ignored=$ignoredShop");
+                $this->logger->info("Shop $shopId is now ignored=" . var_export($ignoredShop, true));
                 $this->sellerOnboardingService->updateAccountMappingIgnored($accountMapping, $ignoredShop);
             }
 
