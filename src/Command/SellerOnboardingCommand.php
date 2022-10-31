@@ -99,6 +99,12 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                 continue;
             }
 
+            $ignoredShop = $this->sellerOnboardingService->isShopIgnored($shop);
+            if ($accountMapping->getIgnored() !== $ignoredShop) {
+                $this->logger->info("Shop $shopId is now ignored=$ignoredShop");
+                $this->sellerOnboardingService->updateAccountMappingIgnored($accountMapping, $ignoredShop);
+            }
+
             try {
                 // Ignore if custom field already has a value other than the oauth URL (for backward compatibility)
                 $customFieldValue = $this->sellerOnboardingService->getCustomFieldValue($shop);

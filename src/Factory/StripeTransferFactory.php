@@ -113,6 +113,11 @@ class StripeTransferFactory implements LoggerAwareInterface
             return $this->putTransferOnHold($transfer, $e->getMessage());
         }
 
+        if ($accountMapping->getIgnored()) {
+            $shopId = $accountMapping->getMiraklShopId();
+            return $this->ignoreTransfer($transfer, "Shop $shopId is ignored");
+        }
+
         // Order must not be refused or canceled
         if ($order->isAborted()) {
             return $this->abortTransfer(
@@ -535,6 +540,22 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         return $transfer
             ->setStatus(StripeTransfer::TRANSFER_ABORTED)
+            ->setStatusReason(substr($reason, 0, 1024));
+    }
+
+    /**
+     * @param StripeTransfer $transfer
+     * @return StripeTransfer
+     */
+    private function ignoreTransfer(StripeTransfer $transfer, string $reason): StripeTransfer
+    {
+        $this->logger->info(
+            'Transfer ignored: ' . $reason,
+            ['order_id' => $transfer->getMiraklId()]
+        );
+
+        return $transfer
+            ->setStatus(StripeTransfer::TRANSFER_IGNORED)
             ->setStatusReason(substr($reason, 0, 1024));
     }
 

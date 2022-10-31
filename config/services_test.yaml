@@ -17,6 +17,7 @@ services:
     public: true
     bind:
       $customFieldCode: "%app.mirakl.stripe_custom_field_code%"
+      $ignoredShopFieldCode: "%app.mirakl.stripe_ignored_shop_field_code%"
 
   App\Service\MiraklClient:
     class: App\Service\MiraklClient

@@ -14,6 +14,7 @@ parameters:
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
   env(STRIPE_PREFILL_ONBOARDING): false
   env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
+  env(MIRAKL_IGNORED_SHOP_FIELD_CODE): "stripe-ignored"
   env(ENABLE_SERVICE_PAYMENT_SPLIT): false
   env(ENABLE_SERVICE_PAYMENT_REFUND): false
   env(ENABLE_SELLER_ONBOARDING): true
@@ -45,6 +46,7 @@ parameters:
   app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
   app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
+  app.mirakl.stripe_ignored_shop_field_code: "%env(MIRAKL_IGNORED_SHOP_FIELD_CODE)%"
   app.redirect.onboarding: "%env(default:default_redirect_onboarding:REDIRECT_ONBOARDING)%"
   app.operator.notification_url: "%env(OPERATOR_NOTIFICATION_URL)%"
   app.mailer.technical: "%env(TECHNICAL_ALERT_EMAIL)%"
@@ -66,6 +68,7 @@ services:
       $miraklApiKey: "%app.mirakl.api_key%"
       $miraklHostName: "%app.mirakl.host_name%"
       $customFieldCode: "%app.mirakl.stripe_custom_field_code%"
+      $ignoredShopFieldCode: "%app.mirakl.stripe_ignored_shop_field_code%"
       $enableProductPaymentSplit: "%app.workflow.enable_product_payment_split%"
       $enableServicePaymentSplit: "%app.workflow.enable_service_payment_split%"
       $enableProductPaymentRefund: "%app.workflow.enable_product_payment_refund%"
