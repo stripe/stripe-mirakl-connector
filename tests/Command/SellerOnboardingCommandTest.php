@@ -159,4 +159,23 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->executeCommand();
         $this->assertEquals(MiraklMock::SHOP_DATE_1_EXISTING_WITH_OAUTH_URL, $this->configService->getSellerOnboardingCheckpoint());
     }
+
+    public function testIgnoredNewShop()
+    {
+        $this->deleteAllAccountMappingsFromRepository();
+        $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_NEW_IGNORED);
+        $this->executeCommand();
+        $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertEquals(true, current($this->getAccountMappingsFromRepository())->getIgnored());
+    }
+
+    public function testIgnoredExistingShop()
+    {
+        $this->deleteAllAccountMappingsFromRepository();
+        $this->mockAccountMapping(MiraklMock::SHOP_EXISTING_IGNORED);
+        $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_EXISTING_IGNORED);
+        $this->executeCommand();
+        $this->assertCount(1, $this->getAccountMappingsFromRepository());
+        $this->assertEquals(true, current($this->getAccountMappingsFromRepository())->getIgnored());
+    }
 }

@@ -36,6 +36,7 @@ class StripeTransfer
     public const TRANSFER_PENDING = 'TRANSFER_PENDING';
     public const TRANSFER_FAILED = 'TRANSFER_FAILED';
     public const TRANSFER_CREATED = 'TRANSFER_CREATED';
+    public const TRANSFER_IGNORED = 'TRANSFER_IGNORED';
 
     // Transfer status reasons: on hold
     public const TRANSFER_STATUS_REASON_SHOP_NOT_READY = 'Cannot find Stripe account for shop ID %s';
@@ -139,6 +140,7 @@ class StripeTransfer
             self::TRANSFER_FAILED,
             self::TRANSFER_ON_HOLD,
             self::TRANSFER_ABORTED,
+            self::TRANSFER_IGNORED,
         ];
     }
 

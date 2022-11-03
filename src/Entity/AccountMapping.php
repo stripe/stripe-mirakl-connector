@@ -53,6 +53,11 @@ class AccountMapping
     private $payinEnabled = false;
 
     /**
+     * @ORM\Column(type="boolean", options={"default" : false})
+     */
+    private $ignored = false;
+
+    /**
      * @ORM\Column(type="string", length=255, nullable=true)
      */
     private $disabledReason;
@@ -130,6 +135,18 @@ class AccountMapping
     public function setPayinEnabled(bool $payinEnabled): self
     {
         $this->payinEnabled = $payinEnabled;
+
+        return $this;
+    }
+
+    public function getIgnored(): ?bool
+    {
+        return $this->ignored;
+    }
+
+    public function setIgnored(bool $ignored): self
+    {
+        $this->ignored = $ignored;
 
         return $this;
     }

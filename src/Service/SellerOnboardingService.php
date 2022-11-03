@@ -48,6 +48,11 @@ class SellerOnboardingService
      */
     private $customFieldCode;
 
+    /**
+     * @var string
+     */
+    private $ignoredShopFieldCode;
+
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
         MiraklClient $miraklClient,
@@ -55,7 +60,8 @@ class SellerOnboardingService
         RouterInterface $router,
         string $redirectOnboarding,
         bool $stripePrefillOnboarding,
-        string $customFieldCode
+        string $customFieldCode,
+        string $ignoredShopFieldCode
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->miraklClient = $miraklClient;
@@ -64,6 +70,7 @@ class SellerOnboardingService
         $this->redirectOnboarding = $redirectOnboarding;
         $this->stripePrefillOnboarding = $stripePrefillOnboarding;
         $this->customFieldCode = $customFieldCode;
+        $this->ignoredShopFieldCode = $ignoredShopFieldCode;
     }
 
     /**
@@ -90,6 +97,16 @@ class SellerOnboardingService
         }
 
         return $accountMapping;
+    }
+
+    /**
+     * @param AccountMapping $accountMapping
+     * @param bool $ignored
+     */
+    public function updateAccountMappingIgnored(AccountMapping $accountMapping, bool $ignored): void
+    {
+        $accountMapping->setIgnored($ignored);
+        $this->accountMappingRepository->persistAndFlush($accountMapping);
     }
 
     /**
@@ -123,6 +140,15 @@ class SellerOnboardingService
     public function getCustomFieldValue(MiraklShop $shop): ?string
     {
         return $shop->getCustomFieldValue($this->customFieldCode);
+    }
+
+    /**
+     * @param MiraklShop $shop
+     * @return bool True if the field is set and the shop ignored, false otherwise.
+     */
+    public function isShopIgnored(MiraklShop $shop): bool
+    {
+        return $shop->getCustomFieldValue($this->ignoredShopFieldCode) === "true";
     }
 
     /**

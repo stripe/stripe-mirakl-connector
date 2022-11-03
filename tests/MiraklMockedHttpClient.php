@@ -36,6 +36,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const ORDER_WITH_TRANSACTION_NUMBER = 'order_with_transaction_number';
 	public const ORDER_INVALID_AMOUNT = 'order_invalid_amount';
 	public const ORDER_INVALID_SHOP = 'order_invalid_shop';
+    public const ORDER_IGNORED_SHOP = 'order_ignored_shop';
 	public const ORDER_AMOUNT_NO_COMMISSION = 'order_no_commission';
 	public const ORDER_AMOUNT_NO_TAX = 'order_no_tax';
 	public const ORDER_AMOUNT_PARTIAL_TAX = 'order_partial_tax';
@@ -73,6 +74,8 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const SHOP_NEW = 299;
 	public const SHOP_STRIPE_ERROR = 399;
 	public const SHOP_MIRAKL_ERROR = 499;
+    public const SHOP_NEW_IGNORED = 500;
+    public const SHOP_EXISTING_IGNORED = 501;
 	public const SHOP_DATE_1_NEW = '2019-01-01T00:00:00+0100';
 	public const SHOP_DATE_1_STRIPE_ERROR = '2019-01-02T00:00:00+0100';
 	public const SHOP_DATE_1_MIRAKL_ERROR = '2019-01-03T00:00:00+0100';
@@ -80,6 +83,8 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const SHOP_DATE_1_EXISTING_WITH_URL = '2019-01-05T00:00:00+0100';
 	public const SHOP_DATE_1_EXISTING_WITH_OAUTH_URL = '2019-01-06T00:00:00+0100';
     public const SHOP_DATE_MULTIPLE_UNSORTED = '2019-01-07T00:00:00+0100';
+    public const SHOP_DATE_1_NEW_IGNORED = '2019-01-08T00:00:00+0100';
+    public const SHOP_DATE_1_EXISTING_IGNORED = '2019-01-09T00:00:00+0100';
 
 	public const INVOICE_BASIC = 1;
 	public const INVOICE_INVALID_AMOUNT = 2;
@@ -110,10 +115,12 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const INVOICE_DATE_14_NEW_INVOICES_ALL_READY_END_ID = 1099;
 
 	private $customFieldCode;
+    private $ignoredShopFieldCode;
 
-	public function __construct(string $customFieldCode)
+	public function __construct(string $customFieldCode, string $ignoredShopFieldCode)
 	{
 		$this->customFieldCode = $customFieldCode;
+        $this->ignoredShopFieldCode = $ignoredShopFieldCode;
 
 		$responseFactory = function ($method, $url, $options) {
 			$path = parse_url($url, PHP_URL_PATH);
@@ -520,6 +527,13 @@ class MiraklMockedHttpClient extends MockHttpClient
 						$order['total_commission'] = 100;
 					}
 					break;
+                case self::ORDER_IGNORED_SHOP:
+                    if ($isService) {
+                        $order['shop']['id'] = self::SHOP_EXISTING_IGNORED;
+                    } else {
+                        $order['shop_id'] = self::SHOP_EXISTING_IGNORED;
+                    }
+                    break;
 				case self::ORDER_WITH_TRANSACTION_NUMBER:
 					if (!$isService) {
 						$order['transaction_number'] = StripeMock::CHARGE_BASIC;
@@ -876,6 +890,12 @@ class MiraklMockedHttpClient extends MockHttpClient
             case self::SHOP_DATE_MULTIPLE_UNSORTED:
                 $shops = $this->mockShopsById([self::SHOP_WITH_OAUTH_URL, self::SHOP_WITH_URL]);
                 break;
+            case self::SHOP_DATE_1_NEW_IGNORED:
+                $shops = $this->mockShopsById([self::SHOP_NEW_IGNORED]);
+                break;
+            case self::SHOP_DATE_1_EXISTING_IGNORED:
+                $shops = $this->mockShopsById([self::SHOP_EXISTING_IGNORED]);
+                break;
 			default:
 				$shops = [];
 		}
@@ -911,6 +931,14 @@ class MiraklMockedHttpClient extends MockHttpClient
                     $shop['last_updated_date'] = self::SHOP_DATE_1_EXISTING_WITH_OAUTH_URL;
 					$shops[] = $shop;
 					break;
+                case self::SHOP_NEW_IGNORED:
+                case self::SHOP_EXISTING_IGNORED:
+                    $shop['shop_additional_fields'][] = [
+                        'code' => $this->ignoredShopFieldCode,
+                        'value' => 'true',
+                    ];
+                    $shops[] = $shop;
+                    break;
 				case self::SHOP_INVALID:
 				default:
 					// Don't return anything

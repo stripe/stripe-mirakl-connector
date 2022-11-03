@@ -53,9 +53,11 @@ class StripeTransferFactoryTest extends KernelTestCase
             ->getRepository(StripeRefund::class);
         $this->stripeTransferRepository = $container->get('doctrine')
             ->getRepository(StripeTransfer::class);
+        $this->accountMappingRepository = $container->get('doctrine')
+            ->getRepository(AccountMapping::class);
 
         $this->stripeTransferFactory = new StripeTransferFactory(
-            $container->get('doctrine')->getRepository(AccountMapping::class),
+            $this->accountMappingRepository,
             $this->paymentMappingRepository,
             $this->stripeRefundRepository,
             $this->stripeTransferRepository,
@@ -262,6 +264,22 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getStatusReason());
     }
 
+    public function testProductOrderIgnoredShop()
+    {
+        $accountMapping = new AccountMapping();
+        $accountMapping->setMiraklShopId(MiraklMock::SHOP_EXISTING_IGNORED);
+        $accountMapping->setStripeAccountId(StripeMock::ACCOUNT_NEW);
+        $accountMapping->setIgnored(true);
+        $this->accountMappingRepository->persistAndFlush($accountMapping);
+
+        $transfer = $this->stripeTransferFactory->createFromOrder(
+            current($this->miraklClient->listProductOrdersById([
+                MiraklMock::ORDER_IGNORED_SHOP
+            ]))
+        );
+        $this->assertEquals(StripeTransfer::TRANSFER_IGNORED, $transfer->getStatus());
+    }
+
     public function testProductOrderInvalidAmount()
     {
         $transfer = $this->stripeTransferFactory->createFromOrder(
@@ -466,6 +484,22 @@ class StripeTransferFactoryTest extends KernelTestCase
         );
         $this->assertEquals(StripeTransfer::TRANSFER_ON_HOLD, $transfer->getStatus());
         $this->assertNotNull($transfer->getStatusReason());
+    }
+
+    public function testServiceOrderIgnoredShop()
+    {
+        $accountMapping = new AccountMapping();
+        $accountMapping->setMiraklShopId(MiraklMock::SHOP_EXISTING_IGNORED);
+        $accountMapping->setStripeAccountId(StripeMock::ACCOUNT_NEW);
+        $accountMapping->setIgnored(true);
+        $this->accountMappingRepository->persistAndFlush($accountMapping);
+
+        $transfer = $this->stripeTransferFactory->createFromOrder(
+            current($this->miraklClient->listServiceOrdersById([
+                MiraklMock::ORDER_IGNORED_SHOP
+            ]))
+        );
+        $this->assertEquals(StripeTransfer::TRANSFER_IGNORED, $transfer->getStatus());
     }
 
     public function testServiceOrderInvalidAmount()
