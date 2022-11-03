@@ -163,7 +163,6 @@ class SellerOnboardingCommandTest extends KernelTestCase
     public function testIgnoredNewShop()
     {
         $this->deleteAllAccountMappingsFromRepository();
-//        $this->mockAccountMapping(MiraklMock::SH, StripeMock::ACCOUNT_BASIC, false, false, null, true);
         $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_NEW_IGNORED);
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
