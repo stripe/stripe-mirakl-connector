@@ -111,7 +111,7 @@ class MiraklServiceOrder extends MiraklOrder
     
     public function getRefundedTax(StripeRefund $refund): float
     {
-       
+        
          foreach ($this->order['refunds'] as $orderRefund) {
              if ($refund->getMiraklRefundId() === $orderRefund['id']) {
                     if ($refund->getMiraklRefundId() === $orderRefund['id']) {
@@ -134,12 +134,12 @@ class MiraklServiceOrder extends MiraklOrder
         
         return $taxes;
     }
-
+    
     public function getCurrency(): string
     {
         return $this->order['currency_code'];
     }
-
+    
     public function getOrderTaxTotal(): float
     {
         $taxes = 0;
