@@ -151,17 +151,17 @@ class MiraklProductOrder extends MiraklOrder
         return $taxes;
     }
     
-
+    
     public function getCurrency(): string
     {
         return $this->order['currency_iso_code'];
     }
-
+    
     public function getOrderLines(): array
     {
         return $this->order['order_lines'] ?? [];
     }
-
+    
     protected function getOrderLineTaxes(array $orderLine): float
     {
         $taxes = 0;
@@ -169,10 +169,10 @@ class MiraklProductOrder extends MiraklOrder
         foreach ($allTaxes as $tax) {
             $taxes += (float) $tax['amount'];
         }
-
+        
         return $taxes;
     }
-
+    
     protected function getOrderLineCanceledAmountWithTaxes(array $canceledOrderLines): float
     {
         $canceledAmount = 0;
@@ -185,7 +185,7 @@ class MiraklProductOrder extends MiraklOrder
 
         return $canceledAmount;
     }
-
+    
     public function getOrderTaxTotal(): float
     {
         $amount = 0;
@@ -196,7 +196,7 @@ class MiraklProductOrder extends MiraklOrder
         }
         return $amount;
     }
-
+    
     protected function getOrderLineOrderTaxes(array $orderLine): float
     {
         $taxes = 0;
