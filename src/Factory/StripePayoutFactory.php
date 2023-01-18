@@ -125,9 +125,9 @@ class StripePayoutFactory implements LoggerAwareInterface
     private function getInvoiceAmount(array $invoice, MiraklClient $mclient ): int
     {
         $amount = $invoice['summary']['amount_transferred'] ?? 0;
-            $transactions =   $mclient->getTransactionsForInvoce($invoice['invoice_id']);
-            $total_tax =  $this->findTotalOrderTax($transactions);
-            $amount = $amount - $total_tax;
+        $transactions =   $mclient->getTransactionsForInvoce($invoice['invoice_id']);
+        $total_tax =  $this->findTotalOrderTax($transactions);
+        $amount = $amount - $total_tax;
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(
@@ -186,7 +186,8 @@ class StripePayoutFactory implements LoggerAwareInterface
         return $payout->setStatus(StripePayout::PAYOUT_CREATED);
     }
     
-    private function findTotalOrderTax($transactions) {
+    private function findTotalOrderTax($transactions): int
+    {
         $taxes=0;
         foreach ($transactions as $trx) {
             if($trx['type']=='ORDER_AMOUNT_TAX'){
