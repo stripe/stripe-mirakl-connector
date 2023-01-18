@@ -113,17 +113,15 @@ class PaymentRefundService
                 // Create new transfer
                 $transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
                 $transfer_tax = $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund);
-                
                 $this->stripeTransferRepository->persist($transfer);
                 $this->stripeTransferRepository->persist($transfer_tax);
-                $transfers[] = $transfer_tax;
-                
+                $transfers[] = $transfer_tax;                
             }
             
             $transfers[] = $transfer;
             
         }
-
+        
         // Save
         $this->stripeTransferRepository->flush();
 
