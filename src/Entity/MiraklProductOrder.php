@@ -122,6 +122,35 @@ class MiraklProductOrder extends MiraklOrder
 
         return 0;
     }
+    
+    
+    public function getRefundedTax(StripeRefund $refund): float
+    {
+        foreach ($this->getOrderLines() as $line) {
+            if ($refund->getMiraklOrderLineId() === $line['order_line_id']) {
+                foreach ($line['refunds'] as $orderRefund) {
+                    if ($refund->getMiraklRefundId() === $orderRefund['id']) {
+                        $tax = $this->getRefundLineTaxes($orderRefund);
+                        return $tax;//$orderRefund['commission_total_amount'];
+                    }
+                }
+            }
+        }
+        
+        return 0;
+    }
+    
+    protected function getRefundLineTaxes(array $refundLine): float
+    {
+        $taxes = 0;
+        $allTaxes = array_merge($refundLine['shipping_taxes'] ?? [], $refundLine['taxes'] ?? []);
+        foreach ($allTaxes as $tax) {
+            $taxes += (float) $tax['amount'];
+        }
+        
+        return $taxes;
+    }
+    
 
     public function getCurrency(): string
     {
@@ -155,5 +184,26 @@ class MiraklProductOrder extends MiraklOrder
         }
 
         return $canceledAmount;
+    }
+
+    public function getOrderTaxTotal(): float
+    {
+        $amount = 0;
+        foreach ($this->getOrderLines() as $orderLine) {
+            if (!in_array($orderLine['order_line_state'], ['REFUSED', 'CANCELED'])) {
+                $amount += $this->getOrderLineOrderTaxes($orderLine);
+            }
+        }
+        return $amount;
+    }
+
+    protected function getOrderLineOrderTaxes(array $orderLine): float
+    {
+        $taxes = 0;
+        $allTaxes = $orderLine['taxes'] ?? [];
+        foreach ($allTaxes as $tax) {
+            $taxes += (float) $tax['amount'];
+        }
+        return $taxes;
     }
 }

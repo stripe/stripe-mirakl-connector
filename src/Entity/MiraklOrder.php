@@ -37,5 +37,7 @@ abstract class MiraklOrder
     abstract public function getAbortedAmount(): float;
     abstract public function getOperatorCommission(): float;
     abstract public function getRefundedOperatorCommission(StripeRefund $refund): float;
+    abstract public function getRefundedTax(StripeRefund $refund): float;
     abstract public function getCurrency(): string;
+    abstract public function getOrderTaxTotal(): float;
 }

@@ -66,9 +66,12 @@ class PaymentSplitService
                 // Create new transfer
                 $transfer = $this->stripeTransferFactory->createFromOrder($order, $pendingDebit);
                 $this->stripeTransferRepository->persist($transfer);
+                $tax_transfer = $this->stripeTransferFactory->createFromOrderForTax($order, $pendingDebit);
+                $this->stripeTransferRepository->persist($tax_transfer);
             }
 
             $transfers[] = $transfer;
+            if(isset($tax_transfer)) $transfers[] = $tax_transfer;
         }
 
         // Save
@@ -87,11 +90,23 @@ class PaymentSplitService
         $updated = [];
         foreach ($existingTransfers as $orderId => $transfer) {
             $pendingDebit = $pendingDebits[$orderId] ?? null;
-            $updated[$orderId] = $this->stripeTransferFactory->updateFromOrder(
-                $transfer,
-                $orders[$orderId],
-                $pendingDebit
-            );
+            if(strpos($orderId, $_ENV['TAX_ORDER_POSTFIX']) !== false){
+                $tax_suffixed_orderId= $orderId;
+                $orderId = str_replace($_ENV['TAX_ORDER_POSTFIX'],"",$orderId); 
+                $pendingDebit = $pendingDebits[$orderId] ?? null;
+                $updated[$tax_suffixed_orderId] = $this->stripeTransferFactory->updateFromOrder(
+                    $transfer,
+                    $orders[$orderId],
+                    $pendingDebit,
+                    true
+                );
+            }else{
+                $updated[$orderId] = $this->stripeTransferFactory->updateFromOrder(
+                    $transfer,
+                    $orders[$orderId],
+                    $pendingDebit
+                );
+            }
         }
 
         // Save
