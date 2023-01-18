@@ -91,8 +91,8 @@ class PaymentSplitService
         foreach ($existingTransfers as $orderId => $transfer) {
             $pendingDebit = $pendingDebits[$orderId] ?? null;
             if(strpos($orderId, $_ENV['TAX_ORDER_POSTFIX']) !== false){
-                $tax_suffixed_orderId= $orderId;
-                $orderId = str_replace($_ENV['TAX_ORDER_POSTFIX'],"",$orderId); 
+                $tax_suffixed_orderId = $orderId;
+                $orderId = str_replace($_ENV['TAX_ORDER_POSTFIX'], "", $orderId);
                 $pendingDebit = $pendingDebits[$orderId] ?? null;
                 $updated[$tax_suffixed_orderId] = $this->stripeTransferFactory->updateFromOrder(
                     $transfer,
