@@ -105,7 +105,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $transfer->setMiraklId($order->getId().$_ENV['TAX_ORDER_POSTFIX']);
         $transfer->setMiraklCreatedDate($order->getCreationDateAsDateTime());
         
-        return $this->updateFromOrder($transfer, $order, $pendingDebit,true);
+        return $this->updateFromOrder($transfer, $order, $pendingDebit, true);
     }
 
     /**
@@ -256,7 +256,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $transfer->setType(StripeTransfer::TRANSFER_REFUND);
         $transfer->setMiraklId($orderRefund->getId().$_ENV['TAX_ORDER_POSTFIX']);
         
-        return $this->updateOrderRefundTransfer($transfer,true);
+        return $this->updateOrderRefundTransfer($transfer, true);
     }
 
     /**
@@ -273,7 +273,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         // Check corresponding StripeRefund
         $refund = null;
         try {
-            $refund = $this->findRefundFromRefundId(str_replace($_ENV['TAX_ORDER_POSTFIX'],"",$transfer->getMiraklId()));
+            $refund = $this->findRefundFromRefundId(str_replace($_ENV['TAX_ORDER_POSTFIX'], "", $transfer->getMiraklId()));
 
             // Fetch transfer to be reversed
             $orderIds = [$refund->getMiraklOrderId()];
@@ -305,20 +305,16 @@ class StripeTransferFactory implements LoggerAwareInterface
 
             // Amount and currency
             $transferAmount = $refund->getAmount();
-            
             $commission = $order->getRefundedOperatorCommission($refund);
             $commission = gmp_intval((string) ($commission * 100));
-           
             $refundedTax = $order->getRefundedTax($refund);
             $refundedTax = gmp_intval((string) ($refundedTax * 100));
-            
             $transferAmount = $transferAmount - $commission - $refundedTax;
-           
             
             if($isForTax)
                 $transferAmount = $refundedTax;
             
-             $transfer->setAmount($transferAmount);
+            $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
