@@ -114,7 +114,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         $this->dispatchTransfers($transfersByInvoiceId);
 
         $payouts = $this->sellerSettlementService
-            ->updatePayoutsFromInvoices($retriablePayouts, $invoices,$this->miraklClient);
+            ->updatePayoutsFromInvoices($retriablePayouts, $invoices, $this->miraklClient);
         $this->dispatchPayouts($payouts);
     }
 
