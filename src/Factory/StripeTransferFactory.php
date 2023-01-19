@@ -91,7 +91,7 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         return $this->updateFromOrder($transfer, $order, $pendingDebit);
     }
-    
+
     public function createFromOrderForTax(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
     {
         if (is_a($order, MiraklServiceOrder::class)) {
@@ -99,12 +99,12 @@ class StripeTransferFactory implements LoggerAwareInterface
         } else {
             $type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
         }
-        
+
         $transfer = new StripeTransfer();
         $transfer->setType($type);
         $transfer->setMiraklId($order->getId().$_ENV['TAX_ORDER_POSTFIX']);
         $transfer->setMiraklCreatedDate($order->getCreationDateAsDateTime());
-        
+
         return $this->updateFromOrder($transfer, $order, $pendingDebit, true);
     }
 
@@ -122,11 +122,9 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         // Shop must have a Stripe account
         try {
-            if(!$isForTax){
+            if (!$isForTax) {
                 $accountMapping = $this->getAccountMapping($order->getShopId());
-            }
-            else
-            {
+            } else {
                 $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($_ENV['STRIPE_TAX_ACCOUNT']);
             }
             $transfer->setAccountMapping($accountMapping);
@@ -204,7 +202,7 @@ class StripeTransferFactory implements LoggerAwareInterface
                 );
             } catch (InvalidArgumentException $e) {
                 switch ($e->getCode()) {
-                        // Problem is final, let's abort
+                    // Problem is final, let's abort
                     case 10:
                         return $this->abortTransfer($transfer, $e->getMessage());
                         // Problem is just temporary, let's put on hold
@@ -220,7 +218,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $transferAmount = $amount - $commission;
         $orderTaxTotal = $order->getOrderTaxTotal();
         $transferAmount = $transferAmount - $orderTaxTotal;
-        if($isForTax){
+        if ($isForTax) {
             $transferAmount = $orderTaxTotal;
         }
         if ($transferAmount <= 0) {
@@ -249,13 +247,13 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         return $this->updateOrderRefundTransfer($transfer);
     }
-    
+
     public function createFromOrderRefundForTax(MiraklPendingRefund $orderRefund): StripeTransfer
     {
         $transfer = new StripeTransfer();
         $transfer->setType(StripeTransfer::TRANSFER_REFUND);
         $transfer->setMiraklId($orderRefund->getId().$_ENV['TAX_ORDER_POSTFIX']);
-        
+
         return $this->updateOrderRefundTransfer($transfer, true);
     }
 
@@ -277,9 +275,10 @@ class StripeTransferFactory implements LoggerAwareInterface
 
             // Fetch transfer to be reversed
             $orderIds = [$refund->getMiraklOrderId()];
-            if($isForTax)
+            if ($isForTax) {
                 $orderIds = [$refund->getMiraklOrderId().$_ENV['TAX_ORDER_POSTFIX']];
-               
+            }
+
             $orderTransfer = current($this->stripeTransferRepository->findTransfersByOrderIds($orderIds));
 
             // Check order transfer status
@@ -310,15 +309,16 @@ class StripeTransferFactory implements LoggerAwareInterface
             $refundedTax = $order->getRefundedTax($refund);
             $refundedTax = gmp_intval((string) ($refundedTax * 100));
             $transferAmount = $transferAmount - $commission - $refundedTax;
-            
-            if($isForTax)
+
+            if ($isForTax) {
                 $transferAmount = $refundedTax;
-            
+            }
+
             $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                    // Problem is final, let's abort
+                // Problem is final, let's abort
                 case 10:
                     return $this->abortTransfer($transfer, $e->getMessage());
                     // Problem is just temporary, let's put on hold
@@ -372,7 +372,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             $transfer->setAccountMapping($this->getAccountMapping($invoice['shop_id'] ?? 0));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                    // Problem is final, let's abort
+                // Problem is final, let's abort
                 case 10:
                     return $this->abortTransfer($transfer, $e->getMessage());
                     // Problem is just temporary, let's put on hold
