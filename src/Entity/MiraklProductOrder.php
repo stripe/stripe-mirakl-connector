@@ -123,7 +123,6 @@ class MiraklProductOrder extends MiraklOrder
         return 0;
     }
     
-    
     public function getRefundedTax(StripeRefund $refund): float
     {
         foreach ($this->getOrderLines() as $line) {
