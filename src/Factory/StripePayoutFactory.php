@@ -190,7 +190,7 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $taxes=0;
         foreach ($transactions as $trx) {
-            if($trx['type']=='ORDER_AMOUNT_TAX'){
+            if($trx['type']=='ORDER_AMOUNT_TAX') {
                 $taxes += (float) $trx['amount'];
             }
         }
