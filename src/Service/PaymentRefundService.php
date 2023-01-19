@@ -108,20 +108,18 @@ class PaymentRefundService
                 $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
                 $transfer_tax = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
                 $transfers[] = $transfer_tax;
-                
             } else {
                 // Create new transfer
                 $transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
                 $transfer_tax = $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund);
                 $this->stripeTransferRepository->persist($transfer);
                 $this->stripeTransferRepository->persist($transfer_tax);
-                $transfers[] = $transfer_tax;                
+                $transfers[] = $transfer_tax;
             }
-            
+
             $transfers[] = $transfer;
-            
         }
-        
+
         // Save
         $this->stripeTransferRepository->flush();
 
@@ -136,13 +134,11 @@ class PaymentRefundService
     {
         $updated = [];
         foreach ($transfers as $refundId => $transfer) {
-           
-            if(strpos($refundId, $_ENV['TAX_ORDER_POSTFIX']) !== false){
-              
+            if (strpos($refundId, $_ENV['TAX_ORDER_POSTFIX']) !== false) {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
-            }
-            else
+            } else {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
+            }
         }
 
         // Save
