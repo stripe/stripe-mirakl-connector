@@ -369,7 +369,7 @@ class MiraklClient
             'kyc' => ['status' => $status]
         ]]]);
     }
-    
+
     public function getTransactionsForInvoce(string $invoiceId)
     {
         $params['accounting_document_number'] = $invoiceId;
@@ -390,8 +390,9 @@ class MiraklClient
     {
         return $date->format(self::DATE_FORMAT);
     }
-    
-    private function removeTaxKeword($val) {
+
+    private function removeTaxKeword($val)
+    {
         return str_replace($_ENV['TAX_ORDER_POSTFIX'], "", $val);
     }
 }
