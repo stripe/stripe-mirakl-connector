@@ -18,7 +18,7 @@ class StripePayoutFactory implements LoggerAwareInterface
      * @var AccountMappingRepository
      */
     private $accountMappingRepository;
-    
+
     /**
      * @var MiraklClient
      */
@@ -33,7 +33,7 @@ class StripePayoutFactory implements LoggerAwareInterface
      * @param array $invoice
      * @return StripePayout
      */
-    public function createFromInvoice(array $invoice,MiraklClient $mclient): StripePayout
+    public function createFromInvoice(array $invoice, MiraklClient $mclient): StripePayout
     {
         $payout = new StripePayout();
         $payout->setMiraklInvoiceId($invoice['invoice_id']);
@@ -41,7 +41,7 @@ class StripePayoutFactory implements LoggerAwareInterface
             MiraklClient::getDatetimeFromString($invoice['date_created'])
         );
 
-        return $this->updateFromInvoice($payout, $invoice,$mclient);
+        return $this->updateFromInvoice($payout, $invoice, $mclient);
     }
 
     /**
@@ -49,7 +49,7 @@ class StripePayoutFactory implements LoggerAwareInterface
      * @param array $invoice
      * @return StripePayout
      */
-    public function updateFromInvoice(StripePayout $payout, array $invoice,MiraklClient $mclient): StripePayout
+    public function updateFromInvoice(StripePayout $payout, array $invoice, MiraklClient $mclient): StripePayout
     {
         // Payout already created
         if ($payout->getPayoutId()) {
@@ -58,7 +58,7 @@ class StripePayoutFactory implements LoggerAwareInterface
 
         // Amount and currency
         try {
-            $payout->setAmount($this->getInvoiceAmount($invoice,$mclient));
+            $payout->setAmount($this->getInvoiceAmount($invoice, $mclient));
             $payout->setCurrency(strtolower($invoice['currency_iso_code']));
         } catch (InvalidArgumentException $e) {
             return $this->abortPayout($payout, $e->getMessage());
@@ -122,20 +122,12 @@ class StripePayoutFactory implements LoggerAwareInterface
      * @param array $invoice
      * @return int
      */
-    private function getInvoiceAmount(array $invoice,MiraklClient $mclient ): int
+    private function getInvoiceAmount(array $invoice, MiraklClient $mclient): int
     {
-        
-        //echo "\nccccccccccc".$invoice['invoice_id'];
         $amount = $invoice['summary']['amount_transferred'] ?? 0;
-            $transactions =   $mclient->getTransactionsForInvoce($invoice['invoice_id']);
-            
-            $total_tax =  $this->findTotalOrderTax($transactions);
-            
-           // echo "\n\n".$total_tax;
-            
-            $amount = $amount - $total_tax;
-           // echo "\n".$amount;
-            
+        $transactions =   $mclient->getTransactionsForInvoce($invoice['invoice_id']);
+        $total_tax =  $this->findTotalOrderTax($transactions);
+        $amount = $amount - $total_tax;
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(
@@ -193,16 +185,15 @@ class StripePayoutFactory implements LoggerAwareInterface
         $payout->setStatusReason(null);
         return $payout->setStatus(StripePayout::PAYOUT_CREATED);
     }
-    
-    private function findTotalOrderTax($transactions) {
+
+    private function findTotalOrderTax($transactions)
+    {
         $taxes=0;
         foreach ($transactions as $trx) {
-            if($trx['type']=='ORDER_AMOUNT_TAX'){
+            if ($trx['type']=='ORDER_AMOUNT_TAX') {
                 $taxes += (float) $trx['amount'];
             }
         }
-      //  echo "\n".$taxes;
         return $taxes;
-        
     }
 }
