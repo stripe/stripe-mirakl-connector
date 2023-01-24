@@ -45,6 +45,7 @@ class StripeTransfer
     public const TRANSFER_STATUS_REASON_REFUND_NOT_FOUND = 'Cannot find StripeRefund with ID %s';
     public const TRANSFER_STATUS_REASON_REFUND_NOT_VALIDATED = 'Refund %s has yet to be validated';
     public const TRANSFER_STATUS_REASON_TRANSFER_NOT_READY = 'Payment split has to occur before the transfer can be reversed for a refund';
+    public const TRANSFER_STATUS_REASON_ACCOUNT_NOT_FOUND = 'Cannot find Stripe account for ID %s';
 
     // Transfer status reasons: aborted
     public const TRANSFER_STATUS_REASON_ORDER_ABORTED = 'Order cannot be processed, status is %s';
@@ -54,6 +55,7 @@ class StripeTransfer
     public const TRANSFER_STATUS_REASON_PAYMENT_REFUNDED = 'Payment %s has been fully refunded';
     public const TRANSFER_STATUS_REASON_NO_SHOP_ID = 'No shop ID provided';
     public const TRANSFER_STATUS_REASON_ORDER_REFUND_ABORTED = 'Refund %s has been aborted';
+    public const TRANSFER_STATUS_REASON_NO_ACCOUNT_ID = 'No stripe account ID provided';
 
     // Transfer types
     public const TRANSFER_PRODUCT_ORDER = 'TRANSFER_PRODUCT_ORDER';

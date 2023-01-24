@@ -125,7 +125,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             if (!$isForTax) {
                 $accountMapping = $this->getAccountMapping($order->getShopId());
             } else {
-                $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($_ENV['STRIPE_TAX_ACCOUNT']);
+                $accountMapping = $this->getAccountMappingByAccountId($_ENV['STRIPE_TAX_ACCOUNT']);
             }
             $transfer->setAccountMapping($accountMapping);
         } catch (InvalidArgumentException $e) {
@@ -620,5 +620,30 @@ class StripeTransferFactory implements LoggerAwareInterface
         return $transfer
             ->setStatus(StripeTransfer::TRANSFER_CREATED)
             ->setStatusReason(null);
+    }
+
+    /**
+     * @param string $stripeAccountId
+     * @return AccountMapping
+     */
+    private function getAccountMappingByAccountId(string $stripeAccountId): AccountMapping
+    {
+        if (!$stripeAccountId) {
+            throw new InvalidArgumentException(
+                StripeTransfer::TRANSFER_STATUS_REASON_NO_ACCOUNT_ID,
+                10
+            );
+        }
+
+        $mapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccountId);
+
+        if (!$mapping) {
+            throw new InvalidArgumentException(sprintf(
+                StripeTransfer::TRANSFER_STATUS_REASON_ACCOUNT_NOT_FOUND,
+                $stripeAccountId
+            ), 20);
+        }
+
+        return $mapping;
     }
 }
