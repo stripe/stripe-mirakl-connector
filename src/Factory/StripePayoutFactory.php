@@ -1,119 +1,208 @@
 <?php
 
-namespace App\Service;
+namespace App\Factory;
 
-use App\Factory\StripeTransferFactory;
-use App\Repository\StripeTransferRepository;
+use App\Entity\AccountMapping;
+use App\Entity\StripePayout;
+use App\Exception\InvalidArgumentException;
+use App\Repository\AccountMappingRepository;
+use App\Service\MiraklClient;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
 
-class PaymentSplitService
+class StripePayoutFactory implements LoggerAwareInterface
 {
-    /**
-     * @var StripeTransferFactory
-     */
-    private $stripeTransferFactory;
+    use LoggerAwareTrait;
 
     /**
-     * @var StripeTransferRepository
+     * @var AccountMappingRepository
      */
-    private $stripeTransferRepository;
+    private $accountMappingRepository;
+    
+    /**
+     * @var MiraklClient
+     */
 
     public function __construct(
-        StripeTransferFactory $stripeTransferFactory,
-        StripeTransferRepository $stripeTransferRepository
+        AccountMappingRepository $accountMappingRepository
     ) {
-        $this->stripeTransferFactory = $stripeTransferFactory;
-        $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->accountMappingRepository = $accountMappingRepository;
     }
 
     /**
-     * @return array App\Entity\StripeTransfer[]
+     * @param array $invoice
+     * @return StripePayout
      */
-    public function getRetriableProductTransfers(): array
+    public function createFromInvoice(array $invoice,MiraklClient $mclient): StripePayout
     {
-        return $this->stripeTransferRepository->findRetriableProductOrderTransfers();
+        $payout = new StripePayout();
+        $payout->setMiraklInvoiceId($invoice['invoice_id']);
+        $payout->setMiraklCreatedDate(
+            MiraklClient::getDatetimeFromString($invoice['date_created'])
+        );
+
+        return $this->updateFromInvoice($payout, $invoice,$mclient);
     }
 
     /**
-     * @return array App\Entity\StripeTransfer[]
+     * @param StripePayout $payout
+     * @param array $invoice
+     * @return StripePayout
      */
-    public function getRetriableServiceTransfers(): array
+    public function updateFromInvoice(StripePayout $payout, array $invoice,MiraklClient $mclient): StripePayout
     {
-        return $this->stripeTransferRepository->findRetriableServiceOrderTransfers();
-    }
+        // Payout already created
+        if ($payout->getPayoutId()) {
+            return $this->markPayoutAsCreated($payout);
+        }
 
-    /**
-     * @param array $orders
-     * @return array App\Entity\StripeTransfer[]
-     */
-    public function getTransfersFromOrders(array $orders, array $pendingDebits): array
-    {
-        // Retrieve existing StripeTransfers with provided order IDs
-        $existingTransfers = $this->stripeTransferRepository
-            ->findTransfersByOrderIds(array_keys($orders));
+        // Amount and currency
+        try {
+            $payout->setAmount($this->getInvoiceAmount($invoice,$mclient));
+            $payout->setCurrency(strtolower($invoice['currency_iso_code']));
+        } catch (InvalidArgumentException $e) {
+            return $this->abortPayout($payout, $e->getMessage());
+        }
 
-        $transfers = [];
-        foreach ($orders as $orderId => $order) {
-            $pendingDebit = $pendingDebits[$orderId] ?? null;
-            if (isset($existingTransfers[$orderId])) {
-                $transfer = $existingTransfers[$orderId];
-                if (!$transfer->isRetriable()) {
-                    continue;
-                }
-
-                // Use existing transfer
-                $transfer = $this->stripeTransferFactory->updateFromOrder($transfer, $order, $pendingDebit);
-            } else {
-                // Create new transfer
-                $transfer = $this->stripeTransferFactory->createFromOrder($order, $pendingDebit);
-                $this->stripeTransferRepository->persist($transfer);
-                $tax_transfer = $this->stripeTransferFactory->createFromOrderForTax($order, $pendingDebit);
-                $this->stripeTransferRepository->persist($tax_transfer);
-            }
-
-            $transfers[] = $transfer;
-            if (isset($tax_transfer)) {
-                $transfers[] = $tax_transfer;
+        // Save Stripe account corresponding with this shop
+        try {
+            $payout->setAccountMapping(
+                $this->getAccountMapping($invoice['shop_id'] ?? 0)
+            );
+        } catch (InvalidArgumentException $e) {
+            switch ($e->getCode()) {
+                    // Problem is final, let's abort
+                case 10:
+                    return $this->abortPayout($payout, $e->getMessage());
+                    // Problem is just temporary, let's put on hold
+                case 20:
+                    return $this->putPayoutOnHold($payout, $e->getMessage());
             }
         }
 
-        // Save
-        $this->stripeTransferRepository->flush();
-
-        return $transfers;
+        // All good
+        return $payout->setStatus(StripePayout::PAYOUT_PENDING);
     }
 
     /**
-     * @param array $existingTransfers
-     * @param array $orders
-     * @return array App\Entity\StripeTransfer[]
+     * @param int $shopId
+     * @return AccountMapping
      */
-    public function updateTransfersFromOrders(array $existingTransfers, array $orders, array $pendingDebits)
+    private function getAccountMapping(int $shopId): AccountMapping
     {
-        $updated = [];
-        foreach ($existingTransfers as $orderId => $transfer) {
-            $pendingDebit = $pendingDebits[$orderId] ?? null;
-            if (strpos($orderId, $_ENV['TAX_ORDER_POSTFIX']) !== false) {
-                $tax_suffixed_orderId = $orderId;
-                $orderId = str_replace($_ENV['TAX_ORDER_POSTFIX'], "", $orderId);
-                $pendingDebit = $pendingDebits[$orderId] ?? null;
-                $updated[$tax_suffixed_orderId] = $this->stripeTransferFactory->updateFromOrder(
-                    $transfer,
-                    $orders[$orderId],
-                    $pendingDebit,
-                    true
-                );
-            } else {
-                $updated[$orderId] = $this->stripeTransferFactory->updateFromOrder(
-                    $transfer,
-                    $orders[$orderId],
-                    $pendingDebit
-                );
-            }
+        if (!$shopId) {
+            throw new InvalidArgumentException(
+                StripePayout::PAYOUT_STATUS_REASON_NO_SHOP_ID,
+                10
+            );
         }
 
-        // Save
-        $this->stripeTransferRepository->flush();
+        $mapping = $this->accountMappingRepository->findOneBy([
+            'miraklShopId' => $shopId
+        ]);
 
-        return $updated;
+        if (!$mapping) {
+            throw new InvalidArgumentException(sprintf(
+                StripePayout::PAYOUT_STATUS_REASON_SHOP_NOT_READY,
+                $shopId
+            ), 20);
+        }
+
+        if (!$mapping->getPayoutEnabled()) {
+            throw new InvalidArgumentException(sprintf(
+                StripePayout::PAYOUT_STATUS_REASON_SHOP_PAYOUT_DISABLED,
+                $shopId
+            ), 20);
+        }
+
+        return $mapping;
+    }
+
+    /**
+     * @param array $invoice
+     * @return int
+     */
+    private function getInvoiceAmount(array $invoice,MiraklClient $mclient ): int
+    {
+        
+        //echo "\nccccccccccc".$invoice['invoice_id'];
+        $amount = $invoice['summary']['amount_transferred'] ?? 0;
+            $transactions =   $mclient->getTransactionsForInvoce($invoice['invoice_id']);
+            
+            $total_tax =  $this->findTotalOrderTax($transactions);
+            
+           // echo "\n\n".$total_tax;
+            
+            $amount = $amount - $total_tax;
+           // echo "\n".$amount;
+            
+        $amount = gmp_intval((string) ($amount * 100));
+        if ($amount <= 0) {
+            throw new InvalidArgumentException(sprintf(
+                StripePayout::PAYOUT_STATUS_REASON_INVALID_AMOUNT,
+                $amount
+            ));
+        }
+
+        return $amount;
+    }
+
+    /**
+     * @param StripePayout $payout
+     * @param string $reason
+     * @return StripePayout
+     */
+    private function putPayoutOnHold(StripePayout $payout, string $reason): StripePayout
+    {
+        $this->logger->info(
+            'Payout on hold: ' . $reason,
+            ['invoice_id' => $payout->getMiraklInvoiceId()]
+        );
+
+        $payout->setStatusReason($reason);
+        return $payout->setStatus(StripePayout::PAYOUT_ON_HOLD);
+    }
+
+    /**
+     * @param StripePayout $payout
+     * @param string $reason
+     * @return StripePayout
+     */
+    private function abortPayout(StripePayout $payout, string $reason): StripePayout
+    {
+        $this->logger->info(
+            'Payout aborted: ' . $reason,
+            ['invoice_id' => $payout->getMiraklInvoiceId()]
+        );
+
+        $payout->setStatusReason($reason);
+        return $payout->setStatus(StripePayout::PAYOUT_ABORTED);
+    }
+
+    /**
+     * @param StripePayout $payout
+     * @return StripePayout
+     */
+    private function markPayoutAsCreated(StripePayout $payout): StripePayout
+    {
+        $this->logger->info(
+            'Payout created',
+            ['invoice_id' => $payout->getMiraklInvoiceId()]
+        );
+
+        $payout->setStatusReason(null);
+        return $payout->setStatus(StripePayout::PAYOUT_CREATED);
+    }
+    
+    private function findTotalOrderTax($transactions) {
+        $taxes=0;
+        foreach ($transactions as $trx) {
+            if($trx['type']=='ORDER_AMOUNT_TAX'){
+                $taxes += (float) $trx['amount'];
+            }
+        }
+      //  echo "\n".$taxes;
+        return $taxes;
+        
     }
 }
