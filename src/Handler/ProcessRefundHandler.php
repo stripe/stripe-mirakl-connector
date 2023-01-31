@@ -11,6 +11,7 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\HttpClient\Exception\ClientException;
+use Symfony\Component\HttpClient\Exception\TransportException;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 
 class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterface
@@ -94,7 +95,16 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
 
             $refund->setStatus(StripeRefund::REFUND_FAILED);
             $refund->setStatusReason(substr($e->getMessage(), 0, 1024));
-        } catch (ClientException $e) {
+        } catch (TransportException $e) {
+            $this->logger->error(
+                sprintf('Timeout processing refund: %s.', $e->getMessage()),
+                [
+				    'stripeRefundId' => $refund->getStripeRefundId(),
+                    'miraklRefundId' => $refund->getMiraklRefundId(),
+                    'miraklOrderId' => $refund->getMiraklOrderId()
+                ]
+            );
+        catch (ClientException $e) {
             $message = $e->getResponse()->getContent(false);
             $this->logger->error(
                 sprintf('Could not validate refund in Mirakl: %s.', $message),
