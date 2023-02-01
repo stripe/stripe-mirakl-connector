@@ -34,12 +34,14 @@ class PaymentRefundService
         StripeRefundFactory $stripeRefundFactory,
         StripeTransferFactory $stripeTransferFactory,
         StripeRefundRepository $stripeRefundRepository,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        string $taxOrderPostfix
     ) {
         $this->stripeRefundFactory = $stripeRefundFactory;
         $this->stripeTransferFactory = $stripeTransferFactory;
         $this->stripeRefundRepository = $stripeRefundRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->taxOrderPostfix = $taxOrderPostfix;
     }
 
     /**
@@ -134,7 +136,7 @@ class PaymentRefundService
     {
         $updated = [];
         foreach ($transfers as $refundId => $transfer) {
-            if (strpos($refundId, $_ENV['TAX_ORDER_POSTFIX']) !== false) {
+            if (strpos($refundId, $this->taxOrderPostfix) !== false) {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
             } else {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);

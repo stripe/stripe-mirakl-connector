@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Service\MiraklClient;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeTransferRepository;
 
@@ -17,12 +18,20 @@ class PaymentSplitService
      */
     private $stripeTransferRepository;
 
+    private $enablePaymentTaxSplit;
+    private $taxOrderPostfix;
+
     public function __construct(
         StripeTransferFactory $stripeTransferFactory,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        MiraklClient $miraklClient,
+        bool $enablePaymentTaxSplit,
+        string $taxOrderPostfix,
     ) {
         $this->stripeTransferFactory = $stripeTransferFactory;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
+        $this->taxOrderPostfix = $taxOrderPostfix;
     }
 
     /**
@@ -66,8 +75,10 @@ class PaymentSplitService
                 // Create new transfer
                 $transfer = $this->stripeTransferFactory->createFromOrder($order, $pendingDebit);
                 $this->stripeTransferRepository->persist($transfer);
-                $tax_transfer = $this->stripeTransferFactory->createFromOrderForTax($order, $pendingDebit);
-                $this->stripeTransferRepository->persist($tax_transfer);
+                if ($this->enablePaymentTaxSplit) {
+                    $tax_transfer = $this->stripeTransferFactory->createFromOrderForTax($order, $pendingDebit);
+                    $this->stripeTransferRepository->persist($tax_transfer);
+                }
             }
 
             $transfers[] = $transfer;
@@ -92,9 +103,9 @@ class PaymentSplitService
         $updated = [];
         foreach ($existingTransfers as $orderId => $transfer) {
             $pendingDebit = $pendingDebits[$orderId] ?? null;
-            if (strpos($orderId, $_ENV['TAX_ORDER_POSTFIX']) !== false) {
+            if ($this->enablePaymentTaxSplit && strpos($orderId, $this->taxOrderPostfix) !== false) {
                 $tax_suffixed_orderId = $orderId;
-                $orderId = str_replace($_ENV['TAX_ORDER_POSTFIX'], "", $orderId);
+                $orderId = str_replace($this->taxOrderPostfix, "", $orderId);
                 $pendingDebit = $pendingDebits[$orderId] ?? null;
                 $updated[$tax_suffixed_orderId] = $this->stripeTransferFactory->updateFromOrder(
                     $transfer,

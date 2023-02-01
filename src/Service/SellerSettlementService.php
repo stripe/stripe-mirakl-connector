@@ -136,7 +136,7 @@ class SellerSettlementService
      * @param array $invoices
      * @return array StripePayout[]
      */
-    public function getPayoutsFromInvoices(array $invoices, MiraklClient $mclient): array
+    public function getPayoutsFromInvoices(array $invoices): array
     {
         // Retrieve existing StripeTransfers with provided invoice IDs
         $existingPayouts = $this->stripePayoutRepository
@@ -153,11 +153,11 @@ class SellerSettlementService
 
                 // Use existing payout
                 $payout = $this->stripePayoutFactory
-                ->updateFromInvoice($payout, $invoice, $mclient);
+                ->updateFromInvoice($payout, $invoice);
             } else {
                 // Create new payout
                 $payout = $this->stripePayoutFactory
-                ->createFromInvoice($invoice, $mclient);
+                ->createFromInvoice($invoice);
                 $this->stripePayoutRepository->persist($payout);
             }
 

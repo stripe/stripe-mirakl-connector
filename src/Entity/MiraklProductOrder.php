@@ -130,7 +130,7 @@ class MiraklProductOrder extends MiraklOrder
                 foreach ($line['refunds'] as $orderRefund) {
                     if ($refund->getMiraklRefundId() === $orderRefund['id']) {
                         $tax = $this->getRefundLineTaxes($orderRefund);
-                        return $tax;//$orderRefund['commission_total_amount'];
+                        return $tax;
                     }
                 }
             }

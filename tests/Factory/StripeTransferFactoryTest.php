@@ -62,7 +62,9 @@ class StripeTransferFactoryTest extends KernelTestCase
             $this->stripeRefundRepository,
             $this->stripeTransferRepository,
             $this->miraklClient,
-            $container->get('App\Service\StripeClient')
+            $container->get('App\Service\StripeClient'),
+            'acc_xxxxxxx',
+            '_TAX'
         );
         $this->stripeTransferFactory->setLogger(new NullLogger());
     }

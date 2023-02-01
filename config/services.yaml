@@ -18,6 +18,8 @@ parameters:
   env(ENABLE_SERVICE_PAYMENT_SPLIT): false
   env(ENABLE_SERVICE_PAYMENT_REFUND): false
   env(ENABLE_SELLER_ONBOARDING): true
+  env(ENABLE_PAYMENT_TAX_SPLIT): false
+  env(STRIPE_TAX_ACCOUNT): ""
 
   default_redirect_onboarding: "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
   default_enable_product_payment_split: false
@@ -37,12 +39,14 @@ parameters:
   app.stripe.webhook_seller_secret: "%env(default:deprecated_webhook_secret:STRIPE_SELLERS_WEBHOOK_SECRET)%"
   app.stripe.webhook_operator_secret: "%env(default:deprecated_webhook_secret:STRIPE_OPERATOR_WEBHOOK_SECRET)%"
   app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
+  app.stripe.tax_account: "%env(STRIPE_TAX_ACCOUNT)%"
   app.workflow.enable_product_payment_split: "%env(default:deprecated_enable_product_payment_split:bool:ENABLE_PRODUCT_PAYMENT_SPLIT)%"
   app.workflow.enable_service_payment_split: "%env(bool:ENABLE_SERVICE_PAYMENT_SPLIT)%"
   app.workflow.enable_product_payment_refund: "%env(default:deprecated_enable_product_payment_refund:bool:ENABLE_PRODUCT_PAYMENT_REFUND)%"
   app.workflow.enable_service_payment_refund: "%env(bool:ENABLE_SERVICE_PAYMENT_REFUND)%"
   app.workflow.enable_seller_onboarding: "%env(bool:ENABLE_SELLER_ONBOARDING)%"
   app.workflow.payment_metadata_commercial_order_id: "%env(default:deprecated_payment_metadata_commercial_order_id:PAYMENT_METADATA_COMMERCIAL_ORDER_ID)%"
+  app.workflow.enable_payment_tax_split: "%env(bool:ENABLE_PAYMENT_TAX_SPLIT)%"
   app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
   app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
@@ -83,6 +87,10 @@ services:
       $technicalEmail: "%app.mailer.technical%"
       $technicalEmailFrom: "%app.mailer.technical_from%"
       $baseHostOverride: "%app.base_host%"
+
+      $enablePaymentTaxSplit: "%app.workflow.enable_payment_tax_split%"
+      $stripeTaxAccount: "%app.stripe.tax_account%"
+      $taxOrderPostfix: "_TAX"
 
   # makes classes in src/ available to be used as services
   # this creates a service per class whose id is the fully-qualified class name

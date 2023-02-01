@@ -59,12 +59,15 @@ class SellerSettlementServiceTest extends KernelTestCase
             $container->get('doctrine')->getRepository(StripeRefund::class),
             $this->stripeTransferRepository,
             $this->miraklClient,
-            $container->get('App\Service\StripeClient')
+            $container->get('App\Service\StripeClient'),
+            'acc_xxxxxxx',
+            '_TAX'
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
         $stripePayoutFactory = new StripePayoutFactory(
-            $container->get('doctrine')->getRepository(AccountMapping::class)
+            $container->get('doctrine')->getRepository(AccountMapping::class),
+            $this->miraklClient
         );
         $stripePayoutFactory->setLogger(new NullLogger());
 

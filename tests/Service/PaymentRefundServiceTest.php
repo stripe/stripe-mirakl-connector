@@ -72,7 +72,9 @@ class PaymentRefundServiceTest extends KernelTestCase
             $this->stripeRefundRepository,
             $this->stripeTransferRepository,
             $this->miraklClient,
-            $stripeClient
+            $stripeClient,
+            '',
+            ''
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
@@ -80,7 +82,8 @@ class PaymentRefundServiceTest extends KernelTestCase
             $stripeRefundFactory,
             $stripeTransferFactory,
             $this->stripeRefundRepository,
-            $this->stripeTransferRepository
+            $this->stripeTransferRepository,
+            '_TAX'
         );
     }
 

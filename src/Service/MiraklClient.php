@@ -28,9 +28,12 @@ class MiraklClient
      */
     private $client;
 
-    public function __construct(HttpClientInterface $miraklClient)
+    private $taxOrderPostfix;
+
+    public function __construct(HttpClientInterface $miraklClient, string $taxOrderPostfix)
     {
         $this->client = $miraklClient;
+        $this->taxOrderPostfix = $taxOrderPostfix;
     }
 
     private function get(string $endpoint, array $params = []): ResponseInterface
@@ -391,8 +394,8 @@ class MiraklClient
         return $date->format(self::DATE_FORMAT);
     }
 
-    private function removeTaxKeword($val)
+    private function removeTaxKeword($val): string
     {
-        return str_replace($_ENV['TAX_ORDER_POSTFIX'], "", $val);
+        return str_replace($this->taxOrderPostfix, "", $val);
     }
 }

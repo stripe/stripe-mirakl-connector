@@ -37,7 +37,7 @@ class StripePayoutFactoryTest extends KernelTestCase
 
                 $this->stripePayoutFactory = new StripePayoutFactory(
                         $container->get('doctrine')->getRepository(AccountMapping::class),
-                        $container->get('App\Service\StripeClient')
+                        $container->get('App\Service\MiraklClient')
                 );
                 $this->stripePayoutFactory->setLogger(new NullLogger());
         }

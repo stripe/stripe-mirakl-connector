@@ -56,13 +56,17 @@ class StripeTransferFactory implements LoggerAwareInterface
      */
     private $stripeClient;
 
+    private $stripeTaxAccount;
+    private $taxOrderPostfix;
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
         StripeRefundRepository $stripeRefundRepository,
         StripeTransferRepository $stripeTransferRepository,
         MiraklClient $miraklClient,
-        StripeClient $stripeClient
+        StripeClient $stripeClient,
+        string $stripeTaxAccount,
+        string $taxOrderPostfix
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -70,6 +74,8 @@ class StripeTransferFactory implements LoggerAwareInterface
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
+        $this->stripeTaxAccount = $stripeTaxAccount;
+        $this->taxOrderPostfix = $taxOrderPostfix;
     }
 
     /**
@@ -102,7 +108,7 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         $transfer = new StripeTransfer();
         $transfer->setType($type);
-        $transfer->setMiraklId($order->getId().$_ENV['TAX_ORDER_POSTFIX']);
+        $transfer->setMiraklId($order->getId().$this->taxOrderPostfix);
         $transfer->setMiraklCreatedDate($order->getCreationDateAsDateTime());
 
         return $this->updateFromOrder($transfer, $order, $pendingDebit, true);
@@ -125,7 +131,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             if (!$isForTax) {
                 $accountMapping = $this->getAccountMapping($order->getShopId());
             } else {
-                $accountMapping = $this->getAccountMappingByAccountId($_ENV['STRIPE_TAX_ACCOUNT']);
+                $accountMapping = $this->getAccountMappingByAccountId($this->stripeTaxAccount);
             }
             $transfer->setAccountMapping($accountMapping);
         } catch (InvalidArgumentException $e) {
@@ -252,7 +258,7 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         $transfer = new StripeTransfer();
         $transfer->setType(StripeTransfer::TRANSFER_REFUND);
-        $transfer->setMiraklId($orderRefund->getId().$_ENV['TAX_ORDER_POSTFIX']);
+        $transfer->setMiraklId($orderRefund->getId().$this->taxOrderPostfix);
 
         return $this->updateOrderRefundTransfer($transfer, true);
     }
@@ -271,12 +277,12 @@ class StripeTransferFactory implements LoggerAwareInterface
         // Check corresponding StripeRefund
         $refund = null;
         try {
-            $refund = $this->findRefundFromRefundId(str_replace($_ENV['TAX_ORDER_POSTFIX'], "", $transfer->getMiraklId()));
+            $refund = $this->findRefundFromRefundId(str_replace($this->taxOrderPostfix, "", $transfer->getMiraklId()));
 
             // Fetch transfer to be reversed
             $orderIds = [$refund->getMiraklOrderId()];
             if ($isForTax) {
-                $orderIds = [$refund->getMiraklOrderId().$_ENV['TAX_ORDER_POSTFIX']];
+                $orderIds = [$refund->getMiraklOrderId().$this->taxOrderPostfix];
             }
 
             $orderTransfer = current($this->stripeTransferRepository->findTransfersByOrderIds($orderIds));
