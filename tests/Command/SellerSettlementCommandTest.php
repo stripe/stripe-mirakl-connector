@@ -125,7 +125,6 @@ class SellerSettlementCommandTest extends KernelTestCase
         // 1 payout and 3 transfers dispatched
         $this->assertCount(3, $this->transfersReceiver->getSent());
         $this->assertCount(3, $this->getTransfersFromRepository());
-        print_r($this->payoutsReceiver->getSent());
         $this->assertCount(1, $this->payoutsReceiver->getSent());
         $this->assertCount(1, $this->getPayoutsFromRepository());
 
