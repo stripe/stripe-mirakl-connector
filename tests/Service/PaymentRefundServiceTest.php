@@ -163,8 +163,8 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(28, $transfers);
-        $this->assertCount(28, $this->getProductTransfersFromRepository());
+        $this->assertCount(14, $transfers);
+        $this->assertCount(14, $this->getProductTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
         $this->assertCount(13, $this->paymentRefundService->getRetriableTransfers());
