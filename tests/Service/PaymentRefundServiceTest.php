@@ -73,8 +73,8 @@ class PaymentRefundServiceTest extends KernelTestCase
             $this->stripeTransferRepository,
             $this->miraklClient,
             $stripeClient,
-            '',
-            ''
+            'acc_xxxxxxx',
+            '_TAX'
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
@@ -157,14 +157,14 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testGetRetriableProductTransfers()
     {
         $orders = $this->miraklClient->listProductPendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(14, $transfers);
-        $this->assertCount(14, $this->getProductTransfersFromRepository());
+        $this->assertCount(28, $transfers);
+        $this->assertCount(28, $this->getProductTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
         $this->assertCount(13, $this->paymentRefundService->getRetriableTransfers());
@@ -174,7 +174,7 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testGetTransfersFromProductOrders()
     {
         $orders = $this->miraklClient->listProductPendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
@@ -192,7 +192,7 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testGetRefundsFromProductOrders()
     {
         $orders = $this->miraklClient->listProductPendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
@@ -206,7 +206,7 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testUpdateProductTransfers()
     {
         $orders = $this->miraklClient->listProductPendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->assertCount(14, $refunds);
@@ -230,7 +230,7 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testGetRetriableServiceTransfers()
     {
         $orders = $this->miraklClient->listServicePendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->mockRefundCreated($this->getBasicServiceRefundFromRepository());
@@ -247,7 +247,7 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testGetTransfersFromServiceOrders()
     {
         $orders = $this->miraklClient->listServicePendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->mockRefundCreated($this->getBasicServiceRefundFromRepository());
@@ -265,7 +265,7 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testGetRefundsFromServiceOrders()
     {
         $orders = $this->miraklClient->listServicePendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->mockRefundCreated($this->getBasicServiceRefundFromRepository());
@@ -279,7 +279,7 @@ class PaymentRefundServiceTest extends KernelTestCase
     public function testUpdateServiceTransfers()
     {
         $orders = $this->miraklClient->listServicePendingRefunds();
-        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC],    StripeMock::CHARGE_BASIC);
+        $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
         $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds($orders);
         $this->assertCount(14, $refunds);
