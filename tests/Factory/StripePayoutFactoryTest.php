@@ -46,7 +46,8 @@ class StripePayoutFactoryTest extends KernelTestCase
                 $payout = $this->stripePayoutFactory->createFromInvoice(
                         current($this->miraklClient->listInvoicesByDate(
                                 MiraklMockedHttpClient::INVOICE_DATE_1_VALID
-                        ))
+                        )),
+                        $this->miraklClient
                 );
 
                 $this->assertEquals(StripePayout::PAYOUT_PENDING, $payout->getStatus());
@@ -66,7 +67,7 @@ class StripePayoutFactoryTest extends KernelTestCase
                 ));
                 $invoiceId = $invoice['invoice_id'];
 
-                $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
+                $payout = $this->stripePayoutFactory->createFromInvoice($invoice, $this->miraklClient);
                 $this->assertEquals(StripePayout::PAYOUT_ON_HOLD, $payout->getStatus());
 
                 $invoice = current($this->miraklClient->listInvoicesByDate(
@@ -83,7 +84,7 @@ class StripePayoutFactoryTest extends KernelTestCase
                         MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_ALL_INVALID
                 );
                 foreach ($invoices as $invoiceId => $invoice) {
-                        $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
+                        $payout = $this->stripePayoutFactory->createFromInvoice($invoice, $this->miraklClient);
                         switch ($invoiceId) {
                                 case MiraklMockedHttpClient::INVOICE_INVALID_NO_SHOP:
                                         $this->assertEquals(StripePayout::PAYOUT_ABORTED, $payout->getStatus());
@@ -107,7 +108,7 @@ class StripePayoutFactoryTest extends KernelTestCase
                         MiraklMockedHttpClient::INVOICE_DATE_1_VALID
                 ));
 
-                $payout = $this->stripePayoutFactory->createFromInvoice($invoice);
+                $payout = $this->stripePayoutFactory->createFromInvoice($invoice, $this->miraklClient);
                 $this->assertEquals(StripePayout::PAYOUT_PENDING, $payout->getStatus());
 
                 $payout->setPayoutId(StripeMockedHttpClient::PAYOUT_BASIC);

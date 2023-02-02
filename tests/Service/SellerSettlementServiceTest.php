@@ -112,7 +112,7 @@ class SellerSettlementServiceTest extends KernelTestCase
         $invoices = $this->miraklClient->listInvoicesByDate(
             MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_1_VALID
         );
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         $this->assertCount(3, $payouts);
 
         $payouts = $this->getPayoutsFromRepository();
@@ -144,10 +144,10 @@ class SellerSettlementServiceTest extends KernelTestCase
         $invoices = $this->miraklClient->listInvoicesByDate(
             MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_1_VALID
         );
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         $this->assertCount(3, $payouts);
 
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         // BASIC is already pending and AMOUNT_INVALID is aborted
         $this->assertCount(1, $payouts);
 
@@ -183,7 +183,7 @@ class SellerSettlementServiceTest extends KernelTestCase
         $invoices = $this->miraklClient->listInvoicesByDate(
             MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_1_VALID
         );
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         $this->assertCount(3, $payouts);
 
         // Only INVALID_SHOP is retriable

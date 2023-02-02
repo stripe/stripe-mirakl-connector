@@ -22,21 +22,18 @@ class StripePayoutFactory implements LoggerAwareInterface
     /**
      * @var MiraklClient
      */
-    private $mclient;
 
     public function __construct(
-        AccountMappingRepository $accountMappingRepository,
-        MiraklClient $mclient
+        AccountMappingRepository $accountMappingRepository
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
-        $this->mclient = $mclient;
     }
 
     /**
      * @param array $invoice
      * @return StripePayout
      */
-    public function createFromInvoice(array $invoice): StripePayout
+    public function createFromInvoice(array $invoice, MiraklClient $mclient): StripePayout
     {
         $payout = new StripePayout();
         $payout->setMiraklInvoiceId($invoice['invoice_id']);
@@ -44,7 +41,7 @@ class StripePayoutFactory implements LoggerAwareInterface
             MiraklClient::getDatetimeFromString($invoice['date_created'])
         );
 
-        return $this->updateFromInvoice($payout, $invoice);
+        return $this->updateFromInvoice($payout, $invoice, $mclient);
     }
 
     /**
@@ -52,7 +49,7 @@ class StripePayoutFactory implements LoggerAwareInterface
      * @param array $invoice
      * @return StripePayout
      */
-    public function updateFromInvoice(StripePayout $payout, array $invoice): StripePayout
+    public function updateFromInvoice(StripePayout $payout, array $invoice, MiraklClient $mclient): StripePayout
     {
         // Payout already created
         if ($payout->getPayoutId()) {
@@ -61,7 +58,7 @@ class StripePayoutFactory implements LoggerAwareInterface
 
         // Amount and currency
         try {
-            $payout->setAmount($this->getInvoiceAmount($invoice));
+            $payout->setAmount($this->getInvoiceAmount($invoice, $mclient));
             $payout->setCurrency(strtolower($invoice['currency_iso_code']));
         } catch (InvalidArgumentException $e) {
             return $this->abortPayout($payout, $e->getMessage());
@@ -125,10 +122,10 @@ class StripePayoutFactory implements LoggerAwareInterface
      * @param array $invoice
      * @return int
      */
-    private function getInvoiceAmount(array $invoice): int
+    private function getInvoiceAmount(array $invoice, MiraklClient $mclient): int
     {
         $amount = $invoice['summary']['amount_transferred'] ?? 0;
-        $transactions =   $this->mclient->getTransactionsForInvoce($invoice['invoice_id']);
+        $transactions =   $mclient->getTransactionsForInvoce($invoice['invoice_id']);
         $total_tax =  $this->findTotalOrderTax($transactions);
         $amount = $amount - $total_tax;
         $amount = gmp_intval((string) ($amount * 100));
