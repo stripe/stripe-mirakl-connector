@@ -30,6 +30,8 @@ class PaymentRefundService
      */
     private $stripeTransferRepository;
 
+    private $taxOrderPostfix;
+
     public function __construct(
         StripeRefundFactory $stripeRefundFactory,
         StripeTransferFactory $stripeTransferFactory,
