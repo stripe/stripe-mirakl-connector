@@ -2,7 +2,6 @@
 
 namespace App\Service;
 
-//use App\Service\MiraklClient;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeTransferRepository;
 
@@ -24,7 +23,6 @@ class PaymentSplitService
     public function __construct(
         StripeTransferFactory $stripeTransferFactory,
         StripeTransferRepository $stripeTransferRepository,
-        //MiraklClient $miraklClient,
         bool $enablePaymentTaxSplit,
         string $taxOrderPostfix
     ) {
