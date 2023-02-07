@@ -26,7 +26,7 @@ class PaymentSplitService
         StripeTransferRepository $stripeTransferRepository,
         MiraklClient $miraklClient,
         bool $enablePaymentTaxSplit,
-        string $taxOrderPostfix,
+        string $taxOrderPostfix
     ) {
         $this->stripeTransferFactory = $stripeTransferFactory;
         $this->stripeTransferRepository = $stripeTransferRepository;
