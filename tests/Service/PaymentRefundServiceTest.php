@@ -163,11 +163,11 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(14, $transfers);
+        $this->assertCount(28, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
-        $this->assertCount(13, $this->paymentRefundService->getRetriableTransfers());
+        $this->assertCount(27, $this->paymentRefundService->getRetriableTransfers());
         $this->assertCount(14, $this->getProductTransfersFromRepository());
     }
 
@@ -180,12 +180,12 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(14, $transfers);
+        $this->assertCount(28, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
         $transfers = $this->paymentRefundService->getRetriableTransfers();
-        $this->assertCount(13, $transfers);
+        $this->assertCount(27, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
     }
 
@@ -212,7 +212,7 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertCount(14, $refunds);
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(14, $transfers);
+        $this->assertCount(28, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
 
         // ORDER_REFUND_BASIC is on hold
@@ -236,11 +236,11 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicServiceRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(14, $transfers);
+        $this->assertCount(28, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
-        $this->assertCount(13, $this->paymentRefundService->getRetriableTransfers());
+        $this->assertCount(27, $this->paymentRefundService->getRetriableTransfers());
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
     }
 
@@ -253,12 +253,12 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicServiceRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(14, $transfers);
+        $this->assertCount(28, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
         $transfers = $this->paymentRefundService->getRetriableTransfers();
-        $this->assertCount(13, $transfers);
+        $this->assertCount(27, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
     }
 
@@ -285,7 +285,7 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertCount(14, $refunds);
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(14, $transfers);
+        $this->assertCount(28, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
 
         // ORDER_REFUND_BASIC is on hold

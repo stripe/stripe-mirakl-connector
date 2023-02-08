@@ -194,7 +194,7 @@ class SellerSettlementServiceTest extends KernelTestCase
         $id = MiraklMockedHttpClient::INVOICE_INVALID_SHOP;
         $invoices[$id]['shop_id'] = MiraklMockedHttpClient::SHOP_BASIC;
         $payouts = $this->sellerSettlementService
-            ->updatePayoutsFromInvoices($payouts, $invoices);
+            ->updatePayoutsFromInvoices($payouts, $invoices, $this->miraklClient);
         $this->assertCount(1, $payouts);
 
         $payouts = $this->getPayoutsFromRepository();
