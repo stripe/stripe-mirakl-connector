@@ -162,7 +162,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getAccountMapping());
         $this->assertNull($transfer->getTransferId());
         $this->assertNull($transfer->getTransactionId());
-        $this->assertEquals(8073, $transfer->getAmount());
+        $this->assertEquals(7205, $transfer->getAmount());
         $this->assertEquals('eur', $transfer->getCurrency());
         $this->assertNotNull($transfer->getMiraklCreatedDate());
     }
@@ -296,12 +296,12 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function testProductOrderDifferentAmounts()
     {
         $amounts = [
-            'NO_COMMISSION' => 8472,
+            'NO_COMMISSION' => 7604,
             'NO_TAX' => 6513,
-            'TAX_INCLUDED' => 6513,
-            'PARTIAL_TAX' => 7293,
+            'TAX_INCLUDED' => 5645,
+            'PARTIAL_TAX' => 6959,
             'NO_SALES_TAX' => 7205,
-            'NO_SHIPPING_TAX' => 7381
+            'NO_SHIPPING_TAX' => 6513
         ];
 
         foreach ($amounts as $const => $expectedAmount) {
@@ -403,7 +403,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getAccountMapping());
         $this->assertNull($transfer->getTransferId());
         $this->assertNull($transfer->getTransactionId());
-        $this->assertEquals(1415, $transfer->getAmount());
+        $this->assertEquals(1081, $transfer->getAmount());
         $this->assertEquals('eur', $transfer->getCurrency());
         $this->assertNotNull($transfer->getMiraklCreatedDate());
     }
@@ -521,10 +521,10 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function testServiceOrderDifferentAmounts()
     {
         $amounts = [
-            'NO_COMMISSION' => 1814,
+            'NO_COMMISSION' => 1480,
             'NO_TAX' => 1081,
             'TAX_INCLUDED' => 1081,
-            'PARTIAL_TAX' => 1237,
+            'PARTIAL_TAX' => 1081,
         ];
 
         foreach ($amounts as $const => $expectedAmount) {

@@ -1147,7 +1147,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 			[
 				'id' => rand(1, 1000),
 				'type' => 'ORDER_AMOUNT_TAX',
-				'amount' => 100,
+				'amount' => 0,
 			],
 		];
 	}

@@ -74,7 +74,7 @@ class StripePayoutFactoryTest extends KernelTestCase
                         MiraklMockedHttpClient::INVOICE_DATE_1_VALID
                 ));
                 $invoice['invoice_id'] = $invoiceId;
-                $payout = $this->stripePayoutFactory->updateFromInvoice($payout, $invoice);
+                $payout = $this->stripePayoutFactory->updateFromInvoice($payout, $invoice, $this->miraklClient);
                 $this->assertEquals(StripePayout::PAYOUT_PENDING, $payout->getStatus());
         }
 
@@ -112,7 +112,7 @@ class StripePayoutFactoryTest extends KernelTestCase
                 $this->assertEquals(StripePayout::PAYOUT_PENDING, $payout->getStatus());
 
                 $payout->setPayoutId(StripeMockedHttpClient::PAYOUT_BASIC);
-                $payout = $this->stripePayoutFactory->updateFromInvoice($payout, $invoice);
+                $payout = $this->stripePayoutFactory->updateFromInvoice($payout, $invoice, $this->miraklClient);
                 $this->assertEquals(StripePayout::PAYOUT_CREATED, $payout->getStatus());
         }
 }
