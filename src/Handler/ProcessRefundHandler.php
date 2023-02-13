@@ -104,7 +104,10 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                     'miraklOrderId' => $refund->getMiraklOrderId()
                 ]
             );
-        catch (ClientException $e) {
+			
+		    $refund->setStatus(StripeRefund::REFUND_FAILED);
+            $refund->setStatusReason(substr($e->getMessage(), 0, 1024));
+        } catch (ClientException $e) {
             $message = $e->getResponse()->getContent(false);
             $this->logger->error(
                 sprintf('Could not validate refund in Mirakl: %s.', $message),
