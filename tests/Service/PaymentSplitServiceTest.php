@@ -51,14 +51,17 @@ class PaymentSplitServiceTest extends KernelTestCase
             $container->get('doctrine')->getRepository(StripeRefund::class),
             $this->stripeTransferRepository,
             $this->miraklClient,
-            $container->get('App\Service\StripeClient')
+            $container->get('App\Service\StripeClient'),
+            'acc_xxxxxxx',
+            '_TAX'
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
         $this->paymentSplitService = new PaymentSplitService(
             $stripeTransferFactory,
             $this->stripeTransferRepository,
-            $this->miraklClient
+            false,
+            '_TAX'
         );
     }
 

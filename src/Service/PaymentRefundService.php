@@ -30,16 +30,20 @@ class PaymentRefundService
      */
     private $stripeTransferRepository;
 
+    private $taxOrderPostfix;
+
     public function __construct(
         StripeRefundFactory $stripeRefundFactory,
         StripeTransferFactory $stripeTransferFactory,
         StripeRefundRepository $stripeRefundRepository,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        string $taxOrderPostfix
     ) {
         $this->stripeRefundFactory = $stripeRefundFactory;
         $this->stripeTransferFactory = $stripeTransferFactory;
         $this->stripeRefundRepository = $stripeRefundRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->taxOrderPostfix = $taxOrderPostfix;
     }
 
     /**
@@ -106,11 +110,15 @@ class PaymentRefundService
                 }
 
                 $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
+                $transfer_tax = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
+                $transfers[] = $transfer_tax;
             } else {
                 // Create new transfer
                 $transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
-
+                $transfer_tax = $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund);
                 $this->stripeTransferRepository->persist($transfer);
+                $this->stripeTransferRepository->persist($transfer_tax);
+                $transfers[] = $transfer_tax;
             }
 
             $transfers[] = $transfer;
@@ -130,7 +138,11 @@ class PaymentRefundService
     {
         $updated = [];
         foreach ($transfers as $refundId => $transfer) {
-            $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
+            if (strpos($refundId, $this->taxOrderPostfix) !== false) {
+                $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
+            } else {
+                $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
+            }
         }
 
         // Save

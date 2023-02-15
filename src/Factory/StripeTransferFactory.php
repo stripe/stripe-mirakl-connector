@@ -56,13 +56,17 @@ class StripeTransferFactory implements LoggerAwareInterface
      */
     private $stripeClient;
 
+    private $stripeTaxAccount;
+    private $taxOrderPostfix;
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
         StripeRefundRepository $stripeRefundRepository,
         StripeTransferRepository $stripeTransferRepository,
         MiraklClient $miraklClient,
-        StripeClient $stripeClient
+        StripeClient $stripeClient,
+        string $stripeTaxAccount,
+        string $taxOrderPostfix
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -70,6 +74,8 @@ class StripeTransferFactory implements LoggerAwareInterface
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
+        $this->stripeTaxAccount = $stripeTaxAccount;
+        $this->taxOrderPostfix = $taxOrderPostfix;
     }
 
     /**
@@ -92,12 +98,28 @@ class StripeTransferFactory implements LoggerAwareInterface
         return $this->updateFromOrder($transfer, $order, $pendingDebit);
     }
 
+    public function createFromOrderForTax(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
+    {
+        if (is_a($order, MiraklServiceOrder::class)) {
+            $type = StripeTransfer::TRANSFER_SERVICE_ORDER;
+        } else {
+            $type = StripeTransfer::TRANSFER_PRODUCT_ORDER;
+        }
+
+        $transfer = new StripeTransfer();
+        $transfer->setType($type);
+        $transfer->setMiraklId($order->getId().$this->taxOrderPostfix);
+        $transfer->setMiraklCreatedDate($order->getCreationDateAsDateTime());
+
+        return $this->updateFromOrder($transfer, $order, $pendingDebit, true);
+    }
+
     /**
      * @param StripeTransfer $transfer
      * @param MiraklOrder $order
      * @return StripeTransfer
      */
-    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
+    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, MiraklPendingDebit $pendingDebit = null, $isForTax = false): StripeTransfer
     {
         // Transfer already created
         if ($transfer->getTransferId()) {
@@ -106,7 +128,11 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         // Shop must have a Stripe account
         try {
-            $accountMapping = $this->getAccountMapping($order->getShopId());
+            if (!$isForTax) {
+                $accountMapping = $this->getAccountMapping($order->getShopId());
+            } else {
+                $accountMapping = $this->getAccountMappingByAccountId($this->stripeTaxAccount);
+            }
             $transfer->setAccountMapping($accountMapping);
         } catch (InvalidArgumentException $e) {
             // Onboarding still to be completed, let's wait
@@ -182,7 +208,7 @@ class StripeTransferFactory implements LoggerAwareInterface
                 );
             } catch (InvalidArgumentException $e) {
                 switch ($e->getCode()) {
-                        // Problem is final, let's abort
+                    // Problem is final, let's abort
                     case 10:
                         return $this->abortTransfer($transfer, $e->getMessage());
                         // Problem is just temporary, let's put on hold
@@ -196,6 +222,11 @@ class StripeTransferFactory implements LoggerAwareInterface
         $amount = $order->getAmountDue();
         $commission = $order->getOperatorCommission();
         $transferAmount = $amount - $commission;
+        $orderTaxTotal = $order->getOrderTaxTotal();
+        $transferAmount = $transferAmount - $orderTaxTotal;
+        if ($isForTax) {
+            $transferAmount = $orderTaxTotal;
+        }
         if ($transferAmount <= 0) {
             return $this->abortTransfer($transfer, sprintf(
                 StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
@@ -223,11 +254,20 @@ class StripeTransferFactory implements LoggerAwareInterface
         return $this->updateOrderRefundTransfer($transfer);
     }
 
+    public function createFromOrderRefundForTax(MiraklPendingRefund $orderRefund): StripeTransfer
+    {
+        $transfer = new StripeTransfer();
+        $transfer->setType(StripeTransfer::TRANSFER_REFUND);
+        $transfer->setMiraklId($orderRefund->getId().$this->taxOrderPostfix);
+
+        return $this->updateOrderRefundTransfer($transfer, true);
+    }
+
     /**
      * @param StripeTransfer $transfer
      * @return StripeTransfer
      */
-    public function updateOrderRefundTransfer(StripeTransfer $transfer): StripeTransfer
+    public function updateOrderRefundTransfer(StripeTransfer $transfer, $isForTax = false): StripeTransfer
     {
         // Transfer already reversed
         if ($transfer->getTransferId()) {
@@ -237,10 +277,14 @@ class StripeTransferFactory implements LoggerAwareInterface
         // Check corresponding StripeRefund
         $refund = null;
         try {
-            $refund = $this->findRefundFromRefundId($transfer->getMiraklId());
+            $refund = $this->findRefundFromRefundId(str_replace($this->taxOrderPostfix, "", $transfer->getMiraklId()));
 
             // Fetch transfer to be reversed
             $orderIds = [$refund->getMiraklOrderId()];
+            if ($isForTax) {
+                $orderIds = [$refund->getMiraklOrderId().$this->taxOrderPostfix];
+            }
+
             $orderTransfer = current($this->stripeTransferRepository->findTransfersByOrderIds($orderIds));
 
             // Check order transfer status
@@ -265,13 +309,22 @@ class StripeTransferFactory implements LoggerAwareInterface
             }
 
             // Amount and currency
+            $transferAmount = $refund->getAmount();
             $commission = $order->getRefundedOperatorCommission($refund);
             $commission = gmp_intval((string) ($commission * 100));
-            $transfer->setAmount($refund->getAmount() - $commission);
+            $refundedTax = $order->getRefundedTax($refund);
+            $refundedTax = gmp_intval((string) ($refundedTax * 100));
+            $transferAmount = $transferAmount - $commission - $refundedTax;
+
+            if ($isForTax) {
+                $transferAmount = $refundedTax;
+            }
+
+            $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                    // Problem is final, let's abort
+                // Problem is final, let's abort
                 case 10:
                     return $this->abortTransfer($transfer, $e->getMessage());
                     // Problem is just temporary, let's put on hold
@@ -325,7 +378,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             $transfer->setAccountMapping($this->getAccountMapping($invoice['shop_id'] ?? 0));
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                    // Problem is final, let's abort
+                // Problem is final, let's abort
                 case 10:
                     return $this->abortTransfer($transfer, $e->getMessage());
                     // Problem is just temporary, let's put on hold
@@ -573,5 +626,30 @@ class StripeTransferFactory implements LoggerAwareInterface
         return $transfer
             ->setStatus(StripeTransfer::TRANSFER_CREATED)
             ->setStatusReason(null);
+    }
+
+    /**
+     * @param string $stripeAccountId
+     * @return AccountMapping
+     */
+    private function getAccountMappingByAccountId(string $stripeAccountId): AccountMapping
+    {
+        if (!$stripeAccountId) {
+            throw new InvalidArgumentException(
+                StripeTransfer::TRANSFER_STATUS_REASON_NO_ACCOUNT_ID,
+                10
+            );
+        }
+
+        $mapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccountId);
+
+        if (!$mapping) {
+            throw new InvalidArgumentException(sprintf(
+                StripeTransfer::TRANSFER_STATUS_REASON_ACCOUNT_NOT_FOUND,
+                $stripeAccountId
+            ), 20);
+        }
+
+        return $mapping;
     }
 }

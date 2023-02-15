@@ -24,6 +24,7 @@ services:
     public: true
     arguments:
       $miraklClient: '@App\Tests\MiraklMockedHttpClient'
+      $taxOrderPostfix: 'string'
 
   App\Service\StripeClient:
     class: App\Service\StripeClient

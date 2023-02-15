@@ -5,3 +5,7 @@ vendor
 bin/.phpunit/
 .env
 .idea/*
+.settings
+.buildpath
+.project
+clover.xml

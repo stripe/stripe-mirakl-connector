@@ -331,6 +331,16 @@ class MiraklMockedHttpClient extends MockHttpClient
 						return ['invoices' => []];
 				}
 				break;
+			case '/api/sellerpayment/transactions_logs':
+				switch (true) {
+					case isset($params['accounting_document_number']):
+						$doc_number = $params['accounting_document_number'];
+						$max = $params['max'];
+						return ['data' => $this->mockTransactionsLogsByDocumentNumber($doc_number, $max)];
+					default:
+						return ['data' => []];
+				}
+				break;
 		}
 
 		throw new InvalidArgumentException();
@@ -1127,6 +1137,17 @@ class MiraklMockedHttpClient extends MockHttpClient
 				'total_subscription_incl_tax' => -9.99,
 				'total_other_credits_incl_tax' => 56.78,
 				'total_other_invoices_incl_tax' => -98.76,
+			],
+		];
+	}
+
+	private function mockTransactionsLogsByDocumentNumber()
+	{
+		return [			
+			[
+				'id' => rand(1, 1000),
+				'type' => 'ORDER_AMOUNT_TAX',
+				'amount' => 0,
 			],
 		];
 	}

@@ -59,12 +59,15 @@ class SellerSettlementServiceTest extends KernelTestCase
             $container->get('doctrine')->getRepository(StripeRefund::class),
             $this->stripeTransferRepository,
             $this->miraklClient,
-            $container->get('App\Service\StripeClient')
+            $container->get('App\Service\StripeClient'),
+            'acc_xxxxxxx',
+            '_TAX'
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
         $stripePayoutFactory = new StripePayoutFactory(
-            $container->get('doctrine')->getRepository(AccountMapping::class)
+            $container->get('doctrine')->getRepository(AccountMapping::class),
+            $this->miraklClient
         );
         $stripePayoutFactory->setLogger(new NullLogger());
 
@@ -109,7 +112,7 @@ class SellerSettlementServiceTest extends KernelTestCase
         $invoices = $this->miraklClient->listInvoicesByDate(
             MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_1_VALID
         );
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         $this->assertCount(3, $payouts);
 
         $payouts = $this->getPayoutsFromRepository();
@@ -141,10 +144,10 @@ class SellerSettlementServiceTest extends KernelTestCase
         $invoices = $this->miraklClient->listInvoicesByDate(
             MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_1_VALID
         );
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         $this->assertCount(3, $payouts);
 
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         // BASIC is already pending and AMOUNT_INVALID is aborted
         $this->assertCount(1, $payouts);
 
@@ -180,7 +183,7 @@ class SellerSettlementServiceTest extends KernelTestCase
         $invoices = $this->miraklClient->listInvoicesByDate(
             MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_1_VALID
         );
-        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices);
+        $payouts = $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
         $this->assertCount(3, $payouts);
 
         // Only INVALID_SHOP is retriable
@@ -191,7 +194,7 @@ class SellerSettlementServiceTest extends KernelTestCase
         $id = MiraklMockedHttpClient::INVOICE_INVALID_SHOP;
         $invoices[$id]['shop_id'] = MiraklMockedHttpClient::SHOP_BASIC;
         $payouts = $this->sellerSettlementService
-            ->updatePayoutsFromInvoices($payouts, $invoices);
+            ->updatePayoutsFromInvoices($payouts, $invoices, $this->miraklClient);
         $this->assertCount(1, $payouts);
 
         $payouts = $this->getPayoutsFromRepository();

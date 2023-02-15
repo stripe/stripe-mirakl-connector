@@ -28,9 +28,12 @@ class MiraklClient
      */
     private $client;
 
-    public function __construct(HttpClientInterface $miraklClient)
+    private $taxOrderPostfix;
+
+    public function __construct(HttpClientInterface $miraklClient, string $taxOrderPostfix)
     {
         $this->client = $miraklClient;
+        $this->taxOrderPostfix = $taxOrderPostfix;
     }
 
     private function get(string $endpoint, array $params = []): ResponseInterface
@@ -172,6 +175,7 @@ class MiraklClient
     // OR11 by order_id
     public function listProductOrdersById(array $orderIds)
     {
+        $orderIds = array_map(array($this, 'removeTaxKeword'), $orderIds);
         $res = [];
         foreach (array_chunk($orderIds, 100) as $chunk) {
             $res = array_merge($res, $this->paginateByOffset('/api/orders', ['order_ids' => implode(',', $chunk)], 'orders'));
@@ -255,6 +259,7 @@ class MiraklClient
     // SOR11 by order_id
     public function listServiceOrdersById(array $orderIds)
     {
+        $orderIds = array_map(array($this, 'removeTaxKeword'), $orderIds);
         $res = $this->paginateByPage('/api/mms/orders', ['order_id' => $orderIds], 'data');
         $res = $this->arraysToObjects($res, MiraklServiceOrder::class);
         return $this->objectsToMap($res, 'getId');
@@ -279,6 +284,7 @@ class MiraklClient
     // SPA11 by order ID
     public function listServicePendingDebitsByOrderIds(array $orderIds)
     {
+        $orderIds = array_map(array($this, 'removeTaxKeword'), $orderIds);
         $res = $this->paginateByPage('/api/mms/debits', ['order_id' => $orderIds], 'data');
         $res = $this->arraysToObjects($res, MiraklServicePendingDebit::class);
         return $this->objectsToMap($res, 'getOrderId');
@@ -367,6 +373,15 @@ class MiraklClient
         ]]]);
     }
 
+    public function getTransactionsForInvoce(string $invoiceId)
+    {
+        $params['accounting_document_number'] = $invoiceId;
+        $response = $this->get('/api/sellerpayment/transactions_logs', array_merge(['max' => 100], $params));
+        $objects = $this->parseResponse($response, 'data');
+        $res_map =$this->arraysToMap($objects, 'id');
+        return $res_map;
+    }
+
     // parse a date based on the format used by Mirakl
     public static function getDatetimeFromString(string $date): \DateTimeInterface
     {
@@ -377,5 +392,10 @@ class MiraklClient
     public static function getStringFromDatetime(\DateTimeInterface $date): string
     {
         return $date->format(self::DATE_FORMAT);
+    }
+
+    private function removeTaxKeword($val): string
+    {
+        return str_replace($this->taxOrderPostfix, "", $val);
     }
 }

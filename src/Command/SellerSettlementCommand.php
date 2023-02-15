@@ -91,7 +91,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         );
 
         $this->dispatchPayouts(
-            $this->sellerSettlementService->getPayoutsFromInvoices($invoices)
+            $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient)
         );
     }
 
@@ -114,7 +114,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         $this->dispatchTransfers($transfersByInvoiceId);
 
         $payouts = $this->sellerSettlementService
-            ->updatePayoutsFromInvoices($retriablePayouts, $invoices);
+            ->updatePayoutsFromInvoices($retriablePayouts, $invoices, $this->miraklClient);
         $this->dispatchPayouts($payouts);
     }
 
@@ -151,7 +151,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         );
 
         $this->dispatchPayouts(
-            $this->sellerSettlementService->getPayoutsFromInvoices($invoices)
+            $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient)
         );
 
         $checkpoint = $this->updateCheckpoint($invoices, $checkpoint);
