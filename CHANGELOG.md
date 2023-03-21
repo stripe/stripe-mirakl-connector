@@ -1,4 +1,11 @@
 # Changelog
+## Version 3.1.0
+
+- Added tax split functionality (#116 thanks @tejpal-mirakl)
+- Splitted Tax amount will be transfer to tax connected account
+- To enable Tax split configuration for new product order & backlog product order, for new service order & backlog service order
+You must enter ENABLE_PAYMENT_TAX_SPLIT as true and STRIPE_TAX_ACCOUNT variable must have the stripe tax connected account id in environment
+- Insert a new row in account_mapping table manually by entering stripe tax connected account id in stripe_account_id and put 0 in mirakl_shop_id
 
 ## Version 3.0.8
 
