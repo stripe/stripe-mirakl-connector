@@ -128,10 +128,17 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         // Shop must have a Stripe account
         try {
+            
+            //account mapping for the original shop
+            $shop_accountMapping = $this->getAccountMapping($order->getShopId());
+            
+            if($isForTax)
+                $taxAccountMapping = $this->getAccountMappingByAccountId($this->stripeTaxAccount);;
+            
             if (!$isForTax) {
-                $accountMapping = $this->getAccountMapping($order->getShopId());
+                $accountMapping = $shop_accountMapping;
             } else {
-                $accountMapping = $this->getAccountMappingByAccountId($this->stripeTaxAccount);
+                $accountMapping = $taxAccountMapping;
             }
             $transfer->setAccountMapping($accountMapping);
         } catch (InvalidArgumentException $e) {
@@ -139,8 +146,8 @@ class StripeTransferFactory implements LoggerAwareInterface
             return $this->putTransferOnHold($transfer, $e->getMessage());
         }
 
-        if ($accountMapping->getIgnored()) {
-            $shopId = $accountMapping->getMiraklShopId();
+        if ($shop_accountMapping->getIgnored()) {
+            $shopId = $shop_accountMapping->getMiraklShopId();
             return $this->ignoreTransfer($transfer, "Shop $shopId is ignored");
         }
 

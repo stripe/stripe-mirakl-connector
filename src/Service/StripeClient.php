@@ -19,6 +19,7 @@ use Stripe\Refund;
 use Stripe\Transfer;
 use Stripe\TransferReversal;
 use Stripe\Webhook;
+use function PHPUnit\Framework\isEmpty;
 
 /**
  * @codeCoverageIgnore
@@ -47,7 +48,6 @@ class StripeClient
     ) {
         $this->version = $versionManager->getVersion();
         $this->verifyWebhookSignature = $verifyWebhookSignature;
-
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(self::APP_NAME, $this->version, self::APP_REPO, self::APP_PARTNER_ID);
         Stripe::setApiVersion(self::APP_API_VERSION);
@@ -65,6 +65,31 @@ class StripeClient
     public function retrieveAccount(string $accountId): Account
     {
         return Account::retrieve($accountId);
+    }
+    
+    // returns Account []
+    public function retrieveAllAccounts() : array
+    {
+        
+        $hasmore = false;
+        $connect_accounts = array();
+        $lastConnectId='';
+        
+        $limit = 50;
+        do{
+            $params = $lastConnectId=='' ? ['limit' => $limit] : ['limit' => $limit,'starting_after' => $lastConnectId];
+            $response = Account::all($params);
+            $connect_accounts = array_merge($connect_accounts,$response['data']);
+          //  echo "\n";
+          //  echo count ($connect_accounts).'   ';
+            $hasmore = $response['has_more'];
+            $lastConnectId = end($connect_accounts)['id'];
+         //   echo $hasmore.'   ';
+         //   echo $lastConnectId.'    ';
+            
+        }while($hasmore);
+        
+        return $connect_accounts;
     }
 
     public function createStripeAccount(int $shopId, array $details, array $metadata = []): Account
