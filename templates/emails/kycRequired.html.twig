@@ -1,0 +1,28 @@
+{% extends "emails/base.html.twig" %}
+
+{% block content %}
+	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;">KYC required at Stripe for below connect accounts</p>
+	{% if not kycRequiredAccounts is empty %}
+	<p style="font-size: 14px; line-height: 1.5; text-align: left; mso-line-height-alt: 21px;  margin-top: 1em;">KYC Required account details: </p>
+	<table style="width: 100%; text-align: center;">
+		<thead style="background-color: #6772e5; color: #fff;">
+			<tr>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Internal ID</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Connect account ID</th>
+				<th style="border: 1px solid rgb(190, 190, 190);" scope="col">Mirakl shop Id</th>
+				<th style="border: 1px solid rgb(190, 190, 190);max-width:160px;" scope="col">Reason</th>
+			</tr>
+		</thead>
+		<tbody style="background-color: #e4f0f5;">
+			{% for acc_det in kycRequiredAccounts %}
+            <tr>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ acc_det.id }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ acc_det.connect_account_id }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);">{{ acc_det.shop_id  }}</td>
+				<td style="border: 1px solid rgb(190, 190, 190);max-width:160px;">{{acc_det.reason  }}</td>
+			</tr>
+            {% endfor %}
+		</tbody>
+	</table>
+	{% endif %}
+{% endblock %}
