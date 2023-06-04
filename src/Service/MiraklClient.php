@@ -372,12 +372,11 @@ class MiraklClient
             'kyc' => ['status' => $status]
         ]]]);
     }
-    
+
     // S07
     public function updateShopKycStatusWithReason($updateShopsReqs)
     {
         $this->put('/api/shops', ['shops' => $updateShopsReqs]);
-       
     }
 
     public function getTransactionsForInvoce(string $invoiceId)
