@@ -20,8 +20,6 @@ use Stripe\Transfer;
 use Stripe\TransferReversal;
 use Stripe\Webhook;
 
-use function PHPUnit\Framework\isEmpty;
-
 /**
  * @codeCoverageIgnore
  */

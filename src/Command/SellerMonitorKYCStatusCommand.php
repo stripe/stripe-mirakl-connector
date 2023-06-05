@@ -39,6 +39,9 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var AccountMappingRepository
      */
     private $accountMappingRepository;
+    public function setAccountMappingRepository(AccountMappingRepository $accountMappingRepository){
+        $this->accountMappingRepository = $accountMappingRepository;
+    }
 
     /**
      * @var ConfigService
@@ -56,22 +59,35 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      */
     private $stripeClient;
 
+    public function setStripeClient(StripeClient $stripeClient){
+        $this->stripeClient = $stripeClient;
+    }
+
     private $mirakl_shop_kyc_disable;
 
     /**
      * @var MailerInterface
      */
     private $mailer;
+    public function setMailer(MailerInterface $mailer){
+        $this->mailer = $mailer;
+    }
 
     /**
      * @var string
      */
     private $technicalEmailFrom;
+    public function setTechnicalEmailFrom(string $email){
+        $this->technicalEmailFrom = $email;
+    }
 
     /**
      * @var string
      */
     private $technicalEmail;
+    public function setTechnicalEmail(string $email){
+        $this->technicalEmail = $email;
+    }
 
     /**
      * @var string
