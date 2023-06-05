@@ -39,7 +39,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var AccountMappingRepository
      */
     private $accountMappingRepository;
-    public function setAccountMappingRepository(AccountMappingRepository $accountMappingRepository){
+    public function setAccountMappingRepository(AccountMappingRepository $accountMappingRepository)
+    {
         $this->accountMappingRepository = $accountMappingRepository;
     }
 
@@ -59,7 +60,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      */
     private $stripeClient;
 
-    public function setStripeClient(StripeClient $stripeClient){
+    public function setStripeClient(StripeClient $stripeClient)
+    {
         $this->stripeClient = $stripeClient;
     }
 
@@ -69,7 +71,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var MailerInterface
      */
     private $mailer;
-    public function setMailer(MailerInterface $mailer){
+    public function setMailer(MailerInterface $mailer)
+    {
         $this->mailer = $mailer;
     }
 
@@ -77,7 +80,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var string
      */
     private $technicalEmailFrom;
-    public function setTechnicalEmailFrom(string $email){
+    public function setTechnicalEmailFrom(string $email)
+    {
         $this->technicalEmailFrom = $email;
     }
 
@@ -85,7 +89,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var string
      */
     private $technicalEmail;
-    public function setTechnicalEmail(string $email){
+    public function setTechnicalEmail(string $email)
+    {
         $this->technicalEmail = $email;
     }
 
