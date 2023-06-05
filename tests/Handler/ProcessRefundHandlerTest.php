@@ -168,7 +168,24 @@ class ProcessRefundHandlerTest extends KernelTestCase
             ]
         ));
     }
+	
+	public function testProductRefundWithMiraklTimeout()
+    {
+        $refund = $this->mockRefund(
+            StripeRefund::REFUND_PRODUCT_ORDER,
+            MiraklMock::PRODUCT_ORDER_REFUND_TIMEOUT,
+            StripeMock::CHARGE_BASIC
+        );
+        $this->executeHandler($refund->getId());
 
+        $refund = $this->stripeRefundRepository->findOneBy([
+            'id' => $refund->getId()
+        ]);
+
+        $this->assertEquals(StripeRefund::REFUND_FAILED, $refund->getStatus());
+        $this->assertEquals(StripeMock::REFUND_BASIC, $refund->getStripeRefundId());
+    }
+	
     public function testValidServiceRefund()
     {
         $refund = $this->mockRefund(

@@ -7,6 +7,7 @@ use App\Service\MiraklClient;
 use App\Tests\StripeMockedHttpClient as StripeMock;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Component\HttpClient\Exception\TransportException;
 
 class MiraklMockedHttpClient extends MockHttpClient
 {
@@ -61,6 +62,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const SERVICE_ORDER_PENDING_REFUND = 'service_order_pending_refund';
 	public const PRODUCT_ORDER_REFUND_BASIC = 1000;
 	public const PRODUCT_ORDER_REFUND_VALIDATED = 1001;
+	public const PRODUCT_ORDER_REFUND_TIMEOUT = 1002;
 	public const SERVICE_ORDER_REFUND_BASIC = 2000;
 	public const SERVICE_ORDER_REFUND_VALIDATED = 2001;
 
@@ -142,6 +144,8 @@ class MiraklMockedHttpClient extends MockHttpClient
 				}
 			} catch (InvalidArgumentException $e) {
 				throw new \Exception("Unpexpected URL: {$url}. Method: {$method}.");
+			 } catch (TransportException $e) {
+				throw new TransportException($e->getMessage());
 			} catch (\Exception $e) {
 				return new MockResponse(
 					['message' => $e->getMessage()],
@@ -823,6 +827,8 @@ class MiraklMockedHttpClient extends MockHttpClient
 			case self::PRODUCT_ORDER_REFUND_VALIDATED:
 			case self::SERVICE_ORDER_REFUND_VALIDATED:
 				throw new \Exception("$id already validated", 400);
+			case self::PRODUCT_ORDER_REFUND_TIMEOUT:
+				throw new TransportException("Call to Mirakl Timed out"); 
 		}
 	}
 
