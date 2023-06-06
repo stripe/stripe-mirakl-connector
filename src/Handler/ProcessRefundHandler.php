@@ -86,7 +86,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             $refund->setStatusReason(null);
         } catch (ApiErrorException $e) {
             $this->logger->error(
-                sprintf('Could not create refund in Stripe: %s.', $e->getMessage()),
+                sprintf('Could  not create refund in Stripe: %s.', $e->getMessage()),
                 [
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId()
@@ -99,13 +99,13 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
             $this->logger->error(
                 sprintf('Timeout processing refund: %s.', $e->getMessage()),
                 [
-				    'stripeRefundId' => $refund->getStripeRefundId(),
+                    'stripeRefundId' => $refund->getStripeRefundId(),
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId()
                 ]
             );
-			
-		    $refund->setStatus(StripeRefund::REFUND_FAILED);
+
+            $refund->setStatus(StripeRefund::REFUND_FAILED);
             $refund->setStatusReason(substr($e->getMessage(), 0, 1024));
         } catch (ClientException $e) {
             $message = $e->getResponse()->getContent(false);

@@ -19,7 +19,6 @@ use Stripe\Refund;
 use Stripe\Transfer;
 use Stripe\TransferReversal;
 use Stripe\Webhook;
-use function PHPUnit\Framework\isEmpty;
 
 /**
  * @codeCoverageIgnore
@@ -66,29 +65,27 @@ class StripeClient
     {
         return Account::retrieve($accountId);
     }
-    
+
     // returns Account []
-    public function retrieveAllAccounts() : array
+    public function retrieveAllAccounts(): array
     {
-        
         $hasmore = false;
         $connect_accounts = array();
         $lastConnectId='';
-        
+
         $limit = 50;
-        do{
+        do {
             $params = $lastConnectId=='' ? ['limit' => $limit] : ['limit' => $limit,'starting_after' => $lastConnectId];
             $response = Account::all($params);
-            $connect_accounts = array_merge($connect_accounts,$response['data']);
-          //  echo "\n";
-          //  echo count ($connect_accounts).'   ';
+            $connect_accounts = array_merge($connect_accounts, $response['data']);
+            //  echo "\n";
+            //  echo count ($connect_accounts).'   ';
             $hasmore = $response['has_more'];
             $lastConnectId = end($connect_accounts)['id'];
-         //   echo $hasmore.'   ';
-         //   echo $lastConnectId.'    ';
-            
-        }while($hasmore);
-        
+            //   echo $hasmore.'   ';
+            //   echo $lastConnectId.'    ';
+        } while ($hasmore);
+
         return $connect_accounts;
     }
 

@@ -128,13 +128,14 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         // Shop must have a Stripe account
         try {
-            
+
             //account mapping for the original shop
             $shop_accountMapping = $this->getAccountMapping($order->getShopId());
-            
-            if($isForTax)
-                $taxAccountMapping = $this->getAccountMappingByAccountId($this->stripeTaxAccount);;
-            
+
+            if ($isForTax) {
+                $taxAccountMapping = $this->getAccountMappingByAccountId($this->stripeTaxAccount);
+            };
+
             if (!$isForTax) {
                 $accountMapping = $shop_accountMapping;
             } else {
