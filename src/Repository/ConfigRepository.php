@@ -41,7 +41,7 @@ class ConfigRepository extends ServiceEntityRepository
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }

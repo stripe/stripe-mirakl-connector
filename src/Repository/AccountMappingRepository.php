@@ -33,7 +33,7 @@ class AccountMappingRepository extends ServiceEntityRepository
         return $accountMapping;
     }
 
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }

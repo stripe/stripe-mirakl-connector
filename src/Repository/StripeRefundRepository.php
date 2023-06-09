@@ -34,12 +34,12 @@ class StripeRefundRepository extends ServiceEntityRepository
         return $stripeRefund;
     }
 
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }
 
-    private function mapRefundsByRefundId(array $refunds)
+    private function mapRefundsByRefundId(array $refunds): mixed
     {
         $map = [];
         foreach ($refunds as $refund) {
@@ -49,7 +49,7 @@ class StripeRefundRepository extends ServiceEntityRepository
         return $map;
     }
 
-    public function findRefundsByRefundIds(array $refundIds)
+    public function findRefundsByRefundIds(array $refundIds): mixed
     {
         return $this->mapRefundsByRefundId($this->findBy([
             'miraklRefundId' => $refundIds

@@ -47,11 +47,7 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
      */
     private $paymentRefundService;
 
-    /**
-     * @var StripeRefundRepository
-     */
-    private $stripeRefundRepository;
-
+    
     public function __construct(
         MessageBusInterface $bus,
         MiraklClient $miraklClient,
@@ -86,7 +82,7 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         return 0;
     }
 
-    private function processBacklog()
+    private function processBacklog(): void 
     {
         $this->logger->info("Processing backlog.");
         $backlog = $this->paymentRefundService->getRetriableTransfers();
@@ -98,6 +94,7 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         $this->dispatchTransfers(
             $this->paymentRefundService->updateTransfers($backlog)
         );
+
     }
 
     private function processPendingRefunds(string $orderType): void

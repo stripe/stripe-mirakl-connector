@@ -1,4 +1,6 @@
 parameters:
+    excludePaths:
+        - 'src/Migrations/*'
     reportUnmatchedIgnoredErrors: false
     checkGenericClassInNonGenericObjectType: false
     inferPrivatePropertyTypeFromConstructor: true
@@ -10,3 +12,5 @@ parameters:
         - '#on Psr\\Log\\LoggerInterface\|null#'
     universalObjectCratesClasses:
         - Stripe\StripeObject
+    doctrine:
+        objectManagerLoader: tests/ObjectManager.php

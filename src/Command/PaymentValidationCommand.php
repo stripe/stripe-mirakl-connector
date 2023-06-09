@@ -48,7 +48,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setDescription('Validate pending order whose payment can be captured')

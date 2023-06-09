@@ -12,7 +12,7 @@ use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 class ExceptionSubscriber implements EventSubscriberInterface
 {
-    public function onKernelException(ExceptionEvent $event)
+    public function onKernelException(ExceptionEvent $event): void
     {
         $e = $event->getThrowable();
         if ($e instanceof NotEncodableValueException) {

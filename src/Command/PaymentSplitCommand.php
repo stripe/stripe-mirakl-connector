@@ -83,7 +83,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         return 0;
     }
 
-    private function processBacklog(string $orderType)
+    private function processBacklog(string $orderType): void
     {
         $this->logger->info("Processing $orderType backlog.");
         $method = "getRetriable{$orderType}Transfers";
@@ -108,7 +108,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         }
     }
 
-    private function processNewOrders(string $orderType)
+    private function processNewOrders(string $orderType): void
     {
         $method = "get{$orderType}PaymentSplitCheckpoint";
         $checkpoint = $this->configService->$method() ?? '';

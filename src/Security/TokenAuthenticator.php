@@ -47,7 +47,7 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
         return $credentials['token'] === $user->getPassword();
     }
 
-    public function onAuthenticationSuccess(Request $request, TokenInterface $token, $providerKey)
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $providerKey)
     {
         return null;
     }

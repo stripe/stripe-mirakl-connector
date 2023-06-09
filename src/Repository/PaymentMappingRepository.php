@@ -29,7 +29,7 @@ class PaymentMappingRepository extends ServiceEntityRepository
         return $paymentMapping;
     }
 
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }
