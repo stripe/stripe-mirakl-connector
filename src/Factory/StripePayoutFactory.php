@@ -19,10 +19,6 @@ class StripePayoutFactory implements LoggerAwareInterface
      */
     private $accountMappingRepository;
 
-    /**
-     * @var MiraklClient
-     */
-
     public function __construct(
         AccountMappingRepository $accountMappingRepository
     ) {
@@ -186,7 +182,7 @@ class StripePayoutFactory implements LoggerAwareInterface
         return $payout->setStatus(StripePayout::PAYOUT_CREATED);
     }
 
-    private function findTotalOrderTax($transactions)
+    private function findTotalOrderTax(array $transactions): float
     {
         $taxes=0;
         foreach ($transactions as $trx) {

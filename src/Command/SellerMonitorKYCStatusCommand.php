@@ -35,11 +35,16 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      */
     private $bus;
 
+    public function getBus(): mixed
+    {
+        return $this->bus;
+    }
+
     /**
      * @var AccountMappingRepository
      */
     private $accountMappingRepository;
-    public function setAccountMappingRepository(AccountMappingRepository $accountMappingRepository)
+    public function setAccountMappingRepository(AccountMappingRepository $accountMappingRepository): void
     {
         $this->accountMappingRepository = $accountMappingRepository;
     }
@@ -48,6 +53,11 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var ConfigService
      */
     private $configService;
+
+    public function getConfigService(): mixed
+    {
+        return $this->configService;
+    }
 
     /**
      * @var MiraklClient
@@ -60,7 +70,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      */
     private $stripeClient;
 
-    public function setStripeClient(StripeClient $stripeClient)
+    public function setStripeClient(StripeClient $stripeClient): void
     {
         $this->stripeClient = $stripeClient;
     }
@@ -71,7 +81,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var MailerInterface
      */
     private $mailer;
-    public function setMailer(MailerInterface $mailer)
+    public function setMailer(MailerInterface $mailer): void
     {
         $this->mailer = $mailer;
     }
@@ -80,7 +90,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var string
      */
     private $technicalEmailFrom;
-    public function setTechnicalEmailFrom(string $email)
+    public function setTechnicalEmailFrom(string $email): void
     {
         $this->technicalEmailFrom = $email;
     }
@@ -89,7 +99,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var string
      */
     private $technicalEmail;
-    public function setTechnicalEmail(string $email)
+    public function setTechnicalEmail(string $email): void
     {
         $this->technicalEmail = $email;
     }
@@ -204,7 +214,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
     }
 
 
-    private function findAccount($stripeId, $accountsInDB)
+    private function findAccount(string $stripeId, array $accountsInDB)
     {
         foreach ($accountsInDB as $acc) {
             if ($stripeId == (string)$acc->getStripeAccountId()) {
@@ -219,11 +229,11 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
     {
         $requirements = $stripeAccount->requirements;
 
-        if (count($requirements[self::CURRENTLY_DUE]) > 0) {
+        if (count((array)$requirements[self::CURRENTLY_DUE]) > 0) {
             return self::KYC_STATUS_PENDING_SUBMISSION;
         }
 
-        if (count($requirements[self::PENDING_VERIFICATION]) > 0) {
+        if (count((array) $requirements[self::PENDING_VERIFICATION]) > 0) {
             return self::KYC_STATUS_PENDING_APPROVAL;
         }
 

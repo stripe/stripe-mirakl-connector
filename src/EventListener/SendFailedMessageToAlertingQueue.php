@@ -16,7 +16,7 @@ class SendFailedMessageToAlertingQueue implements EventSubscriberInterface, Logg
 {
     use LoggerAwareTrait;
 
-    private const NOTIY_OF_FAILED_WEBHOOK = 'operator_http_notification_failed';
+    //private const NOTIY_OF_FAILED_WEBHOOK = 'operator_http_notification_failed';
     /**
      * @var MessageBusInterface
      */
@@ -33,7 +33,7 @@ class SendFailedMessageToAlertingQueue implements EventSubscriberInterface, Logg
         $this->endpointDownMailNotification = $endpointDownMailNotification;
     }
 
-    public function onMessageFailed(WorkerMessageFailedEvent $event)
+    public function onMessageFailed(WorkerMessageFailedEvent $event): void
     {
         if (!$this->endpointDownMailNotification || $event->willRetry()) {
             return;

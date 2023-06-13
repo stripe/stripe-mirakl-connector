@@ -55,7 +55,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->addArgument('mirakl_shop_id', InputArgument::OPTIONAL);
     }
@@ -81,7 +81,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         return 0;
     }
 
-    private function processProvidedShopId(int $shopId)
+    private function processProvidedShopId(int $shopId): void
     {
         $this->logger->info('Executing provided shop', ['shop_id' => $shopId]);
         $invoices = $this->miraklClient->listInvoicesByShopId($shopId);
@@ -95,7 +95,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         );
     }
 
-    private function processBacklog()
+    private function processBacklog(): void
     {
         $this->logger->info('Executing backlog');
         $retriableTransfers = $this->sellerSettlementService->getRetriableTransfers();
@@ -118,7 +118,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         $this->dispatchPayouts($payouts);
     }
 
-    private function getFirstInvoiceDate(array $transfersByInvoiceId, array $payouts)
+    private function getFirstInvoiceDate(array $transfersByInvoiceId, array $payouts): string
     {
         $createdDates = array_map(
             function ($o) {
@@ -131,7 +131,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         return MiraklClient::getStringFromDatetime(current($createdDates));
     }
 
-    private function processNewInvoices()
+    private function processNewInvoices(): void
     {
         $checkpoint = $this->configService->getSellerSettlementCheckpoint() ?? '';
         $this->logger->info('Executing for recent invoices, checkpoint: ' . $checkpoint);

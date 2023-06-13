@@ -128,8 +128,12 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     public function handleStripeSellerWebhook(Request $request): Response
     {
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
-        $payload = $request->getContent() ?? '';
-
+        $payload = $request->getContent();
+        if ($payload) {
+            $payload = $request->getContent();
+        } else {
+            $payload = '';
+        }
         return $this->handleStripeWebhook($payload, $signatureHeader, $this->webhookSellerSecret);
     }
 
@@ -152,12 +156,16 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     public function handleStripeOperatorWebhook(Request $request): Response
     {
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
-        $payload = $request->getContent() ?? '';
-
+        $payload = $request->getContent();
+        if ($payload) {
+            $payload = $request->getContent();
+        } else {
+            $payload = '';
+        }
         return $this->handleStripeWebhook($payload, $signatureHeader, $this->webhookOperatorSecret);
     }
 
-    protected function handleStripeWebhook($payload, string $signatureHeader, string $webhookSecret): Response
+    protected function handleStripeWebhook(string $payload, string $signatureHeader, string $webhookSecret): Response
     {
         try {
             $event = $this->stripeClient->webhookConstructEvent($payload, $signatureHeader, $webhookSecret);
@@ -174,7 +182,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         if (in_array($event['type'], self::DEPRECATED_EVENT_TYPES)) {
             return new Response(sprintf(
                 'The event type %s is no longer required and can be removed in the webhook settings.',
-                $event['type']
+                (bool)$event['type']
             ), Response::HTTP_OK);
         }
 
@@ -282,8 +290,8 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private function findMiraklCommercialOrderId(\Stripe\Charge $charge): ?string
     {
-        if (isset($charge['metadata'][$this->metadataCommercialOrderId])) {
-            if ('' === $charge['metadata'][$this->metadataCommercialOrderId]) {
+        if (is_array($charge['metadata']) && isset($charge['metadata'][$this->metadataCommercialOrderId])) {
+            if (is_array($charge['metadata']) && $charge['metadata'][$this->metadataCommercialOrderId]==='') {
                 $message = sprintf('%s is empty in Charge metadata.', $this->metadataCommercialOrderId);
                 $this->logger->error($message);
                 throw new \Exception($message, Response::HTTP_BAD_REQUEST);
@@ -299,7 +307,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 $paymentIntent = $this->stripeClient->paymentIntentRetrieve($paymentIntent);
             }
 
-            if (isset($paymentIntent['metadata'][$this->metadataCommercialOrderId])) {
+            if (is_array($paymentIntent['metadata']) && isset($paymentIntent['metadata'][$this->metadataCommercialOrderId])) {
                 if ('' === $paymentIntent['metadata'][$this->metadataCommercialOrderId]) {
                     $message = sprintf('%s is empty in PaymentIntent.', $this->metadataCommercialOrderId);
                     $this->logger->error($message);

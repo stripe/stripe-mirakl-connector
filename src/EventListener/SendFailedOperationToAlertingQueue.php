@@ -23,17 +23,17 @@ class SendFailedOperationToAlertingQueue
         $this->bus = $bus;
     }
 
-    public function postPersist(LifecycleEventArgs $args)
+    public function postPersist(LifecycleEventArgs $args): void
     {
         $this->dispatchFailedOperation($args);
     }
 
-    public function postUpdate(LifecycleEventArgs $args)
+    public function postUpdate(LifecycleEventArgs $args): void
     {
         $this->dispatchFailedOperation($args);
     }
 
-    private function dispatchFailedOperation(LifecycleEventArgs $args)
+    private function dispatchFailedOperation(LifecycleEventArgs $args): void
     {
         $entity = $args->getObject();
         if ($entity instanceof StripePayout && in_array($entity->getStatus(), StripePayout::getInvalidStatus())) {

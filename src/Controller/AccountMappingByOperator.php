@@ -109,7 +109,9 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
         $mapping->setStripeAccountId($stripeUserId);
         $mapping->setPayinEnabled($stripeAccount->payouts_enabled);
         $mapping->setPayoutEnabled($stripeAccount->charges_enabled);
-        $mapping->setDisabledReason($stripeAccount->requirements['disabled_reason']);
+        /** @var string $disabledReasonData */
+        $disabledReasonData = $stripeAccount->requirements['disabled_reason'];
+        $mapping->setDisabledReason($disabledReasonData);
 
         $this->accountMappingRepository->persistAndFlush($mapping);
 

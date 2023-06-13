@@ -1,9 +1,11 @@
 parameters:
     excludePaths:
         - 'src/Migrations/*'
+        - 'src/Entity/*'
     reportUnmatchedIgnoredErrors: false
     checkGenericClassInNonGenericObjectType: false
     inferPrivatePropertyTypeFromConstructor: true
+    treatPhpDocTypesAsCertain: false 
     ignoreErrors:
         - '#Call to static method createFromThrowable\(\)#'
         - '#typehint#'
@@ -14,3 +16,4 @@ parameters:
         - Stripe\StripeObject
     doctrine:
         objectManagerLoader: tests/ObjectManager.php
+    

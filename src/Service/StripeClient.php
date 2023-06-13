@@ -2,7 +2,7 @@
 
 namespace App\Service;
 
-use Shivas\VersioningBundle\Service\VersionManager;
+use Shivas\VersioningBundle\Service\VersionManagerInterface;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\UnexpectedValueException;
 use Stripe\HttpClient\ClientInterface;
@@ -41,7 +41,7 @@ class StripeClient
     public const APP_API_VERSION = '2019-08-14';
 
     public function __construct(
-        VersionManager $versionManager,
+        VersionManagerInterface $versionManager,
         string $stripeClientSecret,
         bool $verifyWebhookSignature
     ) {

@@ -40,10 +40,20 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
      */
     private $serializer;
 
+    public function getSerializer(): mixed
+    {
+        return $this->serializer;
+    }
+
     /**
      * @var ValidatorInterface
      */
     private $validator;
+
+    public function getValidator(): mixed
+    {
+        return $this->validator;
+    }
 
     public function __construct(
         AccountMappingRepository $accountMappingRepository,

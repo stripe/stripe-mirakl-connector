@@ -53,7 +53,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->addArgument('delay', InputArgument::OPTIONAL, 'Deprecated argument kept for backward compatibility. Will be removed in future versions.');
     }
@@ -69,7 +69,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         return 0;
     }
 
-    private function processUpdatedShops()
+    private function processUpdatedShops(): void
     {
         $checkpoint = $this->configService->getSellerOnboardingCheckpoint() ?? '';
         $this->logger->info("Processing recently updated shops, checkpoint: $checkpoint.");
