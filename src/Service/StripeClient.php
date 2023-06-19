@@ -72,20 +72,17 @@ class StripeClient
         $hasmore = false;
         $connect_accounts = array();
         $lastConnectId='';
-
         $limit = 50;
         do {
             $params = $lastConnectId=='' ? ['limit' => $limit] : ['limit' => $limit,'starting_after' => $lastConnectId];
             $response = Account::all($params);
-            $connect_accounts = array_merge($connect_accounts, $response['data']);
-            //  echo "\n";
-            //  echo count ($connect_accounts).'   ';
+            $responseData = (array)$response['data'];
+            $connect_accounts = array_merge($connect_accounts, $responseData);
             $hasmore = $response['has_more'];
-            $lastConnectId = end($connect_accounts)['id'];
-            //   echo $hasmore.'   ';
-            //   echo $lastConnectId.'    ';
+            if(is_array($connect_accounts)) {
+                $lastConnectId = end($connect_accounts)['id'];
+            }
         } while ($hasmore);
-
         return $connect_accounts;
     }
 
@@ -102,7 +99,7 @@ class StripeClient
     }
 
     // Account/Login Link
-    public function createAccountLink(string $accountId, string $refreshUrl, string $returnUrl, $type = 'account_onboarding'): AccountLink
+    public function createAccountLink(string $accountId, string $refreshUrl, string $returnUrl, string $type = 'account_onboarding'): AccountLink
     {
         return AccountLink::create([
             'account' => $accountId,
@@ -123,18 +120,19 @@ class StripeClient
         if ($this->verifyWebhookSignature || $signatureHeader) {
             return Webhook::constructEvent($payload, $signatureHeader, $webhookSecret);
         } else {
-            $data = \json_decode($payload, true);
-            $jsonError = \json_last_error();
-            if (null === $data && \JSON_ERROR_NONE !== $jsonError) {
+            $data = json_decode($payload, true);
+            $jsonError = json_last_error();
+            if (null === $data && JSON_ERROR_NONE !== $jsonError) {
                 throw new UnexpectedValueException(
                     "Invalid payload: {$payload} (json_last_error() was {$jsonError})"
                 );
             }
+            $data = (array)$data ;
             return Event::constructFrom($data);
         }
     }
 
-    public function setHttpClient(ClientInterface $client)
+    public function setHttpClient(ClientInterface $client): void
     {
         ApiRequestor::setHttpClient($client);
     }

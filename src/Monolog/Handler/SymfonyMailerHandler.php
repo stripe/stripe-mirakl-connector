@@ -18,7 +18,7 @@ use Symfony\Component\Mime\Email;
  */
 class SymfonyMailerHandler extends MailHandler
 {
-    protected $mailer;
+    protected mixed $mailer;
     private $messageFactory;
 
     /**
@@ -29,7 +29,7 @@ class SymfonyMailerHandler extends MailHandler
      */
     public function __construct(MailerInterface $mailer, EmailFactory $messageFactory, $level = Logger::ERROR, bool $bubble = true)
     {
-        parent::__construct($level, $bubble);
+        parent::__construct($level = Logger::DEBUG, (bool) $bubble);
         $this->mailer = $mailer;
         $this->messageFactory = $messageFactory;
     }

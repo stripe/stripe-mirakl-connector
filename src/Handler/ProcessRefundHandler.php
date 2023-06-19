@@ -43,7 +43,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         $this->stripeRefundRepository = $stripeRefundRepository;
     }
 
-    public function __invoke(ProcessRefundMessage $message)
+    public function __invoke(ProcessRefundMessage $message): void
     {
         $refund = $this->stripeRefundRepository->findOneBy([
             'id' => $message->getStripeRefundId()

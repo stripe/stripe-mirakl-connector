@@ -34,7 +34,7 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
         $this->stripePayoutRepository = $stripePayoutRepository;
     }
 
-    public function __invoke(ProcessPayoutMessage $message)
+    public function __invoke(ProcessPayoutMessage $message): void
     {
         $payout = $this->stripePayoutRepository->findOneBy([
             'id' => $message->getStripePayoutId(),

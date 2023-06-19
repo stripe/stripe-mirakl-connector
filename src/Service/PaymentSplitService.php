@@ -61,7 +61,7 @@ class PaymentSplitService
         $transfers = [];
         foreach ($orders as $orderId => $order) {
             $pendingDebit = $pendingDebits[$orderId] ?? null;
-            if (isset($existingTransfers[$orderId])) {
+            if (is_array($existingTransfers) && isset($existingTransfers[$orderId])) {
                 $transfer = $existingTransfers[$orderId];
                 if (!$transfer->isRetriable()) {
                     continue;

@@ -119,7 +119,7 @@ class StripeTransferFactory implements LoggerAwareInterface
      * @param MiraklOrder $order
      * @return StripeTransfer
      */
-    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, MiraklPendingDebit $pendingDebit = null, $isForTax = false): StripeTransfer
+    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, MiraklPendingDebit $pendingDebit = null, bool $isForTax = false): StripeTransfer
     {
         // Transfer already created
         if ($transfer->getTransferId()) {
@@ -275,7 +275,7 @@ class StripeTransferFactory implements LoggerAwareInterface
      * @param StripeTransfer $transfer
      * @return StripeTransfer
      */
-    public function updateOrderRefundTransfer(StripeTransfer $transfer, $isForTax = false): StripeTransfer
+    public function updateOrderRefundTransfer(StripeTransfer $transfer, bool $isForTax = false): StripeTransfer
     {
         // Transfer already reversed
         if ($transfer->getTransferId()) {

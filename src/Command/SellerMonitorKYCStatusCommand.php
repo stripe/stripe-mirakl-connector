@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Command;
-
+use App\Entity\AccountMapping;
 use App\Repository\AccountMappingRepository;
 use App\Service\ConfigService;
 use App\Service\MiraklClient;
@@ -214,7 +214,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
     }
 
 
-    private function findAccount(string $stripeId, array $accountsInDB)
+    private function findAccount(string $stripeId, array $accountsInDB): ?AccountMapping
     {
         foreach ($accountsInDB as $acc) {
             if ($stripeId == (string)$acc->getStripeAccountId()) {
@@ -239,7 +239,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
 
         if (
             $requirements[self::DISABLED_REASON] !== ''
-            && strpos($requirements[self::DISABLED_REASON], 'rejected') === 0
+            && strpos( (string) $requirements[self::DISABLED_REASON], 'rejected') === 0
         ) {
             return self::KYC_STATUS_REFUSED;
         }

@@ -39,7 +39,7 @@ class StripePayoutRepository extends ServiceEntityRepository
         $this->getEntityManager()->flush();
     }
 
-    private function mapPayoutsByInvoiceId(array $payouts): mixed
+    private function mapPayoutsByInvoiceId(array $payouts): array
     {
         $map = [];
         foreach ($payouts as $payout) {
@@ -49,7 +49,7 @@ class StripePayoutRepository extends ServiceEntityRepository
         return $map;
     }
 
-    public function findRetriablePayouts(): mixed
+    public function findRetriablePayouts(): array
     {
         return $this->mapPayoutsByInvoiceId($this->findBy([
             'status' => StripePayout::getRetriableStatus()

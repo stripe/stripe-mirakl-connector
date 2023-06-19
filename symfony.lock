@@ -87,7 +87,7 @@
         ]
     },
     "nelmio/alice": {
-        "version": "3.10",
+        "version": "3.12",
         "recipe": {
             "repo": "github.com/symfony/recipes",
             "branch": "main",
@@ -301,7 +301,7 @@
         ]
     },
     "theofidry/alice-data-fixtures": {
-        "version": "1.5",
+        "version": "1.6",
         "recipe": {
             "repo": "github.com/symfony/recipes",
             "branch": "main",

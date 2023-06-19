@@ -19,7 +19,7 @@ class MiraklShopIdValidator extends ConstraintValidator
         $this->miraklClient = $miraklClient;
     }
 
-    public function validate($miraklShopId, Constraint $constraint)
+    public function validate($miraklShopId, Constraint $constraint): bool
     {
         if ($constraint instanceof MiraklShopId) {
             $miraklShop = $this->miraklClient->listShopsByIds([$miraklShopId]);

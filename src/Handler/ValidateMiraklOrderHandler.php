@@ -24,7 +24,7 @@ class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAware
         $this->miraklClient = $miraklClient;
     }
 
-    public function __invoke(ValidateMiraklOrderMessage $message)
+    public function __invoke(ValidateMiraklOrderMessage $message): void
     {
         $ordersByCommercialId = $message->getOrders();
 

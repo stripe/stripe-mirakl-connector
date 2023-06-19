@@ -145,7 +145,7 @@ class SellerSettlementService
         $payouts = [];
         foreach ($invoices as $invoice) {
             $invoiceId = (int) $invoice['invoice_id'];
-            if (isset($existingPayouts[$invoiceId])) {
+            if (is_array($existingPayouts) && isset($existingPayouts[$invoiceId])) {
                 $payout = $existingPayouts[$invoiceId];
                 if (!$payout->isRetriable()) {
                     continue;

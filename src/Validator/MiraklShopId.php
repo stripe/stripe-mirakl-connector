@@ -10,5 +10,5 @@ use Symfony\Component\Validator\Constraint;
  */
 class MiraklShopId extends Constraint
 {
-    public $message = 'The Mirakl shop ID "{{ miraklShopId }}" is not valid.';
+    public string $message = 'The Mirakl shop ID "{{ miraklShopId }}" is not valid.';
 }

@@ -34,7 +34,7 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
         $this->paymentMappingRepository = $paymentMappingRepository;
     }
 
-    public function __invoke(CancelPendingPaymentMessage $message)
+    public function __invoke(CancelPendingPaymentMessage $message): void
     {
         $paymentMapping = $this->paymentMappingRepository->findOneBy([
             'id' => $message->getPaymentMappingId(),

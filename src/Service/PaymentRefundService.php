@@ -49,7 +49,7 @@ class PaymentRefundService
     /**
      * @return array App\Entity\StripeTransfer[]
      */
-    public function getRetriableTransfers(): array
+    public function getRetriableTransfers(): mixed
     {
         return $this->stripeTransferRepository->findRetriableRefundTransfers();
     }
@@ -67,7 +67,7 @@ class PaymentRefundService
 
         $refunds = [];
         foreach ($orderRefunds as $refundId => $orderRefund) {
-            if (isset($existingRefunds[$refundId])) {
+            if (is_array($existingRefunds) && isset($existingRefunds[$refundId])) {
                 $refund = $existingRefunds[$refundId];
                 if (!$refund->isRetriable()) {
                     continue;
@@ -103,7 +103,7 @@ class PaymentRefundService
 
         $transfers = [];
         foreach ($orderRefunds as $refundId => $orderRefund) {
-            if (isset($existingTransfers[$refundId])) {
+            if (is_array($existingTransfers) && isset($existingTransfers[$refundId])) {
                 $transfer = $existingTransfers[$refundId];
                 if (!$transfer->isRetriable()) {
                     continue;

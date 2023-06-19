@@ -32,7 +32,7 @@ class OperatorHttpNotificationHandler implements MessageSubscriberInterface, Log
         $this->operatorNotificationUrl = $operatorNotificationUrl;
     }
 
-    public function __invoke(NotifiableMessageInterface $message)
+    public function __invoke(NotifiableMessageInterface $message): void
     {
         if (empty($this->operatorNotificationUrl)) {
             return;
