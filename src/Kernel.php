@@ -21,7 +21,6 @@ class Kernel extends BaseKernel
         foreach ($contents as $class => $envs) {
             if ($envs[$this->environment] ?? $envs['all'] ?? false) {
                 //yield new $class();
-                
                 yield $class;
             }
         }
