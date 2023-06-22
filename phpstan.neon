@@ -1,7 +1,4 @@
 parameters:
-    excludePaths:
-        - 'src/Migrations/*'
-        - 'src/Entity/*'
     reportUnmatchedIgnoredErrors: false
     checkGenericClassInNonGenericObjectType: false
     inferPrivatePropertyTypeFromConstructor: true

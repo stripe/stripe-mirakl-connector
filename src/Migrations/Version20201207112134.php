@@ -8,7 +8,7 @@ use Stripe\Stripe;
 use App\Service\StripeClient;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
-use Shivas\VersioningBundle\Service\VersionManager;
+use Shivas\VersioningBundle\Service\VersionManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 
@@ -75,7 +75,11 @@ final class Version20201207112134 extends AbstractMigration implements Container
             }
         }
     }
-
+    # Or get the version from the service
+    public function indexAction(VersionManagerInterface $manager)
+    {
+        $this->version = $manager->getVersion();
+    }
     /**
      *
      * @throws \Exception
@@ -87,13 +91,10 @@ final class Version20201207112134 extends AbstractMigration implements Container
         }
 
         $stripeClientSecret = $this->container->getParameter('app.stripe.client_secret');
-        /** @var VersionManager $versionManager */
-        $versionManager = $this->container->get('Shivas\VersioningBundle\Service\VersionManager');
-
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(
             StripeClient::APP_NAME,
-            $versionManager->getVersion()->__toString(),
+            $this->version->__toString(),
             StripeClient::APP_REPO,
             StripeClient::APP_PARTNER_ID
         );

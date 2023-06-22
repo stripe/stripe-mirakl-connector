@@ -6,7 +6,7 @@ namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
-use Shivas\VersioningBundle\Service\VersionManager;
+use Shivas\VersioningBundle\Service\VersionManagerInterface;
 use Stripe\Stripe;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -110,6 +110,11 @@ final class Version20201127154506 extends AbstractMigration implements Container
         }
     }
 
+    # Or get the version from the service
+    public function indexAction(VersionManagerInterface $manager)
+    {
+        $this->version = $manager->getVersion();
+    }
     /**
      *
      * @throws \Exception
@@ -121,13 +126,10 @@ final class Version20201127154506 extends AbstractMigration implements Container
         }
 
         $stripeClientSecret = $this->container->getParameter('app.stripe.client_secret');
-        /** @var VersionManager $versionManager */
-        $versionManager = $this->container->get('Shivas\VersioningBundle\Service\VersionManager');
-
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(
             self::APP_NAME,
-            $versionManager->getVersion()->__toString(),
+            $this->version->__toString(),
             self::APP_REPO,
             self::APP_PARTNER_ID
         );
