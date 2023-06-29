@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b8669d2dffc678baf22f6bb59674e1bb",
+    "content-hash": "56e5b7a9236f32b0ff345d7a827c9b58",
     "packages": [
         {
             "name": "antishov/doctrine-extensions-bundle",
@@ -3125,16 +3125,16 @@
         },
         {
             "name": "stripe/stripe-php",
-            "version": "v7.75.0",
+            "version": "v10.15.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/stripe/stripe-php.git",
-                "reference": "d377a667cd789b99ccab768441a5a2160cc4ea80"
+                "reference": "d0e48cc85e1aa54cbff3644d1979a4a4c3fdd7bf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/stripe/stripe-php/zipball/d377a667cd789b99ccab768441a5a2160cc4ea80",
-                "reference": "d377a667cd789b99ccab768441a5a2160cc4ea80",
+                "url": "https://api.github.com/repos/stripe/stripe-php/zipball/d0e48cc85e1aa54cbff3644d1979a4a4c3fdd7bf",
+                "reference": "d0e48cc85e1aa54cbff3644d1979a4a4c3fdd7bf",
                 "shasum": ""
             },
             "require": {
@@ -3144,11 +3144,11 @@
                 "php": ">=5.6.0"
             },
             "require-dev": {
-                "friendsofphp/php-cs-fixer": "2.17.1",
-                "php-coveralls/php-coveralls": "^2.1",
-                "phpunit/phpunit": "^5.7",
-                "squizlabs/php_codesniffer": "^3.3",
-                "symfony/process": "~3.4"
+                "friendsofphp/php-cs-fixer": "3.5.0",
+                "php-coveralls/php-coveralls": "^2.5",
+                "phpstan/phpstan": "^1.2",
+                "phpunit/phpunit": "^5.7 || ^9.0",
+                "squizlabs/php_codesniffer": "^3.3"
             },
             "type": "library",
             "extra": {
@@ -3180,9 +3180,9 @@
             ],
             "support": {
                 "issues": "https://github.com/stripe/stripe-php/issues",
-                "source": "https://github.com/stripe/stripe-php/tree/v7.75.0"
+                "source": "https://github.com/stripe/stripe-php/tree/v10.15.0"
             },
-            "time": "2021-02-22T14:31:21+00:00"
+            "time": "2023-06-08T21:47:46+00:00"
         },
         {
             "name": "symfony/amqp-messenger",
