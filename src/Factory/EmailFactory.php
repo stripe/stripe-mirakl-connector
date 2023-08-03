@@ -22,8 +22,6 @@ class EmailFactory
 
     /**
      * Creates an Email template that will be used to send the log message.
-     *
-     * @return Email
      */
     public function createMessage(): Email
     {

@@ -16,7 +16,6 @@ class ConfigRepository extends ServiceEntityRepository
 {
     /**
      * ConfigRepository constructor.
-     * @param ManagerRegistry $registry
      */
     public function __construct(ManagerRegistry $registry)
     {
@@ -24,8 +23,6 @@ class ConfigRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param Config $config
-     * @return Config
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
@@ -41,13 +38,12 @@ class ConfigRepository extends ServiceEntityRepository
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }
 
     /**
-     * @param string $key
      * @return ?Config
      */
     public function findByKey(string $key): ?Config

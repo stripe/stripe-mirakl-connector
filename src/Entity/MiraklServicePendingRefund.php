@@ -17,6 +17,7 @@ class MiraklServicePendingRefund extends MiraklPendingRefund
     public function getCommercialId(): string
     {
         $orderId = $this->getOrderId();
+
         return substr($orderId, 0, strrpos($orderId, '-') ?: strlen($orderId));
     }
 

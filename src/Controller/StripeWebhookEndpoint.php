@@ -7,10 +7,10 @@ use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
+use OpenApi\Annotations as OA;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Event;
-use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +30,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     public const DEPRECATED_EVENT_TYPES = [
         'payment_intent.created',
         'payment_intent.succeeded',
-        'payment_intent.amount_capturable_updated'
+        'payment_intent.amount_capturable_updated',
     ];
 
     /**
@@ -97,11 +97,12 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      *     response=400,
      *     description="Bad request",
      * )
+     *
      * @OA\Post(deprecated=true)
+     *
      * @OA\Tag(name="Webhook")
+     *
      * @Route("/api/public/webhook", methods={"POST"}, name="handle_stripe_webhook")
-     * @param Request $request
-     * @return Response
      */
     public function handleStripeWebhookDeprecated(Request $request): Response
     {
@@ -121,14 +122,18 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      * )
      *
      * @OA\Tag(name="Sellers Webhook")
+     *
      * @Route("/api/public/webhook/sellers", methods={"POST"}, name="handle_stripe_seller_webhook")
-     * @param Request $request
-     * @return Response
      */
     public function handleStripeSellerWebhook(Request $request): Response
     {
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
-        $payload = $request->getContent() ?? '';
+        $payload = $request->getContent();
+        if ($payload) {
+            $payload = $request->getContent();
+        } else {
+            $payload = '';
+        }
 
         return $this->handleStripeWebhook($payload, $signatureHeader, $this->webhookSellerSecret);
     }
@@ -144,23 +149,36 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      *     response=400,
      *     description="Bad request",
      * )
+     *
      * @OA\Tag(name="Operator Webhook")
+     *
      * @Route("/api/public/webhook/operator", methods={"POST"}, name="handle_stripe_operator_webhook")
-     * @param Request $request
-     * @return Response
      */
     public function handleStripeOperatorWebhook(Request $request): Response
     {
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
-        $payload = $request->getContent() ?? '';
+        $payload = $request->getContent();
+        if ($payload) {
+            $payload = $request->getContent();
+        } else {
+            $payload = '';
+        }
 
         return $this->handleStripeWebhook($payload, $signatureHeader, $this->webhookOperatorSecret);
     }
 
-    protected function handleStripeWebhook($payload, string $signatureHeader, string $webhookSecret): Response
+    protected function handleStripeWebhook(string $payload, string $signatureHeader, string $webhookSecret): Response
     {
         try {
+            $eventType = '';
             $event = $this->stripeClient->webhookConstructEvent($payload, $signatureHeader, $webhookSecret);
+            if (isset($event['type'])) {
+                $eventType = $event['type'];
+                if (!is_array($eventType)) {
+                    $eventType = (array) $eventType;
+                }
+                $eventType = implode('', $eventType);
+            }
         } catch (\UnexpectedValueException $e) {
             $this->logger->error('Invalid payload.');
 
@@ -174,12 +192,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         if (in_array($event['type'], self::DEPRECATED_EVENT_TYPES)) {
             return new Response(sprintf(
                 'The event type %s is no longer required and can be removed in the webhook settings.',
-                $event['type']
+                $eventType
             ), Response::HTTP_OK);
         }
 
         if (!in_array($event['type'], self::HANDLED_EVENT_TYPES)) {
-            $this->logger->error(sprintf('Unhandled event type %s.', $event['type']));
+            $this->logger->error(sprintf('Unhandled event type %s.', (bool) $event['type']));
+
             return new Response('Unhandled event type', Response::HTTP_BAD_REQUEST);
         }
 
@@ -204,8 +223,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     }
 
     /**
-     * @param Event $event
-     * @return string
      * @throws \Exception
      */
     private function handleAccountEvent(Event $event): string
@@ -215,11 +232,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($stripeAccount['id']);
         if (null === $accountMapping) {
             $this->logger->info(sprintf('Ignoring account.updated event for non-Mirakl Stripe account: %s', $stripeAccount['id']));
+
             return 'Ignoring account.updated event for non-Mirakl Stripe account.';
         }
 
         if (!$stripeAccount['details_submitted']) {
             $this->logger->info(sprintf('Ignoring account.updated event until details are submitted for account: %s', $stripeAccount['id']));
+
             return 'Ignoring account.updated event until details are submitted for account.';
         }
 
@@ -236,8 +255,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     }
 
     /**
-     * @param Event $event
-     * @return string
      * @throws \Doctrine\ORM\ORMException
      * @throws \Doctrine\ORM\OptimisticLockException
      */
@@ -271,7 +288,6 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             $message = 'Payment mapping updated.';
         }
 
-
         $this->paymentMappingRepository->flush();
 
         return $message;
@@ -282,14 +298,19 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private function findMiraklCommercialOrderId(\Stripe\Charge $charge): ?string
     {
-        if (isset($charge['metadata'][$this->metadataCommercialOrderId])) {
-            if ('' === $charge['metadata'][$this->metadataCommercialOrderId]) {
+        if (isset($charge->metadata[$this->metadataCommercialOrderId])) {
+            if ('' === $charge->metadata[$this->metadataCommercialOrderId]) {
                 $message = sprintf('%s is empty in Charge metadata.', $this->metadataCommercialOrderId);
                 $this->logger->error($message);
                 throw new \Exception($message, Response::HTTP_BAD_REQUEST);
             }
+            $metadataCommercialOrderId = $charge->metadata[$this->metadataCommercialOrderId];
 
-            return $charge['metadata'][$this->metadataCommercialOrderId];
+            if (!is_array($metadataCommercialOrderId)) {
+                $metadataCommercialOrderId = (array) $metadataCommercialOrderId;
+            }
+
+            return implode('', $metadataCommercialOrderId);
         }
 
         // Fallback to linked payment intent to see if it contains the metadata
@@ -298,15 +319,19 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             if (is_string($paymentIntent)) {
                 $paymentIntent = $this->stripeClient->paymentIntentRetrieve($paymentIntent);
             }
-
-            if (isset($paymentIntent['metadata'][$this->metadataCommercialOrderId])) {
-                if ('' === $paymentIntent['metadata'][$this->metadataCommercialOrderId]) {
+            if (isset($paymentIntent->metadata[$this->metadataCommercialOrderId])) {
+                if ('' === $paymentIntent->metadata[$this->metadataCommercialOrderId]) {
                     $message = sprintf('%s is empty in PaymentIntent.', $this->metadataCommercialOrderId);
                     $this->logger->error($message);
                     throw new \Exception($message, Response::HTTP_BAD_REQUEST);
                 }
+                $metadataCommercialOrderId = $paymentIntent->metadata[$this->metadataCommercialOrderId];
 
-                return $paymentIntent['metadata'][$this->metadataCommercialOrderId];
+                if (!is_array($metadataCommercialOrderId)) {
+                    $metadataCommercialOrderId = (array) $metadataCommercialOrderId;
+                }
+
+                return implode('', $metadataCommercialOrderId);
             }
         }
 

@@ -5,8 +5,8 @@ namespace App\Handler;
 use App\Message\AccountUpdateMessage;
 use App\Message\NotifiableMessageInterface;
 use App\Message\PayoutFailedMessage;
-use App\Message\TransferFailedMessage;
 use App\Message\RefundFailedMessage;
+use App\Message\TransferFailedMessage;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Messenger\Handler\MessageSubscriberInterface;
@@ -32,7 +32,7 @@ class OperatorHttpNotificationHandler implements MessageSubscriberInterface, Log
         $this->operatorNotificationUrl = $operatorNotificationUrl;
     }
 
-    public function __invoke(NotifiableMessageInterface $message)
+    public function __invoke(NotifiableMessageInterface $message): void
     {
         if (empty($this->operatorNotificationUrl)) {
             return;

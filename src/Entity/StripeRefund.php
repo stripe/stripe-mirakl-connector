@@ -16,6 +16,7 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "get"={"path"="/refunds/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
+ *
  * @ORM\Entity(repositoryClass="App\Repository\StripeRefundRepository")
  */
 class StripeRefund
@@ -43,82 +44,86 @@ class StripeRefund
 
     /**
      * @ORM\Id()
+     *
      * @ORM\GeneratedValue()
+     *
      * @ORM\Column(type="integer")
      */
-    private $id;
+    private int $id;
 
     /**
      * @ORM\Column(name="type", type="string")
      */
-    private $type;
+    private string $type;
 
     /**
      * @ORM\Column(type="integer")
      */
-    private $amount;
+    private int $amount;
 
     /**
      * @ORM\Column(type="string")
      */
-    private $currency;
+    private string $currency;
 
     /**
      * @ORM\Column(type="string", unique=true)
      */
-    private $miraklRefundId;
+    private string $miraklRefundId;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $miraklCommercialOrderId;
+    private ?string $miraklCommercialOrderId;
 
     /**
      * @ORM\Column(type="string")
      */
-    private $miraklOrderId;
+    private string $miraklOrderId;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $miraklOrderLineId;
+    private ?string $miraklOrderLineId;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $transactionId;
+    private ?string $transactionId = null;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $stripeRefundId;
+    private ?string $stripeRefundId = null;
 
     /**
      * @ORM\Column(type="string")
      */
-    private $status;
+    private string $status;
 
     /**
      * @ORM\Column(type="string", length=1024, nullable=true)
      */
-    private $statusReason;
+    private ?string $statusReason = null;
 
     /**
      * @ORM\Column(type="datetime", nullable=true)
      */
-    private $miraklValidationTime;
+    private ?\DateTimeInterface $miraklValidationTime = null;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="create")
      */
-    private $creationDatetime;
+    private \DateTimeInterface $creationDatetime;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="update")
      */
-    private $modificationDatetime;
+    private \DateTimeInterface $modificationDatetime;
 
     public static function getAvailableStatus(): array
     {
@@ -127,14 +132,14 @@ class StripeRefund
             self::REFUND_ABORTED,
             self::REFUND_PENDING,
             self::REFUND_FAILED,
-            self::REFUND_CREATED
+            self::REFUND_CREATED,
         ];
     }
 
     public static function getInvalidStatus(): array
     {
         return [
-            self::REFUND_FAILED
+            self::REFUND_FAILED,
         ];
     }
 
@@ -142,7 +147,7 @@ class StripeRefund
     {
         return [
             self::REFUND_FAILED,
-            self::REFUND_ON_HOLD
+            self::REFUND_ON_HOLD,
         ];
     }
 
@@ -150,7 +155,7 @@ class StripeRefund
     {
         return [
             self::REFUND_PRODUCT_ORDER,
-            self::REFUND_SERVICE_ORDER
+            self::REFUND_SERVICE_ORDER,
         ];
     }
 
@@ -265,12 +270,14 @@ class StripeRefund
     }
 
     /**
-     * @param mixed $miraklOrderLineId
+     * @param string $miraklOrderLineId
+     *
      * @return StripeRefund
      */
-    public function setMiraklOrderLineId($miraklOrderLineId)
+    public function setMiraklOrderLineId(string|null $miraklOrderLineId)
     {
         $this->miraklOrderLineId = $miraklOrderLineId;
+
         return $this;
     }
 

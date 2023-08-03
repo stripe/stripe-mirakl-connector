@@ -3,8 +3,8 @@
 namespace App\Command;
 
 use App\Exception\InvalidArgumentException;
-use App\Message\ProcessTransferMessage;
 use App\Message\ProcessPayoutMessage;
+use App\Message\ProcessTransferMessage;
 use App\Service\ConfigService;
 use App\Service\MiraklClient;
 use App\Service\SellerSettlementService;
@@ -55,11 +55,14 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->addArgument('mirakl_shop_id', InputArgument::OPTIONAL);
     }
 
+    /**
+     * @return int
+     */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->logger->info('starting');
@@ -68,6 +71,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         if (is_numeric($shopId)) {
             $this->processProvidedShopId((int) $shopId);
             $this->logger->info('job succeeded');
+
             return 0;
         }
 
@@ -78,10 +82,11 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         $this->processNewInvoices();
 
         $this->logger->info('job succeeded');
+
         return 0;
     }
 
-    private function processProvidedShopId(int $shopId)
+    private function processProvidedShopId(int $shopId): void
     {
         $this->logger->info('Executing provided shop', ['shop_id' => $shopId]);
         $invoices = $this->miraklClient->listInvoicesByShopId($shopId);
@@ -95,13 +100,14 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         );
     }
 
-    private function processBacklog()
+    private function processBacklog(): void
     {
         $this->logger->info('Executing backlog');
         $retriableTransfers = $this->sellerSettlementService->getRetriableTransfers();
         $retriablePayouts = $this->sellerSettlementService->getRetriablePayouts();
         if (empty($retriableTransfers) && empty($retriablePayouts)) {
             $this->logger->info('No backlog');
+
             return;
         }
 
@@ -118,7 +124,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         $this->dispatchPayouts($payouts);
     }
 
-    private function getFirstInvoiceDate(array $transfersByInvoiceId, array $payouts)
+    private function getFirstInvoiceDate(array $transfersByInvoiceId, array $payouts): string
     {
         $createdDates = array_map(
             function ($o) {
@@ -128,13 +134,14 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         );
 
         sort($createdDates);
+
         return MiraklClient::getStringFromDatetime(current($createdDates));
     }
 
-    private function processNewInvoices()
+    private function processNewInvoices(): void
     {
         $checkpoint = $this->configService->getSellerSettlementCheckpoint() ?? '';
-        $this->logger->info('Executing for recent invoices, checkpoint: ' . $checkpoint);
+        $this->logger->info('Executing for recent invoices, checkpoint: '.$checkpoint);
         if ($checkpoint) {
             $invoices = $this->miraklClient->listInvoicesByDate($checkpoint);
         } else {
@@ -143,6 +150,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
 
         if (empty($invoices)) {
             $this->logger->info('No new invoice');
+
             return;
         }
 
@@ -156,7 +164,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
 
         $checkpoint = $this->updateCheckpoint($invoices, $checkpoint);
         $this->configService->setSellerSettlementCheckpoint($checkpoint);
-        $this->logger->info('Setting new checkpoint: ' . $checkpoint);
+        $this->logger->info('Setting new checkpoint: '.$checkpoint);
     }
 
     // Return the last valid date_created or the current checkpoint
@@ -166,6 +174,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         foreach ($invoices as $invoice) {
             try {
                 MiraklClient::getDatetimeFromString($invoice['date_created']);
+
                 return $invoice['date_created'];
             } catch (InvalidArgumentException $e) {
                 // Shouldn't happen, see MiraklClient::getDatetimeFromString

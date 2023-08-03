@@ -2,7 +2,6 @@
 
 namespace App\Service;
 
-use App\Service\MiraklClient;
 use App\Factory\StripeRefundFactory;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeRefundRepository;
@@ -49,13 +48,12 @@ class PaymentRefundService
     /**
      * @return array App\Entity\StripeTransfer[]
      */
-    public function getRetriableTransfers(): array
+    public function getRetriableTransfers(): mixed
     {
         return $this->stripeTransferRepository->findRetriableRefundTransfers();
     }
 
     /**
-     * @param array $orderRefunds
      * @return array App\Entity\StripeRefund[]
      */
     public function getRefundsFromOrderRefunds(array $orderRefunds): array
@@ -67,7 +65,7 @@ class PaymentRefundService
 
         $refunds = [];
         foreach ($orderRefunds as $refundId => $orderRefund) {
-            if (isset($existingRefunds[$refundId])) {
+            if (is_array($existingRefunds) && isset($existingRefunds[$refundId])) {
                 $refund = $existingRefunds[$refundId];
                 if (!$refund->isRetriable()) {
                     continue;
@@ -91,7 +89,6 @@ class PaymentRefundService
     }
 
     /**
-     * @param array $orderRefunds
      * @return array App\Entity\StripeRefund[]
      */
     public function getTransfersFromOrderRefunds(array $orderRefunds): array
@@ -103,7 +100,7 @@ class PaymentRefundService
 
         $transfers = [];
         foreach ($orderRefunds as $refundId => $orderRefund) {
-            if (isset($existingTransfers[$refundId])) {
+            if (is_array($existingTransfers) && isset($existingTransfers[$refundId])) {
                 $transfer = $existingTransfers[$refundId];
                 if (!$transfer->isRetriable()) {
                     continue;
@@ -131,14 +128,13 @@ class PaymentRefundService
     }
 
     /**
-     * @param array $transfers
      * @return array [ refund_id => App\Entity\StripeTransfer ]
      */
     public function updateTransfers(array $transfers): array
     {
         $updated = [];
         foreach ($transfers as $refundId => $transfer) {
-            if (strpos($refundId, $this->taxOrderPostfix) !== false) {
+            if (false !== strpos($refundId, $this->taxOrderPostfix)) {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
             } else {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);

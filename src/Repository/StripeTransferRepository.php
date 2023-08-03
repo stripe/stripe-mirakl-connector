@@ -4,7 +4,6 @@ namespace App\Repository;
 
 use App\Entity\StripeTransfer;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -35,12 +34,12 @@ class StripeTransferRepository extends ServiceEntityRepository
         return $stripeTransfer;
     }
 
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }
 
-    private function mapTransfersByMiraklId(array $transfers)
+    private function mapTransfersByMiraklId(array $transfers): array
     {
         $map = [];
         foreach ($transfers as $transfer) {
@@ -50,7 +49,7 @@ class StripeTransferRepository extends ServiceEntityRepository
         return $map;
     }
 
-    private function mapTransfersByMiraklIdAndType(array $transfers)
+    private function mapTransfersByMiraklIdAndType(array $transfers): array
     {
         $map = [];
         foreach ($transfers as $transfer) {
@@ -64,59 +63,59 @@ class StripeTransferRepository extends ServiceEntityRepository
         return $map;
     }
 
-    public function findTransfersByOrderIds(array $orderIds)
+    public function findTransfersByOrderIds(array $orderIds): array
     {
         return $this->mapTransfersByMiraklId($this->findBy([
             'type' => StripeTransfer::getOrderTypes(),
-            'miraklId' => $orderIds
+            'miraklId' => $orderIds,
         ]));
     }
 
-    public function findTransfersByRefundIds(array $refundIds)
+    public function findTransfersByRefundIds(array $refundIds): array
     {
         return $this->mapTransfersByMiraklId($this->findBy([
             'type' => StripeTransfer::TRANSFER_REFUND,
-            'miraklId' => $refundIds
+            'miraklId' => $refundIds,
         ]));
     }
 
-    public function findRetriableProductOrderTransfers()
+    public function findRetriableProductOrderTransfers(): array
     {
         return $this->mapTransfersByMiraklId($this->findBy([
             'type' => StripeTransfer::TRANSFER_PRODUCT_ORDER,
-            'status' => StripeTransfer::getRetriableStatus()
+            'status' => StripeTransfer::getRetriableStatus(),
         ]));
     }
 
-    public function findRetriableServiceOrderTransfers()
+    public function findRetriableServiceOrderTransfers(): array
     {
         return $this->mapTransfersByMiraklId($this->findBy([
             'type' => StripeTransfer::TRANSFER_SERVICE_ORDER,
-            'status' => StripeTransfer::getRetriableStatus()
+            'status' => StripeTransfer::getRetriableStatus(),
         ]));
     }
 
-    public function findRetriableRefundTransfers()
+    public function findRetriableRefundTransfers(): array
     {
         return $this->mapTransfersByMiraklId($this->findBy([
             'type' => StripeTransfer::TRANSFER_REFUND,
-            'status' => StripeTransfer::getRetriableStatus()
+            'status' => StripeTransfer::getRetriableStatus(),
         ]));
     }
 
-    public function findRetriableInvoiceTransfers()
+    public function findRetriableInvoiceTransfers(): array
     {
         return $this->mapTransfersByMiraklIdAndType($this->findBy([
             'type' => StripeTransfer::getInvoiceTypes(),
-            'status' => StripeTransfer::getRetriableStatus()
+            'status' => StripeTransfer::getRetriableStatus(),
         ]));
     }
 
-    public function findTransfersByInvoiceIds(array $invoiceIds)
+    public function findTransfersByInvoiceIds(array $invoiceIds): array
     {
         return $this->mapTransfersByMiraklIdAndType($this->findBy([
             'type' => StripeTransfer::getInvoiceTypes(),
-            'miraklId' => $invoiceIds
+            'miraklId' => $invoiceIds,
         ]));
     }
 }

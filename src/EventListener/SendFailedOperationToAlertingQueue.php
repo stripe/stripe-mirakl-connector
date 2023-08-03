@@ -3,11 +3,11 @@
 namespace App\EventListener;
 
 use App\Entity\StripePayout;
-use App\Entity\StripeTransfer;
 use App\Entity\StripeRefund;
+use App\Entity\StripeTransfer;
 use App\Message\PayoutFailedMessage;
-use App\Message\TransferFailedMessage;
 use App\Message\RefundFailedMessage;
+use App\Message\TransferFailedMessage;
 use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -23,17 +23,17 @@ class SendFailedOperationToAlertingQueue
         $this->bus = $bus;
     }
 
-    public function postPersist(LifecycleEventArgs $args)
+    public function postPersist(LifecycleEventArgs $args): void
     {
         $this->dispatchFailedOperation($args);
     }
 
-    public function postUpdate(LifecycleEventArgs $args)
+    public function postUpdate(LifecycleEventArgs $args): void
     {
         $this->dispatchFailedOperation($args);
     }
 
-    private function dispatchFailedOperation(LifecycleEventArgs $args)
+    private function dispatchFailedOperation(LifecycleEventArgs $args): void
     {
         $entity = $args->getObject();
         if ($entity instanceof StripePayout && in_array($entity->getStatus(), StripePayout::getInvalidStatus())) {

@@ -30,7 +30,7 @@ class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageS
         $this->sellerOnboardingService = $sellerOnboardingService;
     }
 
-    public function __invoke(AccountUpdateMessage $message)
+    public function __invoke(AccountUpdateMessage $message): void
     {
         $messagePayload = $message->getContent()['payload'];
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($messagePayload['stripeUserId']);

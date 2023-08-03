@@ -74,8 +74,6 @@ class SellerOnboardingService
     }
 
     /**
-     * @param MiraklShop $shop
-     * @return AccountMapping
      * @throws ApiErrorException
      */
     public function getAccountMappingFromShop(MiraklShop $shop): AccountMapping
@@ -89,20 +87,17 @@ class SellerOnboardingService
             $accountMapping = new AccountMapping();
             $accountMapping->setMiraklShopId($shop->getId());
             $accountMapping->setStripeAccountId($stripeAccount->id);
-            $accountMapping->setPayoutEnabled($stripeAccount->payouts_enabled);
-            $accountMapping->setDisabledReason($stripeAccount->requirements->disabled_reason);
-            $accountMapping->setPayinEnabled($stripeAccount->charges_enabled);
-
+            $accountMapping->setPayoutEnabled((bool) $stripeAccount->payouts_enabled);
+            if (isset($stripeAccount->requirements->disabled_reason)) {
+                $accountMapping->setDisabledReason($stripeAccount->requirements->disabled_reason);
+            }
+            $accountMapping->setPayinEnabled((bool) $stripeAccount->charges_enabled);
             $this->accountMappingRepository->persistAndFlush($accountMapping);
         }
 
         return $accountMapping;
     }
 
-    /**
-     * @param AccountMapping $accountMapping
-     * @param bool $ignored
-     */
     public function updateAccountMappingIgnored(AccountMapping $accountMapping, bool $ignored): void
     {
         $accountMapping->setIgnored($ignored);
@@ -110,8 +105,6 @@ class SellerOnboardingService
     }
 
     /**
-     * @param MiraklShop $shop
-     * @return Account
      * @throws ApiErrorException
      */
     protected function createStripeAccountFromShop(MiraklShop $shop): Account
@@ -125,7 +118,7 @@ class SellerOnboardingService
                     'name' => $rawShop['shop_name'] ?? null,
                     'url' => $rawShop['contact_informations']['web_site'] ?? null,
                     'support_email' => $rawShop['contact_informations']['email'] ?? null,
-                    'support_phone' => $rawShop['contact_informations']['phone'] ?? null
+                    'support_phone' => $rawShop['contact_informations']['phone'] ?? null,
                 ],
             ];
         }
@@ -134,8 +127,7 @@ class SellerOnboardingService
     }
 
     /**
-     * @param MiraklShop $shop
-     * @return ?string The custom field value.
+     * @return ?string the custom field value
      */
     public function getCustomFieldValue(MiraklShop $shop): ?string
     {
@@ -143,18 +135,16 @@ class SellerOnboardingService
     }
 
     /**
-     * @param MiraklShop $shop
-     * @return bool True if the field is set and the shop ignored, false otherwise.
+     * @return bool true if the field is set and the shop ignored, false otherwise
      */
     public function isShopIgnored(MiraklShop $shop): bool
     {
-        return $shop->getCustomFieldValue($this->ignoredShopFieldCode) === "true";
+        return 'true' === $shop->getCustomFieldValue($this->ignoredShopFieldCode);
     }
 
     /**
-     * @param int $shopId
-     * @param AccountMapping $accountMapping
-     * @return string New LoginLink URL.
+     * @return string new LoginLink URL
+     *
      * @throws ApiErrorException|ClientException
      */
     public function addLoginLinkToShop(int $shopId, AccountMapping $accountMapping): string
@@ -169,26 +159,26 @@ class SellerOnboardingService
     }
 
     /**
-     * @param string $accountId
-     * @return string New LoginLink URL.
+     * @return string new LoginLink URL
+     *
      * @throws ApiErrorException
      */
     private function createLoginLink(string $accountId): string
     {
         $loginLink = $this->stripeClient->createLoginLink($accountId);
-        return $loginLink['url'];
+
+        return $loginLink['url'].'';
     }
 
     /**
-     * @param int $shopId
-     * @param AccountMapping $accountMapping
-     * @return string New AccountLink URL.
+     * @return string new AccountLink URL
+     *
      * @throws ApiErrorException|ClientException
      */
     public function addOnboardingLinkToShop(int $shopId, AccountMapping $accountMapping): string
     {
         // Generate unique token
-        $hasToken = $accountMapping->getOnboardingToken() !== null;
+        $hasToken = null !== $accountMapping->getOnboardingToken();
         $token = $accountMapping->getOnboardingToken() ?? bin2hex(random_bytes(16));
 
         // Create new AccountLink
@@ -207,9 +197,8 @@ class SellerOnboardingService
     }
 
     /**
-     * @param string $accountId
-     * @param string $token
-     * @return string New AccountLink URL.
+     * @return string new AccountLink URL
+     *
      * @throws ApiErrorException
      */
     private function createAccountLink(string $accountId, string $token): string
@@ -224,6 +213,6 @@ class SellerOnboardingService
             $this->redirectOnboarding
         );
 
-        return $accountLink['url'];
+        return $accountLink['url'].'';
     }
 }

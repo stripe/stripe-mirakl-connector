@@ -14,9 +14,6 @@ class CancelPendingPaymentMessage
         $this->paymentMappingId = $paymentMappingId;
     }
 
-    /**
-     * @return int
-     */
     public function getPaymentMappingId(): int
     {
         return $this->paymentMappingId;

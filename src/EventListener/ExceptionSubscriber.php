@@ -2,17 +2,17 @@
 
 namespace App\EventListener;
 
-use Stripe\Exception\PermissionException;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Stripe\Exception\PermissionException;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Serializer\Exception\NotEncodableValueException;
 
 class ExceptionSubscriber implements EventSubscriberInterface
 {
-    public function onKernelException(ExceptionEvent $event)
+    public function onKernelException(ExceptionEvent $event): void
     {
         $e = $event->getThrowable();
         if ($e instanceof NotEncodableValueException) {
@@ -31,6 +31,9 @@ class ExceptionSubscriber implements EventSubscriberInterface
         }
     }
 
+    /**
+     * @return string[]
+     */
     public static function getSubscribedEvents()
     {
         return [

@@ -16,7 +16,7 @@ final class Version20210209195048 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE payment_mapping RENAME COLUMN mirakl_order_id TO mirakl_commercial_order_id');
         $this->addSql('ALTER TABLE stripe_refund ADD mirakl_commercial_order_id VARCHAR(255)');
@@ -24,7 +24,7 @@ final class Version20210209195048 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE stripe_refund DROP COLUMN mirakl_commercial_order_id');
         $this->addSql('ALTER TABLE payment_mapping RENAME COLUMN mirakl_commercial_order_id TO mirakl_order_id');

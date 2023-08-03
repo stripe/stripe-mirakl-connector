@@ -48,7 +48,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setDescription('Validate pending order whose payment can be captured')
@@ -75,12 +75,10 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         }
 
         $this->logger->info('job succeeded');
+
         return 0;
     }
 
-    /**
-     * @param array $ordersByCommercialId
-     */
     protected function validateOrders(array $ordersByCommercialId): void
     {
         // get stripe known payment intent or charge for pending order
@@ -94,6 +92,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
 
         if (empty($readyForValidation)) {
             $this->logger->info('No mirakl order to validate');
+
             return;
         }
 
@@ -103,9 +102,6 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         ));
     }
 
-    /**
-     * @param array $paymentMappings
-     */
     protected function capturePayments(array $paymentMappings): void
     {
         // List all orders using the provided commercial IDs

@@ -20,17 +20,11 @@ class CapturePendingPaymentMessage
         $this->amount = $amount;
     }
 
-    /**
-     * @return int
-     */
     public function getPaymentMappingId(): int
     {
         return $this->paymentMappingId;
     }
 
-    /**
-     * @return int
-     */
     public function getAmount(): int
     {
         return $this->amount;

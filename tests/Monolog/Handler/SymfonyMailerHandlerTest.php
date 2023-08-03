@@ -12,9 +12,9 @@ use Symfony\Component\Mime\Email;
 
 class SymfonyMailerHandlerTest extends TestCase
 {
-    private const TEST_FROM_EMAIL = 'hello+from@test.com';
-    private const TEST_TO_EMAIL = 'hello+to@test.com';
-    private const TEST_SUBJECT = 'Hello world';
+    public const TEST_FROM_EMAIL = 'hello+from@test.com';
+    public const TEST_TO_EMAIL = 'hello+to@test.com';
+    public const TEST_SUBJECT = 'Hello world';
 
     private $emailFactory;
     private $mailer;
@@ -22,7 +22,7 @@ class SymfonyMailerHandlerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->emailFactory = new EmailFactory(self::TEST_FROM_EMAIL, self::TEST_TO_EMAIL, self::TEST_SUBJECT);
+        $this->emailFactory = new EmailFactory($this::TEST_FROM_EMAIL, $this::TEST_TO_EMAIL, $this::TEST_SUBJECT);
         $this->mailer = $this->createMock(MailerInterface::class);
         $this->symfonyMailerHandler = new SymfonyMailerHandler($this->mailer, $this->emailFactory);
     }
@@ -40,18 +40,24 @@ class SymfonyMailerHandlerTest extends TestCase
         ];
 
         $expectedMessage = new Email();
+
         $this
             ->mailer
             ->expects($this->once())
             ->method('send')
             ->with($this->callback(function ($email) {
                 return $email instanceof Email
-                    && self::TEST_FROM_EMAIL === $email->getFrom()[0]->getAddress()
-                    && self::TEST_TO_EMAIL === $email->getTo()[0]->getAddress()
-                    && self::TEST_SUBJECT === $email->getSubject()
-                    && false !== strpos($email->getHtmlBody(), 'app.ERROR: new log message');
+                    && $this::TEST_FROM_EMAIL === $email->getFrom()[0]->getAddress()
+                    && $this::TEST_TO_EMAIL === $email->getTo()[0]->getAddress()
+                    && $this::TEST_SUBJECT === $email->getSubject()
+                    && str_contains($email->getHtmlBody(), 'new log message')
+                    && str_contains($email->getHtmlBody(), 'Channel:')
+                    && str_contains($email->getHtmlBody(), 'app')
+                    && str_contains($email->getHtmlBody(), 'ERROR');
             }));
 
         $email = $this->symfonyMailerHandler->handleBatch([$logRecord]);
+
+
     }
 }

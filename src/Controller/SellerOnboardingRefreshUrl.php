@@ -5,9 +5,9 @@ namespace App\Controller;
 use App\Repository\AccountMappingRepository;
 use App\Service\SellerOnboardingService;
 use App\Service\StripeClient;
+use OpenApi\Annotations as OA;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,10 +40,20 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
      */
     private $serializer;
 
+    public function getSerializer(): mixed
+    {
+        return $this->serializer;
+    }
+
     /**
      * @var ValidatorInterface
      */
     private $validator;
+
+    public function getValidator(): mixed
+    {
+        return $this->validator;
+    }
 
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
@@ -70,10 +80,10 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
      *     response=400,
      *     description="Bad request",
      * )
+     *
      * @OA\Tag(name="Internal (Stripe Only)")
+     *
      * @Route("/api/public/onboarding/refresh", methods={"GET"}, name="onboarding_refresh")
-     * @param Request $request
-     * @return Response
      */
     public function onboardingRefresh(Request $request): Response
     {

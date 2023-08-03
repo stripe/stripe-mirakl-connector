@@ -19,20 +19,12 @@ class StripePayoutFactory implements LoggerAwareInterface
      */
     private $accountMappingRepository;
 
-    /**
-     * @var MiraklClient
-     */
-
     public function __construct(
         AccountMappingRepository $accountMappingRepository
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
     }
 
-    /**
-     * @param array $invoice
-     * @return StripePayout
-     */
     public function createFromInvoice(array $invoice, MiraklClient $mclient): StripePayout
     {
         $payout = new StripePayout();
@@ -44,11 +36,6 @@ class StripePayoutFactory implements LoggerAwareInterface
         return $this->updateFromInvoice($payout, $invoice, $mclient);
     }
 
-    /**
-     * @param StripePayout $payout
-     * @param array $invoice
-     * @return StripePayout
-     */
     public function updateFromInvoice(StripePayout $payout, array $invoice, MiraklClient $mclient): StripePayout
     {
         // Payout already created
@@ -71,7 +58,7 @@ class StripePayoutFactory implements LoggerAwareInterface
             );
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                    // Problem is final, let's abort
+                // Problem is final, let's abort
                 case 10:
                     return $this->abortPayout($payout, $e->getMessage());
                     // Problem is just temporary, let's put on hold
@@ -84,97 +71,65 @@ class StripePayoutFactory implements LoggerAwareInterface
         return $payout->setStatus(StripePayout::PAYOUT_PENDING);
     }
 
-    /**
-     * @param int $shopId
-     * @return AccountMapping
-     */
     private function getAccountMapping(int $shopId): AccountMapping
     {
         if (!$shopId) {
-            throw new InvalidArgumentException(
-                StripePayout::PAYOUT_STATUS_REASON_NO_SHOP_ID,
-                10
-            );
+            throw new InvalidArgumentException(StripePayout::PAYOUT_STATUS_REASON_NO_SHOP_ID, 10);
         }
 
         $mapping = $this->accountMappingRepository->findOneBy([
-            'miraklShopId' => $shopId
+            'miraklShopId' => $shopId,
         ]);
 
         if (!$mapping) {
-            throw new InvalidArgumentException(sprintf(
-                StripePayout::PAYOUT_STATUS_REASON_SHOP_NOT_READY,
-                $shopId
-            ), 20);
+            throw new InvalidArgumentException(sprintf(StripePayout::PAYOUT_STATUS_REASON_SHOP_NOT_READY, $shopId), 20);
         }
 
         if (!$mapping->getPayoutEnabled()) {
-            throw new InvalidArgumentException(sprintf(
-                StripePayout::PAYOUT_STATUS_REASON_SHOP_PAYOUT_DISABLED,
-                $shopId
-            ), 20);
+            throw new InvalidArgumentException(sprintf(StripePayout::PAYOUT_STATUS_REASON_SHOP_PAYOUT_DISABLED, $shopId), 20);
         }
 
         return $mapping;
     }
 
-    /**
-     * @param array $invoice
-     * @return int
-     */
     private function getInvoiceAmount(array $invoice, MiraklClient $mclient): int
     {
         $amount = $invoice['summary']['amount_transferred'] ?? 0;
-        $transactions =   $mclient->getTransactionsForInvoce($invoice['invoice_id']);
-        $total_tax =  $this->findTotalOrderTax($transactions);
+        $transactions = $mclient->getTransactionsForInvoce($invoice['invoice_id']);
+        $total_tax = $this->findTotalOrderTax($transactions);
         $amount = $amount - $total_tax;
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount <= 0) {
-            throw new InvalidArgumentException(sprintf(
-                StripePayout::PAYOUT_STATUS_REASON_INVALID_AMOUNT,
-                $amount
-            ));
+            throw new InvalidArgumentException(sprintf(StripePayout::PAYOUT_STATUS_REASON_INVALID_AMOUNT, $amount));
         }
 
         return $amount;
     }
 
-    /**
-     * @param StripePayout $payout
-     * @param string $reason
-     * @return StripePayout
-     */
     private function putPayoutOnHold(StripePayout $payout, string $reason): StripePayout
     {
         $this->logger->info(
-            'Payout on hold: ' . $reason,
+            'Payout on hold: '.$reason,
             ['invoice_id' => $payout->getMiraklInvoiceId()]
         );
 
         $payout->setStatusReason($reason);
+
         return $payout->setStatus(StripePayout::PAYOUT_ON_HOLD);
     }
 
-    /**
-     * @param StripePayout $payout
-     * @param string $reason
-     * @return StripePayout
-     */
     private function abortPayout(StripePayout $payout, string $reason): StripePayout
     {
         $this->logger->info(
-            'Payout aborted: ' . $reason,
+            'Payout aborted: '.$reason,
             ['invoice_id' => $payout->getMiraklInvoiceId()]
         );
 
         $payout->setStatusReason($reason);
+
         return $payout->setStatus(StripePayout::PAYOUT_ABORTED);
     }
 
-    /**
-     * @param StripePayout $payout
-     * @return StripePayout
-     */
     private function markPayoutAsCreated(StripePayout $payout): StripePayout
     {
         $this->logger->info(
@@ -183,17 +138,19 @@ class StripePayoutFactory implements LoggerAwareInterface
         );
 
         $payout->setStatusReason(null);
+
         return $payout->setStatus(StripePayout::PAYOUT_CREATED);
     }
 
-    private function findTotalOrderTax($transactions)
+    private function findTotalOrderTax(array $transactions): float
     {
-        $taxes=0;
+        $taxes = 0;
         foreach ($transactions as $trx) {
-            if ($trx['type']=='ORDER_AMOUNT_TAX') {
+            if ('ORDER_AMOUNT_TAX' == $trx['type']) {
                 $taxes += (float) $trx['amount'];
             }
         }
+
         return $taxes;
     }
 }

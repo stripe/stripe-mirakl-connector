@@ -2,13 +2,10 @@
 
 namespace App\Command;
 
-use App\Entity\StripeRefund;
 use App\Message\ProcessRefundMessage;
 use App\Message\ProcessTransferMessage;
-use App\Repository\StripeRefundRepository;
 use App\Service\MiraklClient;
 use App\Service\PaymentRefundService;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Console\Command\Command;
@@ -47,11 +44,6 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
      */
     private $paymentRefundService;
 
-    /**
-     * @var StripeRefundRepository
-     */
-    private $stripeRefundRepository;
-
     public function __construct(
         MessageBusInterface $bus,
         MiraklClient $miraklClient,
@@ -83,15 +75,17 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         }
 
         $this->logger->info('job succeeded');
+
         return 0;
     }
 
-    private function processBacklog()
+    private function processBacklog(): void
     {
-        $this->logger->info("Processing backlog.");
+        $this->logger->info('Processing backlog.');
         $backlog = $this->paymentRefundService->getRetriableTransfers();
         if (empty($backlog)) {
-            $this->logger->info("No backlog.");
+            $this->logger->info('No backlog.');
+
             return;
         }
 
@@ -107,6 +101,7 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         $orderRefunds = $this->miraklClient->$method();
         if (empty($orderRefunds)) {
             $this->logger->info("No $orderType pending refund.");
+
             return;
         }
 

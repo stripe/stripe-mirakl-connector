@@ -53,7 +53,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->addArgument('delay', InputArgument::OPTIONAL, 'Deprecated argument kept for backward compatibility. Will be removed in future versions.');
     }
@@ -66,10 +66,11 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         }
 
         $this->logger->info('job succeeded');
+
         return 0;
     }
 
-    private function processUpdatedShops()
+    private function processUpdatedShops(): void
     {
         $checkpoint = $this->configService->getSellerOnboardingCheckpoint() ?? '';
         $this->logger->info("Processing recently updated shops, checkpoint: $checkpoint.");
@@ -81,7 +82,8 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         }
 
         if (empty($shops)) {
-            $this->logger->info("No shop recently updated.");
+            $this->logger->info('No shop recently updated.');
+
             return;
         }
 
@@ -94,14 +96,14 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
             } catch (ApiErrorException $e) {
                 $this->logger->error(sprintf('Could not create Stripe Account: %s.', $e->getMessage()), [
                     'shopId' => $shopId,
-                    'stripeErrorCode' => $e->getStripeCode()
+                    'stripeErrorCode' => $e->getStripeCode(),
                 ]);
                 continue;
             }
 
             $ignoredShop = $this->sellerOnboardingService->isShopIgnored($shop);
             if ($accountMapping->getIgnored() !== $ignoredShop) {
-                $this->logger->info("Shop $shopId is now ignored=" . var_export($ignoredShop, true));
+                $this->logger->info("Shop $shopId is now ignored=".var_export($ignoredShop, true));
                 $this->sellerOnboardingService->updateAccountMappingIgnored($accountMapping, $ignoredShop);
             }
 
@@ -120,13 +122,13 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                 $message = $e->getResponse()->getContent(false);
                 $this->logger->error(sprintf('Could not add AccountLink to Mirakl Shop: %s.', $message), [
                     'shopId' => $shopId,
-                    'accountId' => $accountMapping->getStripeAccountId()
+                    'accountId' => $accountMapping->getStripeAccountId(),
                 ]);
             } catch (ApiErrorException $e) {
                 $this->logger->error(sprintf('Could not create Stripe AccountLink: %s.', $e->getMessage()), [
                     'shopId' => $shopId,
                     'accountId' => $accountMapping->getStripeAccountId(),
-                    'stripeErrorCode' => $e->getStripeCode()
+                    'stripeErrorCode' => $e->getStripeCode(),
                 ]);
             }
         }

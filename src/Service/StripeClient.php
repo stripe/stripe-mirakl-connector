@@ -2,20 +2,20 @@
 
 namespace App\Service;
 
-use Shivas\VersioningBundle\Service\VersionManager;
+use Shivas\VersioningBundle\Service\VersionManagerInterface;
+use Stripe\Account;
+use Stripe\AccountLink;
+use Stripe\ApiRequestor;
+use Stripe\Charge;
+use Stripe\Event;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Exception\UnexpectedValueException;
 use Stripe\HttpClient\ClientInterface;
-use Stripe\Stripe;
-use Stripe\ApiRequestor;
-use Stripe\Account;
-use Stripe\AccountLink;
-use Stripe\Charge;
-use Stripe\Event;
 use Stripe\LoginLink;
 use Stripe\PaymentIntent;
 use Stripe\Payout;
 use Stripe\Refund;
+use Stripe\Stripe;
 use Stripe\Transfer;
 use Stripe\TransferReversal;
 use Stripe\Webhook;
@@ -41,7 +41,7 @@ class StripeClient
     public const APP_API_VERSION = '2019-08-14';
 
     public function __construct(
-        VersionManager $versionManager,
+        VersionManagerInterface $versionManager,
         string $stripeClientSecret,
         bool $verifyWebhookSignature
     ) {
@@ -70,20 +70,18 @@ class StripeClient
     public function retrieveAllAccounts(): array
     {
         $hasmore = false;
-        $connect_accounts = array();
-        $lastConnectId='';
-
+        $connect_accounts = [];
+        $lastConnectId = '';
         $limit = 50;
         do {
-            $params = $lastConnectId=='' ? ['limit' => $limit] : ['limit' => $limit,'starting_after' => $lastConnectId];
+            $params = '' == $lastConnectId ? ['limit' => $limit] : ['limit' => $limit, 'starting_after' => $lastConnectId];
             $response = Account::all($params);
-            $connect_accounts = array_merge($connect_accounts, $response['data']);
-            //  echo "\n";
-            //  echo count ($connect_accounts).'   ';
+            $responseData = (array) $response['data'];
+            $connect_accounts = array_merge($connect_accounts, $responseData);
             $hasmore = $response['has_more'];
-            $lastConnectId = end($connect_accounts)['id'];
-            //   echo $hasmore.'   ';
-            //   echo $lastConnectId.'    ';
+            if (is_array($connect_accounts)) {
+                $lastConnectId = end($connect_accounts)['id'];
+            }
         } while ($hasmore);
 
         return $connect_accounts;
@@ -95,14 +93,14 @@ class StripeClient
             'type' => 'express',
             'settings' => ['payouts' => [
                 'debit_negative_balances' => false,
-                'schedule' => ['interval' => 'manual']
+                'schedule' => ['interval' => 'manual'],
             ]],
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
         ], $details));
     }
 
     // Account/Login Link
-    public function createAccountLink(string $accountId, string $refreshUrl, string $returnUrl, $type = 'account_onboarding'): AccountLink
+    public function createAccountLink(string $accountId, string $refreshUrl, string $returnUrl, string $type = 'account_onboarding'): AccountLink
     {
         return AccountLink::create([
             'account' => $accountId,
@@ -123,18 +121,18 @@ class StripeClient
         if ($this->verifyWebhookSignature || $signatureHeader) {
             return Webhook::constructEvent($payload, $signatureHeader, $webhookSecret);
         } else {
-            $data = \json_decode($payload, true);
-            $jsonError = \json_last_error();
-            if (null === $data && \JSON_ERROR_NONE !== $jsonError) {
-                throw new UnexpectedValueException(
-                    "Invalid payload: {$payload} (json_last_error() was {$jsonError})"
-                );
+            $data = json_decode($payload, true);
+            $jsonError = json_last_error();
+            if (null === $data && JSON_ERROR_NONE !== $jsonError) {
+                throw new UnexpectedValueException("Invalid payload: {$payload} (json_last_error() was {$jsonError})");
             }
+            $data = (array) $data;
+
             return Event::constructFrom($data);
         }
     }
 
-    public function setHttpClient(ClientInterface $client)
+    public function setHttpClient(ClientInterface $client): void
     {
         ApiRequestor::setHttpClient($client);
     }
@@ -147,7 +145,7 @@ class StripeClient
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
             'destination' => $accountId,
-            'source_transaction' => $chargeId
+            'source_transaction' => $chargeId,
         ]);
     }
 
@@ -155,11 +153,12 @@ class StripeClient
     public function createTransferFromConnectedAccount(string $currency, int $amount, string $accountId, array $metadata = []): Transfer
     {
         $platformAccount = Account::retrieve();
+
         return Transfer::create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-            'destination' => $platformAccount->id
+            'destination' => $platformAccount->id,
         ], ['stripe_account' => $accountId]);
     }
 
@@ -195,9 +194,8 @@ class StripeClient
     }
 
     /**
-     * @param string $paymentId
-     * @param int $amount
      * @return Charge|PaymentIntent
+     *
      * @throws ApiErrorException
      */
     public function capturePayment(string $paymentId, int $amount)
@@ -205,7 +203,8 @@ class StripeClient
         switch (substr($paymentId, 0, 3)) {
             case 'pi_':
                 $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
-                return $pi->capture(['amount_to_capture' =>  $amount]);
+
+                return $pi->capture(['amount_to_capture' => $amount]);
             case 'ch_':
             case 'py_':
                 $charge = $this->chargeRetrieve($paymentId);
@@ -216,15 +215,15 @@ class StripeClient
                     return $this->capturePayment($paymentIntentId, $amount);
                 }
 
-                return $charge->capture(['amount' =>  $amount]);
+                return $charge->capture(['amount' => $amount]);
             default:
-                throw new \Exception('Unexpected payment type: ' . $paymentId);
+                throw new \Exception('Unexpected payment type: '.$paymentId);
         }
     }
 
     /**
-     * @param string $paymentId
      * @return Refund|PaymentIntent
+     *
      * @throws ApiErrorException
      */
     public function cancelPayment(string $paymentId)
@@ -233,6 +232,7 @@ class StripeClient
             case 'pi_':
                 $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
                 $pi->cancel();
+
                 return $pi;
             case 'ch_':
             case 'py_':
@@ -246,7 +246,7 @@ class StripeClient
 
                 return $this->createRefund($paymentId, null);
             default:
-                throw new \Exception('Unexpected payment type: ' . $paymentId);
+                throw new \Exception('Unexpected payment type: '.$paymentId);
         }
     }
 

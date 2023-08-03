@@ -80,16 +80,18 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         }
 
         $this->logger->info('job succeeded');
+
         return 0;
     }
 
-    private function processBacklog(string $orderType)
+    private function processBacklog(string $orderType): void
     {
         $this->logger->info("Processing $orderType backlog.");
         $method = "getRetriable{$orderType}Transfers";
         $backlog = $this->paymentSplitService->$method();
         if (empty($backlog)) {
-            $this->logger->info("No backlog.");
+            $this->logger->info('No backlog.');
+
             return;
         }
 
@@ -108,7 +110,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         }
     }
 
-    private function processNewOrders(string $orderType)
+    private function processNewOrders(string $orderType): void
     {
         $method = "get{$orderType}PaymentSplitCheckpoint";
         $checkpoint = $this->configService->$method() ?? '';
@@ -124,6 +126,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
 
         if (empty($orders)) {
             $this->logger->info("No new $orderType order.");
+
             return;
         }
 
@@ -164,7 +167,7 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
 
     private function getServiceOrdersPendingDebits(array $orders, string $orderType): array
     {
-        if ($orderType == MiraklClient::ORDER_TYPE_SERVICE) {
+        if (MiraklClient::ORDER_TYPE_SERVICE == $orderType) {
             return $this->miraklClient->listServicePendingDebitsByOrderIds(array_keys($orders));
         } else {
             return [];

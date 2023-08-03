@@ -6,7 +6,6 @@ use App\Message\NotifiableMessageInterface;
 use App\Message\NotificationFailedMessage;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use Symfony\Component\Debug\Exception\FlattenException;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
@@ -16,7 +15,7 @@ class SendFailedMessageToAlertingQueue implements EventSubscriberInterface, Logg
 {
     use LoggerAwareTrait;
 
-    private const NOTIY_OF_FAILED_WEBHOOK = 'operator_http_notification_failed';
+    // private const NOTIY_OF_FAILED_WEBHOOK = 'operator_http_notification_failed';
     /**
      * @var MessageBusInterface
      */
@@ -33,7 +32,7 @@ class SendFailedMessageToAlertingQueue implements EventSubscriberInterface, Logg
         $this->endpointDownMailNotification = $endpointDownMailNotification;
     }
 
-    public function onMessageFailed(WorkerMessageFailedEvent $event)
+    public function onMessageFailed(WorkerMessageFailedEvent $event): void
     {
         if (!$this->endpointDownMailNotification || $event->willRetry()) {
             return;
@@ -52,6 +51,9 @@ class SendFailedMessageToAlertingQueue implements EventSubscriberInterface, Logg
         $this->messageBus->dispatch(new NotificationFailedMessage($throwable, $envelope->getMessage()));
     }
 
+    /**
+     * @return array[]
+     */
     public static function getSubscribedEvents()
     {
         return [

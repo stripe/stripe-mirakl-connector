@@ -43,10 +43,10 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
         $this->stripeRefundRepository = $stripeRefundRepository;
     }
 
-    public function __invoke(ProcessRefundMessage $message)
+    public function __invoke(ProcessRefundMessage $message): void
     {
         $refund = $this->stripeRefundRepository->findOneBy([
-            'id' => $message->getStripeRefundId()
+            'id' => $message->getStripeRefundId(),
         ]);
         assert(null !== $refund && null !== $refund->getTransactionId());
         assert(StripeRefund::REFUND_CREATED !== $refund->getStatus());
@@ -69,7 +69,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                     'amount' => $refund->getAmount() / 100,
                     'currency_code' => strtoupper($refund->getCurrency()),
                     'state' => 'OK',
-                    'transaction_number' => $refund->getStripeRefundId()
+                    'transaction_number' => $refund->getStripeRefundId(),
                 ]]);
             } else {
                 $this->miraklClient->validateProductPendingRefunds([[
@@ -77,7 +77,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                     'amount' => $refund->getAmount() / 100,
                     'currency_iso_code' => strtoupper($refund->getCurrency()),
                     'payment_status' => 'OK',
-                    'transaction_number' => $refund->getStripeRefundId()
+                    'transaction_number' => $refund->getStripeRefundId(),
                 ]]);
             }
 
@@ -89,7 +89,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 sprintf('Could  not create refund in Stripe: %s.', $e->getMessage()),
                 [
                     'miraklRefundId' => $refund->getMiraklRefundId(),
-                    'miraklOrderId' => $refund->getMiraklOrderId()
+                    'miraklOrderId' => $refund->getMiraklOrderId(),
                 ]
             );
 
@@ -101,7 +101,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 [
                     'stripeRefundId' => $refund->getStripeRefundId(),
                     'miraklRefundId' => $refund->getMiraklRefundId(),
-                    'miraklOrderId' => $refund->getMiraklOrderId()
+                    'miraklOrderId' => $refund->getMiraklOrderId(),
                 ]
             );
 
@@ -113,7 +113,7 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 sprintf('Could not validate refund in Mirakl: %s.', $message),
                 [
                     'miraklRefundId' => $refund->getMiraklRefundId(),
-                    'miraklOrderId' => $refund->getMiraklOrderId()
+                    'miraklOrderId' => $refund->getMiraklOrderId(),
                 ]
             );
 

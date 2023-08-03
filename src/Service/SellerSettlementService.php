@@ -2,9 +2,8 @@
 
 namespace App\Service;
 
-use App\Entity\StripeTransfer;
 use App\Entity\StripePayout;
-use App\Service\MiraklClient;
+use App\Entity\StripeTransfer;
 use App\Factory\StripePayoutFactory;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripePayoutRepository;
@@ -53,7 +52,6 @@ class SellerSettlementService
     }
 
     /**
-     * @param array $invoices
      * @return array [ invoice_id => StripeTransfer[] ]
      */
     public function getTransfersFromInvoices(array $invoices): array
@@ -97,8 +95,6 @@ class SellerSettlementService
     }
 
     /**
-     * @param array $existingTransfers
-     * @param array $invoices
      * @return array [ invoice_id => StripeTransfer[] ]
      */
     public function updateTransfersFromInvoices(array $existingTransfers, array $invoices)
@@ -133,7 +129,6 @@ class SellerSettlementService
     }
 
     /**
-     * @param array $invoices
      * @return array StripePayout[]
      */
     public function getPayoutsFromInvoices(array $invoices, MiraklClient $mclient): array
@@ -145,7 +140,7 @@ class SellerSettlementService
         $payouts = [];
         foreach ($invoices as $invoice) {
             $invoiceId = (int) $invoice['invoice_id'];
-            if (isset($existingPayouts[$invoiceId])) {
+            if (is_array($existingPayouts) && isset($existingPayouts[$invoiceId])) {
                 $payout = $existingPayouts[$invoiceId];
                 if (!$payout->isRetriable()) {
                     continue;
@@ -171,8 +166,6 @@ class SellerSettlementService
     }
 
     /**
-     * @param array $existingPayouts
-     * @param array $invoices
      * @return array StripePayout[]
      */
     public function updatePayoutsFromInvoices(array $existingPayouts, array $invoices, MiraklClient $mclient)

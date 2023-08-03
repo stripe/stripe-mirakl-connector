@@ -18,18 +18,17 @@ use Symfony\Component\Mime\Email;
  */
 class SymfonyMailerHandler extends MailHandler
 {
-    protected $mailer;
+    protected MailerInterface $mailer;
     private $messageFactory;
 
     /**
-     * @param MailerInterface $mailer         The mailer to use
-     * @param EmailFactory    $messageFactory
-     * @param int             $level          The minimum logging level at which this handler will be triggered
-     * @param bool            $bubble         Whether the messages that are handled can bubble up the stack or not
+     * @param MailerInterface $mailer The mailer to use
+     * @param int             $level  The minimum logging level at which this handler will be triggered
+     * @param bool            $bubble Whether the messages that are handled can bubble up the stack or not
      */
     public function __construct(MailerInterface $mailer, EmailFactory $messageFactory, $level = Logger::ERROR, bool $bubble = true)
     {
-        parent::__construct($level, $bubble);
+        parent::__construct($level = Logger::DEBUG, (bool) $bubble);
         $this->mailer = $mailer;
         $this->messageFactory = $messageFactory;
     }
@@ -57,15 +56,13 @@ class SymfonyMailerHandler extends MailHandler
      *
      * @param string $content formatted email body to be sent
      * @param array  $records Log records that formed the content
-     *
-     * @return Email
      */
-    protected function buildMessage($content, array $records): Email
+    protected function buildMessage(string $content, array $records): Email
     {
         $message = $this->messageFactory->createMessage();
         if ($records) {
             $subjectFormatter = $this->getSubjectFormatter($message->getSubject() ?? '');
-            $message->subject($subjectFormatter->format($this->getHighestRecord($records)));
+            $message->subject($subjectFormatter->format($this->getHighestRecord($records)).'');
         }
         $message->html($content);
         $message->date(new \DateTime());
