@@ -2,8 +2,8 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Core\Annotation\ApiResource;
 use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Annotation\ApiResource;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
 use App\Exception\InvalidArgumentException;
 use Doctrine\ORM\Mapping as ORM;
@@ -19,13 +19,17 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "get"={"path"="/transfers/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
+ *
  * @ApiFilter(SearchFilter::class, properties={"miraklId":"exact" })
+ *
  * @ORM\Table(
  *    uniqueConstraints={
+ *
  *        @UniqueConstraint(name="transfer",
  *            columns={"type", "mirakl_id"})
  *    }
  * )
+ *
  * @ORM\Entity(repositoryClass="App\Repository\StripeTransferRepository")
  */
 class StripeTransfer
@@ -67,72 +71,76 @@ class StripeTransfer
 
     /**
      * @ORM\Id()
+     *
      * @ORM\GeneratedValue()
+     *
      * @ORM\Column(type="integer")
      */
-    private $id;
+    private int $id;
 
     /**
      * @ORM\Column(name="mirakl_id", type="string")
      */
-    private $miraklId;
+    private string $miraklId;
 
     /**
      * @ORM\Column(name="type", type="string")
      */
-    private $type;
+    private string $type;
 
     /**
      * @ORM\ManyToOne(targetEntity="AccountMapping")
      */
-    private $accountMapping;
+    private ?AccountMapping $accountMapping;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $transferId;
+    private ?string $transferId = null;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $transactionId;
+    private ?string $transactionId = null;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
      */
-    private $amount;
+    private ?int $amount;
 
     /**
      * @ORM\Column(type="string")
      */
-    private $status;
+    private string $status;
 
     /**
      * @ORM\Column(type="string", length=1024, nullable=true)
      */
-    private $statusReason;
+    private ?string $statusReason = null;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $currency;
+    private ?string $currency;
 
     /**
      * @ORM\Column(type="datetime", nullable=true)
      */
-    private $miraklCreatedDate;
+    private ?\DateTimeInterface $miraklCreatedDate = null;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="create")
      */
-    private $creationDatetime;
+    private \DateTimeInterface $creationDatetime;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="update")
      */
-    private $modificationDatetime;
+    private \DateTimeInterface $modificationDatetime;
 
     public static function getAvailableStatus(): array
     {
@@ -232,9 +240,9 @@ class StripeTransfer
         return $this;
     }
 
-    public function getAccountMapping(): ?AccountMapping
+    public function getAccountMapping(): AccountMapping|null
     {
-        return $this->accountMapping;
+        return $this->accountMapping ?? null;
     }
 
     public function setAccountMapping(AccountMapping $accountMapping): self
@@ -288,9 +296,7 @@ class StripeTransfer
     public function setStatus(string $status): self
     {
         if (!in_array($status, self::getAvailableStatus())) {
-            throw new InvalidArgumentException(
-                'Invalid order status. Input was: ' . $status
-            );
+            throw new InvalidArgumentException('Invalid order status. Input was: '.$status);
         }
         $this->status = $status;
 

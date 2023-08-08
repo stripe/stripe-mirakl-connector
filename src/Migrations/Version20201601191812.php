@@ -16,7 +16,7 @@ final class Version20201601191812 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE stripe_refund ADD COLUMN type VARCHAR(255) NOT NULL DEFAULT \'REFUND_PRODUCT_ORDER\'');
 
@@ -27,7 +27,7 @@ final class Version20201601191812 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql("UPDATE stripe_transfer SET type = 'TRANSFER_ORDER' WHERE type = 'TRANSFER_PRODUCT_ORDER'");
 

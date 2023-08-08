@@ -8,13 +8,16 @@ class AccountMappingDTO
 {
     /**
      * @var int
+     *
      * @App\Validator\MiraklShopId()
+     *
      * @Assert\NotNull
      */
     private $miraklShopId;
 
     /**
      * @var string
+     *
      * @Assert\NotNull
      */
     private $stripeUserId;

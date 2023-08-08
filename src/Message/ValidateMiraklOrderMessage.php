@@ -22,9 +22,6 @@ class ValidateMiraklOrderMessage
         $this->paymentMappings = $paymentMappings;
     }
 
-    /**
-     * @return array
-     */
     public function getOrders(): array
     {
         return $this->orders;

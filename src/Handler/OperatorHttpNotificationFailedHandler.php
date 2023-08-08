@@ -58,7 +58,7 @@ class OperatorHttpNotificationFailedHandler implements MessageHandlerInterface, 
         $this->lastNotificationDateTime = null;
     }
 
-    public function __invoke(NotificationFailedMessage $message)
+    public function __invoke(NotificationFailedMessage $message): void
     {
         if (!$this->shouldNotify()) {
             $this->logger->info('Endpoint unreachable, skipping mail notification to avoid flood');
@@ -85,7 +85,7 @@ class OperatorHttpNotificationFailedHandler implements MessageHandlerInterface, 
         $this->mailer->send($email);
     }
 
-    private function updateLastNotificationDateTime()
+    private function updateLastNotificationDateTime(): void
     {
         $now = \DateTime::createFromFormat('U', (string) time());
         assert(false !== $now);
@@ -93,7 +93,7 @@ class OperatorHttpNotificationFailedHandler implements MessageHandlerInterface, 
         $this->lastNotificationDateTime = $now;
     }
 
-    private function shouldNotify()
+    private function shouldNotify(): bool
     {
         if (!$this->lastNotificationDateTime) {
             $this->updateLastNotificationDateTime();

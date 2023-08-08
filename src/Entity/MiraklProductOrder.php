@@ -45,13 +45,13 @@ class MiraklProductOrder extends MiraklOrder
             'STAGING',
             'WAITING_ACCEPTANCE',
             'WAITING_DEBIT',
-            'WAITING_DEBIT_PAYMENT'
+            'WAITING_DEBIT_PAYMENT',
         ]);
     }
 
     public function isTaxIncluded(): bool
     {
-        return isset($this->order['order_tax_mode']) && $this->order['order_tax_mode'] === 'TAX_INCLUDED';
+        return isset($this->order['order_tax_mode']) && 'TAX_INCLUDED' === $this->order['order_tax_mode'];
     }
 
     public function isPaid(): bool
@@ -130,6 +130,7 @@ class MiraklProductOrder extends MiraklOrder
                 foreach ($line['refunds'] as $orderRefund) {
                     if ($refund->getMiraklRefundId() === $orderRefund['id']) {
                         $tax = $this->getRefundLineTaxes($orderRefund);
+
                         return $tax;
                     }
                 }
@@ -149,7 +150,6 @@ class MiraklProductOrder extends MiraklOrder
 
         return $taxes;
     }
-
 
     public function getCurrency(): string
     {
@@ -193,6 +193,7 @@ class MiraklProductOrder extends MiraklOrder
                 $amount += $this->getOrderLineOrderTaxes($orderLine);
             }
         }
+
         return $amount;
     }
 
@@ -203,6 +204,7 @@ class MiraklProductOrder extends MiraklOrder
         foreach ($allTaxes as $tax) {
             $taxes += (float) $tax['amount'];
         }
+
         return $taxes;
     }
 }

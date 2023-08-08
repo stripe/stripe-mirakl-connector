@@ -26,7 +26,7 @@ class MiraklServicePendingDebit extends MiraklPendingDebit
 
     public function isPaid(): bool
     {
-        return $this->order['state'] === 'OK';
+        return 'OK' === $this->order['state'];
     }
 
     public function getAmountDue(): float

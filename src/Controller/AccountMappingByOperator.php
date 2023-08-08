@@ -7,9 +7,9 @@ use App\Entity\AccountMapping;
 use App\Repository\AccountMappingRepository;
 use App\Service\StripeClient;
 use Nelmio\ApiDocBundle\Annotation\Security;
+use OpenApi\Annotations as OA;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use OpenApi\Annotations as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -62,6 +62,7 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
      *     name="ids",
      *     in="body",
      *     description="Mirakl and Stripe Ids to map",
+     *
      *     @OA\Schema(
      *         type="object",
      *         example={"miraklShopId": 1, "stripeUserId": "12345"}
@@ -86,8 +87,11 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
      *     response=409,
      *     description="The provided Mirakl Shop ID or Stripe User Id is already mapped",
      * )
+     *
      * @OA\Tag(name="AccountMapping")
+     *
      * @Security(name="Bearer")
+     *
      * @Route("/api/mappings", methods={"POST"}, name="create_mapping_manually")
      */
     public function createMapping(Request $request): Response
@@ -107,9 +111,14 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
         $mapping = new AccountMapping();
         $mapping->setMiraklShopId($miraklShopId);
         $mapping->setStripeAccountId($stripeUserId);
-        $mapping->setPayinEnabled($stripeAccount->payouts_enabled);
-        $mapping->setPayoutEnabled($stripeAccount->charges_enabled);
-        $mapping->setDisabledReason($stripeAccount->requirements['disabled_reason']);
+        $mapping->setPayinEnabled((bool) $stripeAccount->payouts_enabled);
+        $mapping->setPayoutEnabled((bool) $stripeAccount->charges_enabled);
+
+        if (isset($stripeAccount->requirements['disabled_reason'])) {
+            /** @var string $disabledReasonData */
+            $disabledReasonData = $stripeAccount->requirements['disabled_reason'];
+            $mapping->setDisabledReason($disabledReasonData);
+        }
 
         $this->accountMappingRepository->persistAndFlush($mapping);
 

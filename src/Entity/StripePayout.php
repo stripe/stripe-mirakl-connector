@@ -15,6 +15,7 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "get"={"path"="/payouts/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
+ *
  * @ORM\Entity(repositoryClass="App\Repository\StripePayoutRepository")
  */
 class StripePayout
@@ -35,62 +36,66 @@ class StripePayout
 
     /**
      * @ORM\Id()
+     *
      * @ORM\GeneratedValue()
+     *
      * @ORM\Column(type="integer")
      */
-    private $id;
+    private int $id;
 
     /**
      * @ORM\ManyToOne(targetEntity="AccountMapping")
      */
-    private $accountMapping;
+    private ?AccountMapping $accountMapping;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
      */
-    private $amount = 0;
+    private ?int $amount = 0;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $currency;
+    private ?string $currency;
 
     /**
      * @ORM\Column(type="integer", unique=true)
      */
-    private $miraklInvoiceId;
+    private int $miraklInvoiceId;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $payoutId;
+    private ?string $payoutId = null;
 
     /**
      * @ORM\Column(type="string")
      */
-    private $status;
+    private string $status;
 
     /**
      * @ORM\Column(type="string", length=1024, nullable=true)
      */
-    private $statusReason;
+    private ?string $statusReason = null;
 
     /**
      * @ORM\Column(type="datetime", nullable=true)
      */
-    private $miraklCreatedDate;
+    private ?\DateTimeInterface $miraklCreatedDate;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="create")
      */
-    private $creationDatetime;
+    private \DateTimeInterface $creationDatetime;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="update")
      */
-    private $modificationDatetime;
+    private \DateTimeInterface $modificationDatetime;
 
     public static function getAvailableStatus(): array
     {
@@ -145,7 +150,7 @@ class StripePayout
         return $this;
     }
 
-    public function getAmount(): int
+    public function getAmount(): ?int
     {
         return $this->amount;
     }
@@ -157,7 +162,7 @@ class StripePayout
         return $this;
     }
 
-    public function getCurrency(): string
+    public function getCurrency(): ?string
     {
         return $this->currency;
     }
@@ -220,7 +225,7 @@ class StripePayout
         return $this;
     }
 
-    public function getMiraklCreatedDate(): \DateTimeInterface
+    public function getMiraklCreatedDate(): ?\DateTimeInterface
     {
         return $this->miraklCreatedDate;
     }

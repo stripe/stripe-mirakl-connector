@@ -5,7 +5,6 @@ namespace App\Handler;
 use App\Entity\StripePayout;
 use App\Message\ProcessPayoutMessage;
 use App\Repository\StripePayoutRepository;
-use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -34,7 +33,7 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
         $this->stripePayoutRepository = $stripePayoutRepository;
     }
 
-    public function __invoke(ProcessPayoutMessage $message)
+    public function __invoke(ProcessPayoutMessage $message): void
     {
         $payout = $this->stripePayoutRepository->findOneBy([
             'id' => $message->getStripePayoutId(),
@@ -45,8 +44,8 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
         $accountMapping = $payout->getAccountMapping();
         try {
             $response = $this->stripeClient->createPayout(
-                $payout->getCurrency(),
-                $payout->getAmount(),
+                (string) $payout->getCurrency(),
+                (int) $payout->getAmount(),
                 $accountMapping->getStripeAccountId(),
                 [
                     'miraklShopId' => $accountMapping->getMiraklShopId(),

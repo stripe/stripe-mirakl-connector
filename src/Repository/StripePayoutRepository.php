@@ -34,12 +34,12 @@ class StripePayoutRepository extends ServiceEntityRepository
         return $stripePayout;
     }
 
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }
 
-    private function mapPayoutsByInvoiceId(array $payouts)
+    private function mapPayoutsByInvoiceId(array $payouts): array
     {
         $map = [];
         foreach ($payouts as $payout) {
@@ -49,17 +49,17 @@ class StripePayoutRepository extends ServiceEntityRepository
         return $map;
     }
 
-    public function findRetriablePayouts()
+    public function findRetriablePayouts(): array
     {
         return $this->mapPayoutsByInvoiceId($this->findBy([
-            'status' => StripePayout::getRetriableStatus()
+            'status' => StripePayout::getRetriableStatus(),
         ]));
     }
 
-    public function findPayoutsByInvoiceIds(array $invoiceIds)
+    public function findPayoutsByInvoiceIds(array $invoiceIds): mixed
     {
         return $this->mapPayoutsByInvoiceId($this->findBy([
-            'miraklInvoiceId' => $invoiceIds
+            'miraklInvoiceId' => $invoiceIds,
         ]));
     }
 }

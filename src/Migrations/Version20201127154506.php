@@ -6,7 +6,7 @@ namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
-use Shivas\VersioningBundle\Service\VersionManager;
+use Shivas\VersioningBundle\Service\VersionManagerInterface;
 use Stripe\Stripe;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -29,13 +29,12 @@ final class Version20201127154506 extends AbstractMigration implements Container
     }
 
     /**
-     * @param Schema $schema
      * @throws \Exception
      */
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->connectStripe();
         $this->changePaymentIntentIdForChargeId();
@@ -47,7 +46,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
     public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE stripe_charge RENAME TO stripe_payment');
         $this->addSql('ALTER TABLE stripe_payment RENAME COLUMN stripe_charge_id TO stripe_payment_id ');
@@ -110,8 +109,13 @@ final class Version20201127154506 extends AbstractMigration implements Container
         }
     }
 
+    // Or get the version from the service
+    public function indexAction(VersionManagerInterface $manager)
+    {
+        $this->version = $manager->getVersion();
+    }
+
     /**
-     *
      * @throws \Exception
      */
     private function connectStripe()
@@ -121,13 +125,10 @@ final class Version20201127154506 extends AbstractMigration implements Container
         }
 
         $stripeClientSecret = $this->container->getParameter('app.stripe.client_secret');
-        /** @var VersionManager $versionManager */
-        $versionManager = $this->container->get('Shivas\VersioningBundle\Service\VersionManager');
-
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(
             self::APP_NAME,
-            $versionManager->getVersion()->__toString(),
+            $this->version->__toString(),
             self::APP_REPO,
             self::APP_PARTNER_ID
         );

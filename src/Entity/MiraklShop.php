@@ -4,7 +4,7 @@ namespace App\Entity;
 
 class MiraklShop
 {
-    protected $shop;
+    protected array $shop;
 
     public function __construct(array $shop)
     {
@@ -26,7 +26,7 @@ class MiraklShop
         return $this->shop['last_updated_date'];
     }
 
-    public function getCustomFieldValue($code): ?string
+    public function getCustomFieldValue(string $code): ?string
     {
         foreach ($this->shop['shop_additional_fields'] as $field) {
             if ($field['code'] === $code) {

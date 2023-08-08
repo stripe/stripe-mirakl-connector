@@ -11,10 +11,11 @@ use App\Repository\StripeTransferRepository;
 use App\Repository\StripeRefundRepository;
 use Psr\Log\NullLogger;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Console\Formatter\OutputFormatterInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Console\Formatter\OutputFormatter;
+
 
 class AlertingCommandTest extends TestCase
 {
@@ -29,14 +30,18 @@ class AlertingCommandTest extends TestCase
 
         $this->input = $this->createMock(InputInterface::class);
         $this->output = $this->createMock(OutputInterface::class);
+        $outputFormatter = new OutputFormatter(false);
+        $this->output->setFormatter($outputFormatter);
         $this->output
             ->method('getFormatter')
-            ->willReturn($this->createMock(OutputFormatterInterface::class));
-
+            ->willReturn($outputFormatter);
         $this->command = new AlertingCommand($this->mailer, $this->transferRepository, $this->payoutRepository, $this->refundRepository, 'mailfrom@example.com', 'mailto@example.com');
         $this->command->setLogger(new NullLogger());
     }
 
+    /**
+     * @return void
+     */
     public function testExecuteWithNoFailedOperation()
     {
         $this->transferRepository
@@ -54,7 +59,6 @@ class AlertingCommandTest extends TestCase
         $this->mailer
             ->expects($this->never())
             ->method('send');
-
         $resultCode = $this->command->execute($this->input, $this->output);
         $this->assertEquals(0, $resultCode);
     }
@@ -79,7 +83,6 @@ class AlertingCommandTest extends TestCase
         $this->mailer
             ->expects($this->once())
             ->method('send');
-
         $resultCode = $this->command->execute($this->input, $this->output);
         $this->assertEquals(0, $resultCode);
     }

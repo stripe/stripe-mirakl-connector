@@ -49,7 +49,6 @@ class PaymentSplitService
     }
 
     /**
-     * @param array $orders
      * @return array App\Entity\StripeTransfer[]
      */
     public function getTransfersFromOrders(array $orders, array $pendingDebits): array
@@ -61,7 +60,7 @@ class PaymentSplitService
         $transfers = [];
         foreach ($orders as $orderId => $order) {
             $pendingDebit = $pendingDebits[$orderId] ?? null;
-            if (isset($existingTransfers[$orderId])) {
+            if (is_array($existingTransfers) && isset($existingTransfers[$orderId])) {
                 $transfer = $existingTransfers[$orderId];
                 if (!$transfer->isRetriable()) {
                     continue;
@@ -92,8 +91,6 @@ class PaymentSplitService
     }
 
     /**
-     * @param array $existingTransfers
-     * @param array $orders
      * @return array App\Entity\StripeTransfer[]
      */
     public function updateTransfersFromOrders(array $existingTransfers, array $orders, array $pendingDebits)
@@ -101,9 +98,9 @@ class PaymentSplitService
         $updated = [];
         foreach ($existingTransfers as $orderId => $transfer) {
             $pendingDebit = $pendingDebits[$orderId] ?? null;
-            if ($this->enablePaymentTaxSplit && strpos($orderId, $this->taxOrderPostfix) !== false) {
+            if ($this->enablePaymentTaxSplit && false !== strpos($orderId, $this->taxOrderPostfix)) {
                 $tax_suffixed_orderId = $orderId;
-                $orderId = str_replace($this->taxOrderPostfix, "", $orderId);
+                $orderId = str_replace($this->taxOrderPostfix, '', $orderId);
                 $pendingDebit = $pendingDebits[$orderId] ?? null;
                 $updated[$tax_suffixed_orderId] = $this->stripeTransferFactory->updateFromOrder(
                     $transfer,

@@ -4,7 +4,7 @@ namespace App\Entity;
 
 abstract class MiraklPendingRefund
 {
-    protected $order;
+    protected array $order;
 
     public function __construct(array $order)
     {
@@ -17,10 +17,14 @@ abstract class MiraklPendingRefund
     }
 
     abstract public function getId(): string;
+
     abstract public function getOrderId(): string;
+
     abstract public function getCommercialId(): string;
+
     abstract public function getOrderLineId(): ?string;
 
     abstract public function getAmount(): float;
+
     abstract public function getCurrency(): string;
 }

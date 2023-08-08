@@ -45,13 +45,13 @@ class MiraklServiceOrder extends MiraklOrder
             'WAITING_SCORING',
             'WAITING_ACCEPTANCE',
             'WAITING_DEBIT',
-            'WAITING_DEBIT_PAYMENT'
+            'WAITING_DEBIT_PAYMENT',
         ]);
     }
 
     public function isTaxIncluded(): bool
     {
-        return isset($this->order['order_tax_mode']) && $this->order['order_tax_mode'] === 'TAX_INCLUDED';
+        return isset($this->order['order_tax_mode']) && 'TAX_INCLUDED' === $this->order['order_tax_mode'];
     }
 
     public function isPaid(): bool
@@ -114,7 +114,7 @@ class MiraklServiceOrder extends MiraklOrder
         foreach ($this->order['refunds'] as $orderRefund) {
             if ($refund->getMiraklRefundId() === $orderRefund['id']) {
                 if ($refund->getMiraklRefundId() === $orderRefund['id']) {
-                    return $this->getRefundLineTaxes($orderRefund);//$orderRefund['commission_total_amount'];
+                    return $this->getRefundLineTaxes($orderRefund); // $orderRefund['commission_total_amount'];
                 }
             }
         }
@@ -129,7 +129,6 @@ class MiraklServiceOrder extends MiraklOrder
         foreach ($allTaxes as $tax) {
             $taxes += (float) $tax['amount'];
         }
-
 
         return $taxes;
     }
@@ -148,6 +147,7 @@ class MiraklServiceOrder extends MiraklOrder
                 $taxes += (float) $tax['amount'];
             }
         }
+
         return $taxes;
     }
 
@@ -158,6 +158,7 @@ class MiraklServiceOrder extends MiraklOrder
         foreach ($allTaxes as $tax) {
             $taxes += (float) $tax['amount'];
         }
+
         return $taxes;
     }
 }

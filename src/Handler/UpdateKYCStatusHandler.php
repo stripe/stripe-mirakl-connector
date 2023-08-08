@@ -40,7 +40,7 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
         $this->stripeClient = $stripeClient;
     }
 
-    public function __invoke(AccountUpdateMessage $message)
+    public function __invoke(AccountUpdateMessage $message): void
     {
         $messagePayload = $message->getContent()['payload'];
         $this->logger->info('Received Stripe `account.updated` webhook. Updating KYC status.', $messagePayload);
@@ -61,22 +61,22 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
     {
         $requirements = $stripeAccount->requirements;
 
-        if (count($requirements[self::CURRENTLY_DUE]) > 0) {
+        if (isset($requirements[self::CURRENTLY_DUE]) && count((array) $requirements[self::CURRENTLY_DUE]) > 0) {
             return self::KYC_STATUS_PENDING_SUBMISSION;
         }
 
-        if (count($requirements[self::PENDING_VERIFICATION]) > 0) {
+        if (isset($requirements[self::PENDING_VERIFICATION]) && count((array) $requirements[self::PENDING_VERIFICATION]) > 0) {
             return self::KYC_STATUS_PENDING_APPROVAL;
         }
-
+        $disabledReason = isset($requirements[self::DISABLED_REASON]) ? ''.$requirements[self::DISABLED_REASON] : '';
         if (
-            $requirements[self::DISABLED_REASON] !== ''
-            && strpos($requirements[self::DISABLED_REASON], 'rejected') === 0
+            isset($requirements[self::DISABLED_REASON]) && '' !== $requirements[self::DISABLED_REASON]
+            && 0 === strpos($disabledReason, 'rejected')
         ) {
             return self::KYC_STATUS_REFUSED;
         }
 
-        if ($requirements[self::DISABLED_REASON] !== '' && $requirements[self::DISABLED_REASON] !== null) {
+        if (isset($requirements[self::DISABLED_REASON]) && '' !== $requirements[self::DISABLED_REASON] && null !== $requirements[self::DISABLED_REASON]) {
             return self::KYC_STATUS_PENDING_APPROVAL;
         }
 

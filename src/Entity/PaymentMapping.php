@@ -16,84 +16,73 @@ class PaymentMapping
 
     /**
      * @ORM\Id()
+     *
      * @ORM\GeneratedValue()
+     *
      * @ORM\Column(type="integer")
      */
-    private $id;
+    private int $id;
 
     /**
      * @ORM\Column(type="string", nullable=true)
      */
-    private $miraklCommercialOrderId;
+    private ?string $miraklCommercialOrderId;
 
     /**
      * @ORM\Column(type="string", unique=true)
      */
-    private $stripeChargeId;
+    private string $stripeChargeId;
 
     /**
      * @ORM\Column(type="string")
      */
-    private $status = self::TO_CAPTURE;
+    private string $status = self::TO_CAPTURE;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
      */
-    private $stripeAmount;
+    private ?int $stripeAmount;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="create")
      */
-    private $creationDatetime;
+    private \DateTimeInterface $creationDatetime;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="update")
      */
-    private $modificationDatetime;
+    private \DateTimeInterface $modificationDatetime;
 
-    /**
-     * @return int
-     */
     public function getId(): int
     {
         return $this->id;
     }
 
-    /**
-     * @return string|null
-     */
     public function getMiraklCommercialOrderId(): ?string
     {
         return $this->miraklCommercialOrderId;
     }
 
-    /**
-     * @param string|null $miraklCommercialOrderId
-     * @return self
-     */
     public function setMiraklCommercialOrderId(?string $miraklCommercialOrderId): self
     {
         $this->miraklCommercialOrderId = $miraklCommercialOrderId;
+
         return $this;
     }
 
-    /**
-     * @return string
-     */
     public function getStripeChargeId(): string
     {
         return $this->stripeChargeId;
     }
 
-    /**
-     * @param string $stripeChargeId
-     * @return self
-     */
     public function setStripeChargeId(string $stripeChargeId): self
     {
         $this->stripeChargeId = $stripeChargeId;
+
         return $this;
     }
 
@@ -119,15 +108,15 @@ class PaymentMapping
 
     /**
      * @param string $status
-     * @return self
      */
     public function setStatus($status): self
     {
-        if (!in_array($status, self::getAvailableStatus(), true)) {
+        if (!in_array($status, (array) self::getAvailableStatus(), true)) {
             throw new \InvalidArgumentException('Invalid payment status');
         }
 
         $this->status = $status;
+
         return $this;
     }
 
@@ -147,21 +136,15 @@ class PaymentMapping
         return $this->setStatus(self::CANCELED);
     }
 
-    /**
-     * @return int
-     */
-    public function getStripeAmount(): int
+    public function getStripeAmount(): ?int
     {
         return $this->stripeAmount;
     }
 
-    /**
-     * @param int $stripeAmount
-     * @return self
-     */
     public function setStripeAmount(int $stripeAmount): self
     {
         $this->stripeAmount = $stripeAmount;
+
         return $this;
     }
 
@@ -173,31 +156,22 @@ class PaymentMapping
         return $this->creationDatetime;
     }
 
-    /**
-     * @param \DateTimeInterface $creationDatetime
-     * @return self
-     */
     public function setCreationDatetime(\DateTimeInterface $creationDatetime): self
     {
         $this->creationDatetime = $creationDatetime;
+
         return $this;
     }
 
-    /**
-     * @return \DateTimeInterface|null
-     */
     public function getModificationDatetime(): ?\DateTimeInterface
     {
         return $this->modificationDatetime;
     }
 
-    /**
-     * @param \DateTimeInterface $modificationDatetime
-     * @return self
-     */
     public function setModificationDatetime(\DateTimeInterface $modificationDatetime): self
     {
         $this->modificationDatetime = $modificationDatetime;
+
         return $this;
     }
 }

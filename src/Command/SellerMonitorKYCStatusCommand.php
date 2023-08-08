@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\AccountMapping;
 use App\Repository\AccountMappingRepository;
 use App\Service\ConfigService;
 use App\Service\MiraklClient;
@@ -35,11 +36,17 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      */
     private $bus;
 
+    public function getBus(): mixed
+    {
+        return $this->bus;
+    }
+
     /**
      * @var AccountMappingRepository
      */
     private $accountMappingRepository;
-    public function setAccountMappingRepository(AccountMappingRepository $accountMappingRepository)
+
+    public function setAccountMappingRepository(AccountMappingRepository $accountMappingRepository): void
     {
         $this->accountMappingRepository = $accountMappingRepository;
     }
@@ -49,18 +56,22 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      */
     private $configService;
 
+    public function getConfigService(): mixed
+    {
+        return $this->configService;
+    }
+
     /**
      * @var MiraklClient
      */
     private $miraklClient;
-
 
     /**
      * @var StripeClient
      */
     private $stripeClient;
 
-    public function setStripeClient(StripeClient $stripeClient)
+    public function setStripeClient(StripeClient $stripeClient): void
     {
         $this->stripeClient = $stripeClient;
     }
@@ -71,7 +82,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var MailerInterface
      */
     private $mailer;
-    public function setMailer(MailerInterface $mailer)
+
+    public function setMailer(MailerInterface $mailer): void
     {
         $this->mailer = $mailer;
     }
@@ -80,7 +92,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var string
      */
     private $technicalEmailFrom;
-    public function setTechnicalEmailFrom(string $email)
+
+    public function setTechnicalEmailFrom(string $email): void
     {
         $this->technicalEmailFrom = $email;
     }
@@ -89,7 +102,8 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
      * @var string
      */
     private $technicalEmail;
-    public function setTechnicalEmail(string $email)
+
+    public function setTechnicalEmail(string $email): void
     {
         $this->technicalEmail = $email;
     }
@@ -127,7 +141,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
         $this->logger->info('starting');
-        echo "process start";
+        echo 'process start';
 
         $stripeAccts = $this->stripeClient->retrieveAllAccounts();
 
@@ -135,8 +149,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
 
         $accountsInDB = $this->accountMappingRepository->findAll();
 
-
-        $mirakl_update_shop_kyc_reqs=[];
+        $mirakl_update_shop_kyc_reqs = [];
 
         $kycRequiredAccountDets = [];
 
@@ -147,35 +160,33 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
 
             $dbAccount = $this->findAccount($st_acc->id, $accountsInDB);
 
-            if ($kyc_disabled_status != '' && $dbAccount!=null) {
+            if ('' != $kyc_disabled_status && null != $dbAccount) {
                 $dbAccount->setIgnored(true);
                 $this->accountMappingRepository->persistAndFlush($dbAccount);
 
                 $account_link = $this->stripeClient->createAccountLink($st_acc->id, 'https://dashboard.stripe.com', 'https://dashboard.stripe.com');
 
-
-                $mirakl_update_shop_kyc_reqs[]=['shop_id' => $dbAccount->getMiraklShopId(),
-                         'kyc' => ['status' => $kyc_disabled_status,'reason' => "STRIPE CONNECT ACCOUNT DISABLEMENT" ],
-                    'shop_additional_fields' => [['code' => $this->customFieldCode, 'value' => $account_link->url]]
+                $mirakl_update_shop_kyc_reqs[] = ['shop_id' => $dbAccount->getMiraklShopId(),
+                         'kyc' => ['status' => $kyc_disabled_status, 'reason' => 'STRIPE CONNECT ACCOUNT DISABLEMENT'],
+                    'shop_additional_fields' => [['code' => $this->customFieldCode, 'value' => $account_link->url]],
                 ];
 
-                $kycRequiredAccountDets[] = ['id'=>$dbAccount->getId(),'shop_id' => $dbAccount->getMiraklShopId(),
-                    'connect_account_id'=> $st_acc->id,'reason'=> $kyc_disabled_status ];
-            } elseif ($kyc_disabled_status == '' && $dbAccount!=null && $dbAccount->getIgnored()) {
+                $kycRequiredAccountDets[] = ['id' => $dbAccount->getId(), 'shop_id' => $dbAccount->getMiraklShopId(),
+                    'connect_account_id' => $st_acc->id, 'reason' => $kyc_disabled_status];
+            } elseif ('' == $kyc_disabled_status && null != $dbAccount && $dbAccount->getIgnored()) {
                 $dbAccount->setIgnored(false);
                 $this->accountMappingRepository->persistAndFlush($dbAccount);
 
                 $account_link = $this->stripeClient->createLoginLink($st_acc->id);
 
-                $mirakl_update_shop_kyc_reqs[]=['shop_id' => $dbAccount->getMiraklShopId(),
-                    'kyc' => ['status' => 'APPROVED','reason' => "KYC aaproved" ],
-                    'shop_additional_fields' => [['code' => $this->customFieldCode, 'value' => $account_link->url]]
+                $mirakl_update_shop_kyc_reqs[] = ['shop_id' => $dbAccount->getMiraklShopId(),
+                    'kyc' => ['status' => 'APPROVED', 'reason' => 'KYC aaproved'],
+                    'shop_additional_fields' => [['code' => $this->customFieldCode, 'value' => $account_link->url]],
                 ];
             }
         }
 
         echo $this->mirakl_shop_kyc_disable;
-
 
         if ($this->mirakl_shop_kyc_disable && count($mirakl_update_shop_kyc_reqs) > 0) {
             $this->miraklClient->updateShopKycStatusWithReason($mirakl_update_shop_kyc_reqs);
@@ -183,58 +194,53 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
 
         // print_r($kycRequiredAccountDets);
 
-        if (count($kycRequiredAccountDets)>0) {
+        if (count($kycRequiredAccountDets) > 0) {
             $email = (new TemplatedEmail())
             ->from($this->technicalEmailFrom)
             ->to($this->technicalEmail)
             ->subject('[Stripe-Mirakl] KYC Required')
             ->htmlTemplate('emails/kycRequired.html.twig')
             ->context([
-                'kycRequiredAccounts' => $kycRequiredAccountDets
+                'kycRequiredAccounts' => $kycRequiredAccountDets,
             ]);
             $this->mailer->send($email);
         }
 
-
-
-
         $this->logger->info('job succeeded');
-        echo "process end";
+        echo 'process end';
+
         return 0;
     }
 
-
-    private function findAccount($stripeId, $accountsInDB)
+    private function findAccount(string $stripeId, array $accountsInDB): ?AccountMapping
     {
         foreach ($accountsInDB as $acc) {
-            if ($stripeId == (string)$acc->getStripeAccountId()) {
+            if ($stripeId == (string) $acc->getStripeAccountId()) {
                 return $acc;
             }
         }
+
         return null;
     }
-
 
     private function getKYCStatus(Account $stripeAccount): string
     {
         $requirements = $stripeAccount->requirements;
 
-        if (count($requirements[self::CURRENTLY_DUE]) > 0) {
+        if (isset($requirements[self::CURRENTLY_DUE]) && count((array) $requirements[self::CURRENTLY_DUE]) > 0) {
             return self::KYC_STATUS_PENDING_SUBMISSION;
         }
 
-        if (count($requirements[self::PENDING_VERIFICATION]) > 0) {
+        if (isset($requirements[self::PENDING_VERIFICATION]) && count((array) $requirements[self::PENDING_VERIFICATION]) > 0) {
             return self::KYC_STATUS_PENDING_APPROVAL;
         }
-
-        if (
-            $requirements[self::DISABLED_REASON] !== ''
-            && strpos($requirements[self::DISABLED_REASON], 'rejected') === 0
-        ) {
+        $disabledReason = isset($requirements[self::DISABLED_REASON]) ? ''.$requirements[self::DISABLED_REASON] : '';
+        if (isset($requirements[self::DISABLED_REASON]) && '' !== $requirements[self::DISABLED_REASON]
+            && 0 === strpos($disabledReason, 'rejected')) {
             return self::KYC_STATUS_REFUSED;
         }
 
-        if ($requirements[self::DISABLED_REASON] !== '' && $requirements[self::DISABLED_REASON] !== null) {
+        if (isset($requirements[self::DISABLED_REASON]) && '' !== $requirements[self::DISABLED_REASON] && null !== $requirements[self::DISABLED_REASON]) {
             return self::KYC_STATUS_PENDING_APPROVAL;
         }
 

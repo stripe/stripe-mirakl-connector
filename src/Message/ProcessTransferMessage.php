@@ -14,7 +14,7 @@ class ProcessTransferMessage
         $this->stripeTransferId = $stripeTransferId;
     }
 
-    public function getStripeTransferId()
+    public function getStripeTransferId(): int
     {
         return $this->stripeTransferId;
     }

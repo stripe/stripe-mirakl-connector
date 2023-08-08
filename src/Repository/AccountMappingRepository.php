@@ -33,7 +33,7 @@ class AccountMappingRepository extends ServiceEntityRepository
         return $accountMapping;
     }
 
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }
@@ -41,21 +41,17 @@ class AccountMappingRepository extends ServiceEntityRepository
     public function findOneByStripeAccountId(string $stripeAccountId): ?AccountMapping
     {
         return $this->findOneBy([
-            'stripeAccountId' => $stripeAccountId
+            'stripeAccountId' => $stripeAccountId,
         ]);
     }
 
     public function findOneByOnboardingToken(string $onboardingToken): ?AccountMapping
     {
         return $this->findOneBy([
-            'onboardingToken' => $onboardingToken
+            'onboardingToken' => $onboardingToken,
         ]);
     }
 
-    /**
-     * @param array $accountMappings
-     * @return array
-     */
     private function mapByMiraklShopId(array $accountMappings): array
     {
         $map = [];
@@ -67,13 +63,12 @@ class AccountMappingRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param array $miraklShopIds
      * @return AccountMapping[]
      */
     public function findByMiraklShopIds(array $miraklShopIds): array
     {
         return $this->mapByMiraklShopId($this->findBy([
-            'miraklShopId' => $miraklShopIds
+            'miraklShopId' => $miraklShopIds,
         ]));
     }
 }

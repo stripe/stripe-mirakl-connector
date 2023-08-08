@@ -277,7 +277,7 @@ class StripeWebhookEndpointTest extends WebTestCase
             }
         }
         PAYLOAD);
-        $this->assertEquals('The event type payment_intent.created is no longer required and can be removed in the webhook settings.', $response->getContent());
+        $this->assertEquals('The event type payment_intent.created is no longer required and can be removed in the webhook settings.', (string) $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
     }
 

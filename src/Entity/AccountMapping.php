@@ -16,63 +16,68 @@ use Gedmo\Mapping\Annotation as Gedmo;
  *          "delete"={"path"="/mappings/{id}", "requirements"={"id"="\d+"}},
  *      }
  * )
+ *
  * @ORM\Entity(repositoryClass="App\Repository\AccountMappingRepository")
  */
 class AccountMapping
 {
     /**
      * @ORM\Id()
+     *
      * @ORM\GeneratedValue()
+     *
      * @ORM\Column(type="integer")
      */
-    private $id;
+    private int $id;
 
     /**
      * @ORM\Column(type="integer", unique=true)
      */
-    private $miraklShopId;
+    private int $miraklShopId;
 
     /**
      * @ORM\Column(type="string", length=255, unique=true)
      */
-    private $stripeAccountId;
+    private string $stripeAccountId;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      */
-    private $onboardingToken;
+    private ?string $onboardingToken = null;
 
     /**
      * @ORM\Column(type="boolean", options={"default" : false})
      */
-    private $payoutEnabled = false;
+    private bool $payoutEnabled = false;
 
     /**
      * @ORM\Column(type="boolean", options={"default" : false})
      */
-    private $payinEnabled = false;
+    private bool $payinEnabled = false;
 
     /**
      * @ORM\Column(type="boolean", options={"default" : false})
      */
-    private $ignored = false;
+    private bool $ignored = false;
 
     /**
      * @ORM\Column(type="string", length=255, nullable=true)
      */
-    private $disabledReason;
+    private ?string $disabledReason;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="create")
      */
-    private $creationDatetime;
+    private \DateTimeInterface $creationDatetime;
 
     /**
      * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
+     *
      * @Gedmo\Timestampable(on="update")
      */
-    private $modificationDatetime;
+    private \DateTimeInterface $modificationDatetime;
 
     public function getId(): int
     {

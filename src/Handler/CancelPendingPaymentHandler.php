@@ -4,7 +4,6 @@ namespace App\Handler;
 
 use App\Entity\PaymentMapping;
 use App\Message\CancelPendingPaymentMessage;
-use App\Message\CapturePendingPaymentMessage;
 use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
@@ -34,7 +33,7 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
         $this->paymentMappingRepository = $paymentMappingRepository;
     }
 
-    public function __invoke(CancelPendingPaymentMessage $message)
+    public function __invoke(CancelPendingPaymentMessage $message): void
     {
         $paymentMapping = $this->paymentMappingRepository->findOneBy([
             'id' => $message->getPaymentMappingId(),

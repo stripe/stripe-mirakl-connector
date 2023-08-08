@@ -2,14 +2,12 @@
 
 namespace App\Factory;
 
-use App\Entity\AccountMapping;
 use App\Entity\MiraklPendingRefund;
 use App\Entity\MiraklServicePendingRefund;
 use App\Entity\StripeRefund;
 use App\Exception\InvalidArgumentException;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripeTransferRepository;
-use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -45,10 +43,6 @@ class StripeRefundFactory implements LoggerAwareInterface
         $this->stripeClient = $stripeClient;
     }
 
-    /**
-     * @param MiraklPendingRefund $pendingRefund
-     * @return StripeRefund
-     */
     public function createFromOrderRefund(MiraklPendingRefund $pendingRefund): StripeRefund
     {
         if (is_a($pendingRefund, MiraklServicePendingRefund::class)) {
@@ -69,10 +63,6 @@ class StripeRefundFactory implements LoggerAwareInterface
         return $this->updateRefund($refund);
     }
 
-    /**
-     * @param StripeRefund $refund
-     * @return StripeRefund
-     */
     public function updateRefund(StripeRefund $refund): StripeRefund
     {
         // Find charge ID
@@ -99,7 +89,7 @@ class StripeRefundFactory implements LoggerAwareInterface
             );
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {
-                    // Problem is final, let's abort
+                // Problem is final, let's abort
                 case 10:
                     return $this->abortRefund($refund, $e->getMessage());
                     // Problem is just temporary, let's put on hold
@@ -112,10 +102,6 @@ class StripeRefundFactory implements LoggerAwareInterface
         return $refund->setStatus(StripeRefund::REFUND_PENDING);
     }
 
-    /**
-     * @param StripeRefund $refund
-     * @return string
-     */
     private function findTransactionId(StripeRefund $refund): string
     {
         // Check for a transfer from the payment split workflow
@@ -139,15 +125,9 @@ class StripeRefundFactory implements LoggerAwareInterface
             }
         }
 
-        throw new InvalidArgumentException(
-            StripeRefund::REFUND_STATUS_REASON_NO_CHARGE_ID
-        );
+        throw new InvalidArgumentException(StripeRefund::REFUND_STATUS_REASON_NO_CHARGE_ID);
     }
 
-    /**
-     * @param string $trid
-     * @return void
-     */
     private function checkTransactionStatus(string $trid): void
     {
         // Transaction number is a PaymentIntent
@@ -159,18 +139,12 @@ class StripeRefundFactory implements LoggerAwareInterface
                     $ch = $pi->charges->data[0] ?? null;
                     assert($ch instanceof Charge);
                     $this->checkChargeStatus($ch);
+
                     return;
                 case 'canceled':
-                    throw new InvalidArgumentException(sprintf(
-                        StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED,
-                        $trid
-                    ), 10);
+                    throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED, $trid), 10);
                 default:
-                    throw new InvalidArgumentException(sprintf(
-                        StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY,
-                        $trid,
-                        $pi->status
-                    ), 20);
+                    throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $trid, $pi->status), 20);
             }
         }
 
@@ -178,57 +152,35 @@ class StripeRefundFactory implements LoggerAwareInterface
         if (0 === strpos($trid, 'ch_') || 0 === strpos($trid, 'py_')) {
             $ch = $this->stripeClient->chargeRetrieve($trid);
             $this->checkChargeStatus($ch);
+
             return;
         }
     }
 
-    /**
-     * @param Charge $ch
-     * @return void
-     */
     private function checkChargeStatus(Charge $ch): void
     {
         switch ($ch->status) {
             case 'succeeded':
                 if (false === $ch->captured) {
-                    throw new InvalidArgumentException(sprintf(
-                        StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY,
-                        $ch->id,
-                        $ch->status . ' (not captured)'
-                    ), 20);
+                    throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $ch->id, $ch->status.' (not captured)'), 20);
                 }
 
                 if (true === $ch->refunded) {
-                    throw new InvalidArgumentException(sprintf(
-                        StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED,
-                        $ch->id
-                    ), 10);
+                    throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED, $ch->id), 10);
                 }
 
                 return;
             case 'failed':
-                throw new InvalidArgumentException(sprintf(
-                    StripeRefund::REFUND_STATUS_REASON_PAYMENT_FAILED,
-                    $ch->id
-                ), 10);
+                throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_FAILED, $ch->id), 10);
             default:
-                throw new InvalidArgumentException(sprintf(
-                    StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY,
-                    $ch->id,
-                    $ch->status
-                ), 20);
+                throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $ch->id, $ch->status), 20);
         }
     }
 
-    /**
-     * @param StripeRefund $refund
-     * @param string $reason
-     * @return StripeRefund
-     */
     private function putRefundOnHold(StripeRefund $refund, string $reason): StripeRefund
     {
         $this->logger->info(
-            'Refund on hold: ' . $reason,
+            'Refund on hold: '.$reason,
             ['refund_id' => $refund->getMiraklRefundId()]
         );
 
@@ -237,15 +189,10 @@ class StripeRefundFactory implements LoggerAwareInterface
             ->setStatusReason(substr($reason, 0, 1024));
     }
 
-    /**
-     * @param StripeRefund $refund
-     * @param string $reason
-     * @return StripeRefund
-     */
     private function abortRefund(StripeRefund $refund, string $reason): StripeRefund
     {
         $this->logger->info(
-            'Refund aborted: ' . $reason,
+            'Refund aborted: '.$reason,
             ['refund_id' => $refund->getMiraklRefundId()]
         );
 

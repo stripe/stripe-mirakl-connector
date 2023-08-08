@@ -25,13 +25,16 @@ class OverrideDefaultHost implements EventSubscriberInterface
         $this->baseHostOverride = $baseHostOverride;
     }
 
-    public function onKernelRequest(RequestEvent $event)
+    public function onKernelRequest(RequestEvent $event): void
     {
-        if ($event->isMasterRequest() && '' !== $this->baseHostOverride) {
+        if ($event->isMainRequest() && '' !== $this->baseHostOverride) {
             $this->router->getContext()->setHost($this->baseHostOverride);
         }
     }
 
+    /**
+     * @return array[]
+     */
     public static function getSubscribedEvents()
     {
         return [

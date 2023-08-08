@@ -33,7 +33,7 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
         $this->paymentMappingRepository = $paymentMappingRepository;
     }
 
-    public function __invoke(CapturePendingPaymentMessage $message)
+    public function __invoke(CapturePendingPaymentMessage $message): void
     {
         $paymentMapping = $this->paymentMappingRepository->findOneBy([
             'id' => $message->getPaymentMappingId(),

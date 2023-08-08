@@ -17,14 +17,13 @@ class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAware
      */
     private $miraklClient;
 
-
     public function __construct(
         MiraklClient $miraklClient
     ) {
         $this->miraklClient = $miraklClient;
     }
 
-    public function __invoke(ValidateMiraklOrderMessage $message)
+    public function __invoke(ValidateMiraklOrderMessage $message): void
     {
         $ordersByCommercialId = $message->getOrders();
 
@@ -42,12 +41,12 @@ class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAware
                     'customer_id' => $order->getCustomerId(),
                     'order_id' => $order->getOrderId(),
                     'payment_status' => 'OK',
-                    'transaction_number' => $paymentMappings[$commercialId]->getStripeChargeId()
+                    'transaction_number' => $paymentMappings[$commercialId]->getStripeChargeId(),
                 ];
             }
         }
 
-        $this->logger->info('Validate ' . count($orders) . ' Mirakl order(s)');
+        $this->logger->info('Validate '.count($orders).' Mirakl order(s)');
         $this->miraklClient->validateProductPendingDebits($orders);
     }
 }

@@ -16,7 +16,6 @@ class PaymentMappingRepository extends ServiceEntityRepository
 {
     /**
      * PaymentMappingRepository constructor.
-     * @param ManagerRegistry $registry
      */
     public function __construct(ManagerRegistry $registry)
     {
@@ -26,18 +25,15 @@ class PaymentMappingRepository extends ServiceEntityRepository
     public function persist(PaymentMapping $paymentMapping): PaymentMapping
     {
         $this->getEntityManager()->persist($paymentMapping);
+
         return $paymentMapping;
     }
 
-    public function flush()
+    public function flush(): void
     {
         $this->getEntityManager()->flush();
     }
 
-    /**
-     * @param array $paymentMappings
-     * @return array
-     */
     private function mapByMiraklCommercialOrderId(array $paymentMappings): array
     {
         $map = [];
@@ -54,25 +50,24 @@ class PaymentMappingRepository extends ServiceEntityRepository
     public function findToCapturePayments(): array
     {
         return $this->mapByMiraklCommercialOrderId($this->findBy([
-            'status' => PaymentMapping::TO_CAPTURE
+            'status' => PaymentMapping::TO_CAPTURE,
         ]));
     }
 
     /**
-     * @param array $commercialOrderIds
      * @return PaymentMapping[]
      */
     public function findPaymentsByCommercialOrderIds(array $commercialOrderIds): array
     {
         return $this->mapByMiraklCommercialOrderId($this->findBy([
-            'miraklCommercialOrderId' => $commercialOrderIds
+            'miraklCommercialOrderId' => $commercialOrderIds,
         ]));
     }
 
     public function findOneByStripeChargeId(string $stripeChargeId): ?PaymentMapping
     {
         return $this->findOneBy([
-            'stripeChargeId' => $stripeChargeId
+            'stripeChargeId' => $stripeChargeId,
         ]);
     }
 }
