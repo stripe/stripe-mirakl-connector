@@ -307,17 +307,18 @@ class StripeTransferFactory implements LoggerAwareInterface
             }
 
             // Amount and currency
-            $transferAmount = $refund->getAmount();
             $commission = $order->getRefundedOperatorCommission($refund);
             $commission = gmp_intval((string) ($commission * 100));
-            $refundedTax = $order->getRefundedTax($refund);
-            $refundedTax = gmp_intval((string) ($refundedTax * 100));
-            $transferAmount = $transferAmount - $commission - $refundedTax;
-
-            if ($isForTax) {
-                $transferAmount = $refundedTax;
+            $transferAmount = $refund->getAmount() - $commission;
+            if ($this->enablePaymentTaxSplit) {
+                $refundedTax = $order->getRefundedTax($refund);
+                $refundedTax = gmp_intval((string) ($refundedTax * 100));
+                if ($isForTax) {
+                    $transferAmount = $refundedTax;
+                } else {
+                    $transferAmount = $transferAmount - $refundedTax;
+                }
             }
-
             $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {
