@@ -64,7 +64,25 @@ class StripeTransferFactoryTest extends KernelTestCase
             $this->miraklClient,
             $container->get('App\Service\StripeClient'),
             'acc_xxxxxxx',
-            '_TAX'
+            '_TAX',
+            false
+        );
+        $this->stripeTransferFactory->setLogger(new NullLogger());
+    }
+
+    private function mockConfiguration(bool $enablePaymentTaxSplit)
+    {
+        $container = self::$kernel->getContainer();
+        $this->stripeTransferFactory = new StripeTransferFactory(
+            $this->accountMappingRepository,
+            $this->paymentMappingRepository,
+            $this->stripeRefundRepository,
+            $this->stripeTransferRepository,
+            $this->miraklClient,
+            $container->get('App\Service\StripeClient'),
+            'acc_xxxxxxx',
+            '_TAX',
+            $enablePaymentTaxSplit
         );
         $this->stripeTransferFactory->setLogger(new NullLogger());
     }
@@ -147,8 +165,13 @@ class StripeTransferFactoryTest extends KernelTestCase
         return $paymentMapping;
     }
 
-    public function testCreateFromProductOrder()
+    /**
+     * @dataProvider provideCreateFromProductOrder
+     */
+    public function testCreateFromProductOrder($enablePaymentTaxSplit, $expectedAmount)
     {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listProductOrdersById([
                 MiraklMock::ORDER_BASIC
@@ -162,9 +185,17 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getAccountMapping());
         $this->assertNull($transfer->getTransferId());
         $this->assertNull($transfer->getTransactionId());
-        $this->assertEquals(7205, $transfer->getAmount());
+        $this->assertEquals($expectedAmount, $transfer->getAmount());
         $this->assertEquals('eur', $transfer->getCurrency());
         $this->assertNotNull($transfer->getMiraklCreatedDate());
+    }
+
+    public function provideCreateFromProductOrder()
+    {
+        return [
+            [true, 7205],
+            [false, 8073],
+        ];
     }
 
     public function testUpdateFromProductOrder()
@@ -293,29 +324,42 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getStatusReason());
     }
 
-    public function testProductOrderDifferentAmounts()
+    /**
+     * @dataProvider provideProductOrderDifferentAmounts
+     */
+    public function testProductOrderDifferentAmounts(bool $enablePaymentTaxSplit, $const, $expectedAmount)
     {
-        $amounts = [
-            'NO_COMMISSION' => 7604,
-            'NO_TAX' => 6513,
-            'TAX_INCLUDED' => 5645,
-            'PARTIAL_TAX' => 6959,
-            'NO_SALES_TAX' => 7205,
-            'NO_SHIPPING_TAX' => 6513
-        ];
+        $this->mockConfiguration($enablePaymentTaxSplit);
 
-        foreach ($amounts as $const => $expectedAmount) {
-            $transfer = $this->stripeTransferFactory->createFromOrder(
-                current($this->miraklClient->listProductOrdersById([
-                    constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
-                ]))
-            );
-            $this->assertEquals(
-                $expectedAmount,
-                $transfer->getAmount(),
-                'Expected ' . $expectedAmount . ' for ' . $const
-            );
-        }
+        $transfer = $this->stripeTransferFactory->createFromOrder(
+            current($this->miraklClient->listProductOrdersById([
+                constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
+            ]))
+        );
+
+        $this->assertEquals(
+            $expectedAmount,
+            $transfer->getAmount(),
+            'Expected ' . $expectedAmount . ' for ' . $const
+        );
+    }
+
+    public function provideProductOrderDifferentAmounts()
+    {
+        return [
+            [true, 'NO_COMMISSION', 7604],
+            [true, 'NO_TAX', 6513],
+            [true, 'TAX_INCLUDED', 5645],
+            [true, 'PARTIAL_TAX', 6959],
+            [true, 'NO_SALES_TAX', 7205],
+            [true, 'NO_SHIPPING_TAX', 6513],
+            [false, 'NO_COMMISSION', 8472],
+            [false, 'NO_TAX', 6513],
+            [false, 'TAX_INCLUDED', 6513],
+            [false, 'PARTIAL_TAX', 7293],
+            [false, 'NO_SALES_TAX', 7205],
+            [false, 'NO_SHIPPING_TAX', 7381],
+        ];
     }
 
     public function testProductOrderWithCharge()
@@ -384,9 +428,13 @@ class StripeTransferFactoryTest extends KernelTestCase
         }
     }
 
-
-    public function testCreateFromServiceOrder()
+    /**
+     * @dataProvider provideCreateFromServiceOrder
+     */
+    public function testCreateFromServiceOrder(bool $enablePaymentTaxSplit, $expectedAmount)
     {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listServiceOrdersById([
                 MiraklMock::ORDER_BASIC
@@ -403,9 +451,17 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getAccountMapping());
         $this->assertNull($transfer->getTransferId());
         $this->assertNull($transfer->getTransactionId());
-        $this->assertEquals(1081, $transfer->getAmount());
+        $this->assertEquals($expectedAmount, $transfer->getAmount());
         $this->assertEquals('eur', $transfer->getCurrency());
         $this->assertNotNull($transfer->getMiraklCreatedDate());
+    }
+
+    public function provideCreateFromServiceOrder()
+    {
+        return [
+            [true, 1081],
+            [false, 1415],
+        ];
     }
 
     public function testUpdateFromServiceOrder()
@@ -518,30 +574,41 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNotNull($transfer->getStatusReason());
     }
 
-    public function testServiceOrderDifferentAmounts()
+    /**
+     * @dataProvider provideServiceOrderDifferentAmounts
+     */
+    public function testServiceOrderDifferentAmounts(bool $enablePaymentTaxSplit, $const, $expectedAmount)
     {
-        $amounts = [
-            'NO_COMMISSION' => 1480,
-            'NO_TAX' => 1081,
-            'TAX_INCLUDED' => 1081,
-            'PARTIAL_TAX' => 1081,
-        ];
+        $this->mockConfiguration($enablePaymentTaxSplit);
 
-        foreach ($amounts as $const => $expectedAmount) {
-            $transfer = $this->stripeTransferFactory->createFromOrder(
-                current($this->miraklClient->listServiceOrdersById([
-                    constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
-                ])),
-                current($this->miraklClient->listServicePendingDebitsByOrderIds([
-                    constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
-                ]))
-            );
-            $this->assertEquals(
-                $expectedAmount,
-                $transfer->getAmount(),
-                'Expected ' . $expectedAmount . ' for ' . $const
-            );
-        }
+        $transfer = $this->stripeTransferFactory->createFromOrder(
+            current($this->miraklClient->listServiceOrdersById([
+                constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
+            ])),
+            current($this->miraklClient->listServicePendingDebitsByOrderIds([
+                constant("App\Tests\MiraklMockedHttpClient::ORDER_AMOUNT_$const")
+            ]))
+        );
+
+        $this->assertEquals(
+            $expectedAmount,
+            $transfer->getAmount(),
+            'Expected ' . $expectedAmount . ' for ' . $const
+        );
+    }
+
+    public function provideServiceOrderDifferentAmounts()
+    {
+        return [
+            [true, 'NO_COMMISSION', 1480],
+            [true, 'NO_TAX', 1081],
+            [true, 'TAX_INCLUDED', 1081],
+            [true, 'PARTIAL_TAX', 1081],
+            [false, 'NO_COMMISSION', 1814],
+            [false, 'NO_TAX', 1081],
+            [false, 'TAX_INCLUDED', 1081],
+            [false, 'PARTIAL_TAX', 1237],
+        ];
     }
 
     public function testCreateFromProductOrderRefund()

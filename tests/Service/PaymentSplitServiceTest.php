@@ -53,7 +53,8 @@ class PaymentSplitServiceTest extends KernelTestCase
             $this->miraklClient,
             $container->get('App\Service\StripeClient'),
             'acc_xxxxxxx',
-            '_TAX'
+            '_TAX',
+            false
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
