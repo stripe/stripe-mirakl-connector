@@ -19,10 +19,14 @@ class StripePayoutFactory implements LoggerAwareInterface
      */
     private $accountMappingRepository;
 
+    private $enablePaymentTaxSplit;
+
     public function __construct(
-        AccountMappingRepository $accountMappingRepository
+        AccountMappingRepository $accountMappingRepository,
+        bool $enablePaymentTaxSplit
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
+        $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
     }
 
     public function createFromInvoice(array $invoice, MiraklClient $mclient): StripePayout
@@ -96,8 +100,11 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $amount = $invoice['summary']['amount_transferred'] ?? 0;
         $transactions = $mclient->getTransactionsForInvoce($invoice['invoice_id']);
-        $total_tax = $this->findTotalOrderTax($transactions);
-        $amount = $amount - $total_tax;
+        if ($this->enablePaymentTaxSplit) {
+            $total_tax = $this->findTotalOrderTax($transactions);
+            $amount = $amount - $total_tax;
+        }
+
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(StripePayout::PAYOUT_STATUS_REASON_INVALID_AMOUNT, $amount));

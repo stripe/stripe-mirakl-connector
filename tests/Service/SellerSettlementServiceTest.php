@@ -67,7 +67,7 @@ class SellerSettlementServiceTest extends KernelTestCase
 
         $stripePayoutFactory = new StripePayoutFactory(
             $container->get('doctrine')->getRepository(AccountMapping::class),
-            $this->miraklClient
+            false
         );
         $stripePayoutFactory->setLogger(new NullLogger());
 
