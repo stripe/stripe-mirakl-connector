@@ -291,9 +291,9 @@ class StripeMockedHttpClient implements ClientInterface
         }
 
         if ('capture' === $action || 'cancel' === $action) {
-            if ('requires_capture' !== $pi['status'] || 
-                'requires_action' !== $pi['status'] ||
-                'requires_confirmation' !== $pi['status'] ||
+            if ('requires_capture' !== $pi['status'] && 
+                'requires_action' !== $pi['status'] &&
+                'requires_confirmation' !== $pi['status'] &&
                 'requires_payment_method' !== $pi['status']) {
                 throw new ApiConnectionException(
                     "Can't $action charge in state {$pi['status']}",
