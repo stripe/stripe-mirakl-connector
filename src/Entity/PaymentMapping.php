@@ -13,6 +13,7 @@ class PaymentMapping
     public const TO_CAPTURE = 'to_capture';
     public const CAPTURED = 'captured';
     public const CANCELED = 'canceled';
+    public const FAILED = 'failed';
 
     /**
      * @ORM\Id()
@@ -103,6 +104,7 @@ class PaymentMapping
             self::TO_CAPTURE,
             self::CAPTURED,
             self::CANCELED,
+            self::FAILED,
         ];
     }
 
