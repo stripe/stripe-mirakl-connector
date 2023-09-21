@@ -175,7 +175,7 @@ class StripeRefundFactory implements LoggerAwareInterface
         if (is_string($pi)) {
             $pi = $this->stripeClient->paymentIntentRetrieve($pi);
         }
-        if($pi){
+        if ($pi) {
             switch ($pi->status) {
                 case 'requires_payment_method':
                 case 'requires_confirmation':
