@@ -175,13 +175,15 @@ class StripeRefundFactory implements LoggerAwareInterface
         if (is_string($pi)) {
             $pi = $this->stripeClient->paymentIntentRetrieve($pi);
         }
-        switch ($pi->status) {
-            case 'requires_payment_method':
-            case 'requires_confirmation':
-            case 'requires_action':
-            case 'requires_capture':
-                $pi->cancel();
-                break;
+        if($pi){
+            switch ($pi->status) {
+                case 'requires_payment_method':
+                case 'requires_confirmation':
+                case 'requires_action':
+                case 'requires_capture':
+                    $pi->cancel();
+                    break;
+            }
         }
         /**
          * if charge has a payment intent of status in the below condition, then cancel the payment intent -stop
