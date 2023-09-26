@@ -263,9 +263,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $charge = $event->data->object;
         assert($charge instanceof \Stripe\Charge);
 
-        if ('failed' === $charge->status) {
-            return 'Ignoring failed charge event.';
-        }
+
 
         $miraklCommercialOrderId = $this->findMiraklCommercialOrderId($charge);
         if (!$miraklCommercialOrderId) {
@@ -273,7 +271,13 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($charge->id);
-        $status = isset($charge->captured) && $charge->captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE;
+
+        if ('failed' === $charge->status) {
+            $status = $charge->status;
+        } else {
+            $status = isset($charge->captured) && $charge->captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE;
+        }
+
         if (!$paymentMapping) {
             $paymentMapping = new PaymentMapping();
             $paymentMapping->setStripeChargeId($charge->id);

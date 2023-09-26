@@ -324,6 +324,7 @@ class StripeWebhookEndpointTest extends WebTestCase
     public function testChargeUpdatedFailedStatus()
     {
         $id = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
         $response = $this->executeOperatorRequest(<<<PAYLOAD
         {
             "type": "charge.updated",
@@ -331,13 +332,14 @@ class StripeWebhookEndpointTest extends WebTestCase
                 "object": {
                     "id": "$id",
                     "object": "charge",
-                    "metadata": {"$this->paymentKey": ""},
-                    "status": "failed"
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "failed",
+                    "amount": 100
                 }
             }
         }
         PAYLOAD);
-        $this->assertEquals('Ignoring failed charge event.', $response->getContent());
+        $this->assertEquals('Payment mapping created.', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
     }
 

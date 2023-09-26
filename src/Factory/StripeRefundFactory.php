@@ -143,6 +143,15 @@ class StripeRefundFactory implements LoggerAwareInterface
                     return;
                 case 'canceled':
                     throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED, $trid), 10);
+                    /**
+                     * if charge has a payment intent of status in the below condition, then cancel the payment intent -start
+                     */
+                case 'requires_payment_method':
+                case 'requires_confirmation':
+                case 'requires_action':
+                case 'requires_capture':
+                    $pi->cancel();
+                    throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $trid, $pi->status), 20);
                 default:
                     throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $trid, $pi->status), 20);
             }
@@ -159,6 +168,27 @@ class StripeRefundFactory implements LoggerAwareInterface
 
     private function checkChargeStatus(Charge $ch): void
     {
+        /**
+         * if charge has a payment intent of status in the below condition, then cancel the payment intent -start
+         */
+        $pi =  $ch->payment_intent;
+        if (is_string($pi)) {
+            $pi = $this->stripeClient->paymentIntentRetrieve($pi);
+        }
+        if ($pi) {
+            switch ($pi->status) {
+                case 'requires_payment_method':
+                case 'requires_confirmation':
+                case 'requires_action':
+                case 'requires_capture':
+                    $pi->cancel();
+                    break;
+            }
+        }
+        /**
+         * if charge has a payment intent of status in the below condition, then cancel the payment intent -stop
+         */
+
         switch ($ch->status) {
             case 'succeeded':
                 if (false === $ch->captured) {

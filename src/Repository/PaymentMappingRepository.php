@@ -64,6 +64,17 @@ class PaymentMappingRepository extends ServiceEntityRepository
         ]));
     }
 
+    /**
+     * @return PaymentMapping[]
+     */
+    public function findPaymentsByCommercialOrderIdsAndStatuses(array $commercialOrderIds, array $status): array
+    {
+        return $this->mapByMiraklCommercialOrderId($this->findBy([
+            'miraklCommercialOrderId' => $commercialOrderIds,
+            'status'=> $status
+        ]));
+    }
+
     public function findOneByStripeChargeId(string $stripeChargeId): ?PaymentMapping
     {
         return $this->findOneBy([
