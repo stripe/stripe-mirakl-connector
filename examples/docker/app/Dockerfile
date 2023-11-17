@@ -12,9 +12,9 @@ RUN apk add postgresql php82-pdo_pgsql php82-iconv php82-tokenizer php82-pcntl p
 # Install filebeat
 RUN \
     cd /tmp \
-    && wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.11.0-linux-x86_64.tar.gz \
-    && tar xzvf filebeat-8.11.0-linux-x86_64.tar.gz \
-    && mv filebeat-8.11.0-linux-x86_64 /usr/share/filebeat \
+    && wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.12.0-linux-x86_64.tar.gz \
+    && tar xzvf filebeat-7.12.0-linux-x86_64.tar.gz \
+    && mv filebeat-7.12.0-linux-x86_64 /usr/share/filebeat \
     && mkdir /usr/share/filebeat/logs /usr/share/filebeat/data \
     && rm /tmp/*
 ENV PATH $PATH:/usr/share/filebeat
