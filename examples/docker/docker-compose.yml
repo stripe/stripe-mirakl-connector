@@ -1,4 +1,5 @@
-version: "3.2"
+version: '3.8'
+
 services:
   db:
     image: postgres:11.5-alpine
@@ -8,12 +9,17 @@ services:
       POSTGRES_DB: symfony
       POSTGRES_USER: symfony
       POSTGRES_PASSWORD: symfony
-  app:
+
+  php:
     env_file:
-      - ../../.env
+      - ./../../.env
     build:
       context: ../../
-      dockerfile: ./examples/docker/app/Dockerfile
+      dockerfile: ./examples/docker/php/Dockerfile
+
+  nginx:
+    build:
+      context: ./../../
+      dockerfile: ./examples/docker/nginx/Dockerfile
     ports:
-      - "80:8080"
-      - "443:4430"
+      - "8000:8000"
