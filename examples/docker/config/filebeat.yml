@@ -2,7 +2,7 @@
 filebeat.inputs:
 - type: log 
   paths:
-    - /var/www/var/log/*.log
+    - /var/www/mirakl-stripe/var/log/*.log
   fields:
     emitter: "SYMFONY"
   fields_under_root: true
