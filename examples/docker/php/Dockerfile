@@ -29,12 +29,13 @@ RUN apt-get update && apt-get install -y \
     acl \
     libpq-dev \
     wget \
+    libgmp-dev \
     && echo 'alias sf="php bin/console"' >> ~/.bashrc
 
 RUN docker-php-ext-configure gd --with-jpeg --with-freetype
 
 RUN docker-php-ext-install \
-    pdo pgsql pdo_pgsql zip xsl gd intl opcache exif mbstring xml
+    pdo pgsql pdo_pgsql zip xsl gd intl opcache exif mbstring xml gmp
 
 # Install filebeat
 RUN \
