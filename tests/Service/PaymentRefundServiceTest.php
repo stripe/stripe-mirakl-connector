@@ -74,7 +74,8 @@ class PaymentRefundServiceTest extends KernelTestCase
             $this->miraklClient,
             $stripeClient,
             'acc_xxxxxxx',
-            '_TAX'
+            '_TAX',
+            false
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
@@ -83,7 +84,45 @@ class PaymentRefundServiceTest extends KernelTestCase
             $stripeTransferFactory,
             $this->stripeRefundRepository,
             $this->stripeTransferRepository,
-            '_TAX'
+            '_TAX',
+            false
+        );
+    }
+
+    private function mockConfiguration(bool $enablePaymentTaxSplit)
+    {
+        $container = self::$kernel->getContainer();
+
+        $stripeClient = $container->get('App\Service\StripeClient');
+
+        $stripeRefundFactory = new StripeRefundFactory(
+            $this->paymentMappingRepository,
+            $this->stripeTransferRepository,
+            $stripeClient,
+            $enablePaymentTaxSplit
+        );
+        $stripeRefundFactory->setLogger(new NullLogger());
+
+        $stripeTransferFactory = new StripeTransferFactory(
+            $container->get('doctrine')->getRepository(AccountMapping::class),
+            $container->get('doctrine')->getRepository(PaymentMapping::class),
+            $this->stripeRefundRepository,
+            $this->stripeTransferRepository,
+            $this->miraklClient,
+            $stripeClient,
+            'acc_xxxxxxx',
+            '_TAX',
+            $enablePaymentTaxSplit
+        );
+        $stripeTransferFactory->setLogger(new NullLogger());
+
+        $this->paymentRefundService = new PaymentRefundService(
+            $stripeRefundFactory,
+            $stripeTransferFactory,
+            $this->stripeRefundRepository,
+            $this->stripeTransferRepository,
+            '_TAX',
+            $enablePaymentTaxSplit
         );
     }
 
@@ -154,8 +193,13 @@ class PaymentRefundServiceTest extends KernelTestCase
         ]);
     }
 
-    public function testGetRetriableProductTransfers()
+    /**
+     * @dataProvider provideGetRetriableProductTransfers
+     */
+    public function testGetRetriableProductTransfers(bool $enablePaymentTaxSplit, $expectedTransfersCount, $expectedRefundsCount)
     {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $orders = $this->miraklClient->listProductPendingRefunds();
         $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
@@ -163,16 +207,29 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(28, $transfers);
+        $this->assertCount($expectedTransfersCount, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
-        $this->assertCount(27, $this->paymentRefundService->getRetriableTransfers());
+        $this->assertCount($expectedRefundsCount, $this->paymentRefundService->getRetriableTransfers());
         $this->assertCount(14, $this->getProductTransfersFromRepository());
     }
 
-    public function testGetTransfersFromProductOrders()
+    public function provideGetRetriableProductTransfers()
     {
+        return [
+            [true, 28, 27],
+            [false, 14, 13],
+        ];
+    }
+
+    /**
+     * @dataProvider provideGetTransfersFromProductOrders
+     */
+    public function testGetTransfersFromProductOrders(bool $enablePaymentTaxSplit, $expectedTransfersCount, $expectedRefundsCount)
+    {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $orders = $this->miraklClient->listProductPendingRefunds();
         $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
@@ -180,13 +237,21 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(28, $transfers);
+        $this->assertCount($expectedTransfersCount, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
         $transfers = $this->paymentRefundService->getRetriableTransfers();
-        $this->assertCount(27, $transfers);
+        $this->assertCount($expectedRefundsCount, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
+    }
+
+    public function provideGetTransfersFromProductOrders()
+    {
+        return [
+            [true, 28, 27],
+            [false, 14, 13],
+        ];
     }
 
     public function testGetRefundsFromProductOrders()
@@ -203,8 +268,13 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertCount(13, $refunds);
     }
 
-    public function testUpdateProductTransfers()
+    /**
+     * @dataProvider provideUpdateProductTransfers
+     */
+    public function testUpdateProductTransfers(bool $enablePaymentTaxSplit, $expectedRefundsCount)
     {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $orders = $this->miraklClient->listProductPendingRefunds();
         $this->mockOrderTransfer($orders[MiraklMock::PRODUCT_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
@@ -212,7 +282,7 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertCount(14, $refunds);
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(28, $transfers);
+        $this->assertCount($expectedRefundsCount, $transfers);
         $this->assertCount(14, $this->getProductTransfersFromRepository());
 
         // ORDER_REFUND_BASIC is on hold
@@ -227,8 +297,21 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
     }
 
-    public function testGetRetriableServiceTransfers()
+    public function provideUpdateProductTransfers()
     {
+        return [
+            [true, 28],
+            [false, 14],
+        ];
+    }
+
+    /**
+     * @dataProvider provideGetRetriableServiceTransfers
+     */
+    public function testGetRetriableServiceTransfers(bool $enablePaymentTaxSplit, $expectedTransfersCount, $expectedRefundsCount)
+    {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $orders = $this->miraklClient->listServicePendingRefunds();
         $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
@@ -236,16 +319,29 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicServiceRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(28, $transfers);
+        $this->assertCount($expectedTransfersCount, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
-        $this->assertCount(27, $this->paymentRefundService->getRetriableTransfers());
+        $this->assertCount($expectedRefundsCount, $this->paymentRefundService->getRetriableTransfers());
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
     }
 
-    public function testGetTransfersFromServiceOrders()
+    public function provideGetRetriableServiceTransfers()
     {
+        return [
+            [true, 28, 27],
+            [false, 14, 13],
+        ];
+    }
+
+    /**
+     * @dataProvider provideGetTransfersFromServiceOrders
+     */
+    public function testGetTransfersFromServiceOrders(bool $enablePaymentTaxSplit, $expectedTransfersCount, $expectedRefundsCount)
+    {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $orders = $this->miraklClient->listServicePendingRefunds();
         $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
@@ -253,13 +349,21 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->mockRefundCreated($this->getBasicServiceRefundFromRepository());
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(28, $transfers);
+        $this->assertCount($expectedTransfersCount, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
 
         // All except ORDER_REFUND_BASIC are retriable
         $transfers = $this->paymentRefundService->getRetriableTransfers();
-        $this->assertCount(27, $transfers);
+        $this->assertCount($expectedRefundsCount, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
+    }
+
+    public function provideGetTransfersFromServiceOrders()
+    {
+        return [
+            [true, 28, 27],
+            [false, 14, 13],
+        ];
     }
 
     public function testGetRefundsFromServiceOrders()
@@ -276,8 +380,13 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertCount(13, $refunds);
     }
 
-    public function testUpdateServiceTransfers()
+    /**
+     * @dataProvider provideUpdateServiceTransfers
+     */
+    public function testUpdateServiceTransfers(bool $enablePaymentTaxSplit, $expectedRefundsCount)
     {
+        $this->mockConfiguration($enablePaymentTaxSplit);
+
         $orders = $this->miraklClient->listServicePendingRefunds();
         $this->mockOrderTransfer($orders[MiraklMock::SERVICE_ORDER_REFUND_BASIC], StripeMock::CHARGE_BASIC);
 
@@ -285,7 +394,7 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertCount(14, $refunds);
 
         $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orders);
-        $this->assertCount(28, $transfers);
+        $this->assertCount($expectedRefundsCount, $transfers);
         $this->assertCount(14, $this->getServiceTransfersFromRepository());
 
         // ORDER_REFUND_BASIC is on hold
@@ -298,5 +407,13 @@ class PaymentRefundServiceTest extends KernelTestCase
         $transfers = $this->paymentRefundService->updateTransfers($transfers);
         $transfer = $transfers[MiraklMock::SERVICE_ORDER_REFUND_BASIC];
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+    }
+
+    public function provideUpdateServiceTransfers()
+    {
+        return [
+            [true, 28],
+            [false, 14],
+        ];
     }
 }

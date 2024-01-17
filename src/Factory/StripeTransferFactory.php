@@ -58,6 +58,7 @@ class StripeTransferFactory implements LoggerAwareInterface
 
     private $stripeTaxAccount;
     private $taxOrderPostfix;
+    private $enablePaymentTaxSplit;
 
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
@@ -67,7 +68,8 @@ class StripeTransferFactory implements LoggerAwareInterface
         MiraklClient $miraklClient,
         StripeClient $stripeClient,
         string $stripeTaxAccount,
-        string $taxOrderPostfix
+        string $taxOrderPostfix,
+        bool $enablePaymentTaxSplit
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -77,6 +79,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $this->stripeClient = $stripeClient;
         $this->stripeTaxAccount = $stripeTaxAccount;
         $this->taxOrderPostfix = $taxOrderPostfix;
+        $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
     }
 
     public function createFromOrder(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
@@ -222,10 +225,13 @@ class StripeTransferFactory implements LoggerAwareInterface
         $amount = $order->getAmountDue();
         $commission = $order->getOperatorCommission();
         $transferAmount = $amount - $commission;
-        $orderTaxTotal = $order->getOrderTaxTotal();
-        $transferAmount = $transferAmount - $orderTaxTotal;
-        if ($isForTax) {
-            $transferAmount = $orderTaxTotal;
+        if ($this->enablePaymentTaxSplit) {
+            $orderTaxTotal = $order->getOrderTaxTotal();
+            if ($isForTax) {
+                $transferAmount = $orderTaxTotal;
+            } else {
+                $transferAmount = $transferAmount - $orderTaxTotal;
+            }
         }
         if ($transferAmount <= 0) {
             return $this->abortTransfer($transfer, sprintf(
@@ -301,17 +307,18 @@ class StripeTransferFactory implements LoggerAwareInterface
             }
 
             // Amount and currency
-            $transferAmount = $refund->getAmount();
             $commission = $order->getRefundedOperatorCommission($refund);
             $commission = gmp_intval((string) ($commission * 100));
-            $refundedTax = $order->getRefundedTax($refund);
-            $refundedTax = gmp_intval((string) ($refundedTax * 100));
-            $transferAmount = $transferAmount - $commission - $refundedTax;
-
-            if ($isForTax) {
-                $transferAmount = $refundedTax;
+            $transferAmount = $refund->getAmount() - $commission;
+            if ($this->enablePaymentTaxSplit) {
+                $refundedTax = $order->getRefundedTax($refund);
+                $refundedTax = gmp_intval((string) ($refundedTax * 100));
+                if ($isForTax) {
+                    $transferAmount = $refundedTax;
+                } else {
+                    $transferAmount = $transferAmount - $refundedTax;
+                }
             }
-
             $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {

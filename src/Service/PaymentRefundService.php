@@ -30,19 +30,22 @@ class PaymentRefundService
     private $stripeTransferRepository;
 
     private $taxOrderPostfix;
+    private $enablePaymentTaxSplit;
 
     public function __construct(
         StripeRefundFactory $stripeRefundFactory,
         StripeTransferFactory $stripeTransferFactory,
         StripeRefundRepository $stripeRefundRepository,
         StripeTransferRepository $stripeTransferRepository,
-        string $taxOrderPostfix
+        string $taxOrderPostfix,
+        bool $enablePaymentTaxSplit
     ) {
         $this->stripeRefundFactory = $stripeRefundFactory;
         $this->stripeTransferFactory = $stripeTransferFactory;
         $this->stripeRefundRepository = $stripeRefundRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->taxOrderPostfix = $taxOrderPostfix;
+        $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
     }
 
     /**
@@ -107,15 +110,19 @@ class PaymentRefundService
                 }
 
                 $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
-                $transfer_tax = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
-                $transfers[] = $transfer_tax;
+                if ($this->enablePaymentTaxSplit) {
+                    $transfer_tax = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
+                    $transfers[] = $transfer_tax;
+                }
             } else {
                 // Create new transfer
                 $transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
-                $transfer_tax = $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund);
                 $this->stripeTransferRepository->persist($transfer);
-                $this->stripeTransferRepository->persist($transfer_tax);
-                $transfers[] = $transfer_tax;
+                if ($this->enablePaymentTaxSplit) {
+                    $transfer_tax = $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund);
+                    $this->stripeTransferRepository->persist($transfer_tax);
+                    $transfers[] = $transfer_tax;
+                }
             }
 
             $transfers[] = $transfer;
