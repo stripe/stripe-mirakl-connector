@@ -53,7 +53,7 @@ jobs:
     ## —— Tests ✅ ———————————————————————————————————————————————————————————
 
     - name: Run functionnal and unit tests
-      run: ./bin/phpunit
+      run: ./vendor/bin/phpunit --testdox
 
     - name: Run tests coverage (Coveralls)
       env:
