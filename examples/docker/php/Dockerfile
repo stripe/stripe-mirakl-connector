@@ -1,8 +1,8 @@
-FROM php:8.2-fpm
+FROM php:8.2-fpm as application
 
-ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.12/supercronic-linux-amd64 \
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.29/supercronic-linux-amd64 \
     SUPERCRONIC=supercronic-linux-amd64 \
-    SUPERCRONIC_SHA1SUM=048b95b48b708983effb2e5c935a1ef8483d9e3e
+    SUPERCRONIC_SHA1SUM=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b
 
 USER root
 
@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     wget \
     libgmp-dev \
+    supervisor \
     && echo 'alias sf="php bin/console"' >> ~/.bashrc
 
 RUN docker-php-ext-configure gd --with-jpeg --with-freetype
@@ -43,7 +44,7 @@ RUN \
     && wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.12.0-linux-x86_64.tar.gz \
     && tar xzvf filebeat-7.12.0-linux-x86_64.tar.gz \
     && mkdir -p /usr/share/filebeat \
-    && mv filebeat-7.12.0-linux-x86_64.tar.gz /usr/share/filebeat \
+    && mv filebeat-7.12.0-linux-x86_64/* /usr/share/filebeat \
     && mkdir -p /usr/share/filebeat/logs /usr/share/filebeat/data \
     && rm -R /tmp/*
 
@@ -63,7 +64,7 @@ RUN cat /etc/supervisor/conf.d/connector-supervisord.conf >> /etc/supervisor/con
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 RUN mkdir -p /var/www/mirakl-stripe
-COPY ./../../. /var/www/mirakl-stripe/
+COPY ./../../ /var/www/mirakl-stripe/
 
 WORKDIR /var/www/mirakl-stripe
 
@@ -82,7 +83,19 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
     && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
 # Create supervisor log directory and let www-data user read it
-RUN mkdir /var/log/supervisor
 RUN chown -R www-data /var/log/supervisor
 
 USER www-data
+
+FROM nginx:latest as nginx
+
+RUN mkdir -p /var/www/mirakl-stripe
+COPY --from=application /var/www/mirakl-stripe/ /var/www/mirakl-stripe/
+COPY examples/docker/nginx/nginx.conf  /etc/nginx/
+COPY examples/docker/nginx/default.conf /etc/nginx/conf.d/
+RUN echo "upstream php-upstream { server php:9000; }" > /etc/nginx/conf.d/upstream.conf
+
+COPY examples/docker/nginx/nginxlogrotate /etc/logrotate.d/nginx
+
+EXPOSE 8000
+EXPOSE 443
