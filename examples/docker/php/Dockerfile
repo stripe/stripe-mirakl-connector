@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     wget \
     libgmp-dev \
+    cron \
     supervisor \
     && echo 'alias sf="php bin/console"' >> ~/.bashrc
 
@@ -41,10 +42,10 @@ RUN docker-php-ext-install \
 # Install filebeat
 RUN \
     cd /tmp \
-    && wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.12.0-linux-x86_64.tar.gz \
-    && tar xzvf filebeat-7.12.0-linux-x86_64.tar.gz \
+    && wget https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.12.1-linux-x86_64.tar.gz \
+    && tar xzvf filebeat-8.12.1-linux-x86_64.tar.gz \
     && mkdir -p /usr/share/filebeat \
-    && mv filebeat-7.12.0-linux-x86_64/* /usr/share/filebeat \
+    && mv filebeat-8.12.1-linux-x86_64/* /usr/share/filebeat \
     && mkdir -p /usr/share/filebeat/logs /usr/share/filebeat/data \
     && rm -R /tmp/*
 
@@ -68,7 +69,7 @@ COPY ./../../ /var/www/mirakl-stripe/
 
 WORKDIR /var/www/mirakl-stripe
 
-RUN composer install
+RUN composer install -n --no-plugins --no-scripts
 
 # Install the application
 RUN chown -R www-data ./
