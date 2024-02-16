@@ -1,3 +1,10 @@
+seccomp:
+  default_action: allow
+  syscalls:
+    - action: allow
+      names:
+        - rseq
+
 # ============================== Filebeat inputs ===============================
 filebeat.inputs:
 - type: log 
@@ -9,6 +16,7 @@ filebeat.inputs:
   json:
     keys_under_root: true
     overwrite_keys: true
+    ignore_decoding_error: true
 
 - type: log
   paths:
@@ -44,6 +52,7 @@ filebeat.inputs:
   json:
     keys_under_root: true
     overwrite_keys: true
+    ignore_decoding_error: true
 - type: log
   paths:
     - /var/log/supervisor/cron-error.log
@@ -62,6 +71,7 @@ filebeat.inputs:
   json:
     keys_under_root: true
     overwrite_keys: true
+    ignore_decoding_error: true
 
 
 processors:

@@ -16,10 +16,18 @@ services:
     build:
       context: ../../
       dockerfile: ./examples/docker/php/Dockerfile
+      target: 'application'
+    depends_on:
+      db:
+        condition: service_started
 
   nginx:
     build:
       context: ./../../
-      dockerfile: ./examples/docker/nginx/Dockerfile
+      dockerfile: ./examples/docker/php/Dockerfile
+      target: 'nginx'
+    depends_on:
+      php:
+        condition: service_started
     ports:
       - "8000:8000"
