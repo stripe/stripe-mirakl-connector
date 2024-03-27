@@ -2,13 +2,19 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:11.5-alpine
+    image: postgres:14.0-alpine
     ports:
       - "54320:5432"
     environment:
       POSTGRES_DB: symfony
       POSTGRES_USER: symfony
       POSTGRES_PASSWORD: symfony
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready", "-d", "symfony" ]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
   php:
     env_file:
@@ -19,7 +25,7 @@ services:
       target: 'application'
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
 
   nginx:
     build:

@@ -8,6 +8,8 @@ USER root
 
 # Configure PHP
 COPY examples/docker/php/php.ini /usr/local/etc/php/conf.d/docker-php-config.ini
+COPY examples/docker/php/php_run.sh /usr/share/php_run.sh
+RUN chmod +x /usr/share/php_run.sh
 
 # Install packages
 RUN apt-get update && apt-get install -y \
@@ -86,7 +88,7 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
 # Create supervisor log directory and let www-data user read it
 RUN chown -R www-data /var/log/supervisor
 
-USER www-data
+CMD ["/usr/share/php_run.sh"]
 
 FROM nginx:latest as nginx
 
