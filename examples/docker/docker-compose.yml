@@ -11,9 +11,9 @@ services:
       POSTGRES_PASSWORD: symfony
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready", "-d", "symfony" ]
-      interval: 30s
+      interval: 5s
       timeout: 60s
-      retries: 5
+      retries: 10
       start_period: 80s
 
   php:
