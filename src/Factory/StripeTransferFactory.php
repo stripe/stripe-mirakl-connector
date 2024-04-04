@@ -60,6 +60,8 @@ class StripeTransferFactory implements LoggerAwareInterface
     private $taxOrderPostfix;
     private $enablePaymentTaxSplit;
 
+    private $enableIgnoreTax;
+
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
@@ -69,7 +71,8 @@ class StripeTransferFactory implements LoggerAwareInterface
         StripeClient $stripeClient,
         string $stripeTaxAccount,
         string $taxOrderPostfix,
-        bool $enablePaymentTaxSplit
+        bool $enablePaymentTaxSplit,
+        bool $enableIgnoreTax
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -80,6 +83,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $this->stripeTaxAccount = $stripeTaxAccount;
         $this->taxOrderPostfix = $taxOrderPostfix;
         $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
+        $this->enableIgnoreTax = $enableIgnoreTax;
     }
 
     public function createFromOrder(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
@@ -119,6 +123,10 @@ class StripeTransferFactory implements LoggerAwareInterface
         // Transfer already created
         if ($transfer->getTransferId()) {
             return $this->markTransferAsCreated($transfer);
+        }
+        
+        if ($isForTax && $this->enableIgnoreTax) {
+            return $this->ignoreTransfer($transfer, "Tax is being ignored.");
         }
 
         // Shop must have a Stripe account
@@ -270,6 +278,10 @@ class StripeTransferFactory implements LoggerAwareInterface
         // Transfer already reversed
         if ($transfer->getTransferId()) {
             return $this->markTransferAsCreated($transfer);
+        }
+
+        if ($isForTax && $this->enableIgnoreTax) {
+            return $this->ignoreTransfer($transfer, "Tax is being ignored");
         }
 
         // Check corresponding StripeRefund

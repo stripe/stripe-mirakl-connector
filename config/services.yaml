@@ -19,6 +19,7 @@ parameters:
   env(ENABLE_SERVICE_PAYMENT_REFUND): false
   env(ENABLE_SELLER_ONBOARDING): true
   env(ENABLE_PAYMENT_TAX_SPLIT): false
+  env(ENABLE_IGNORE_TAX): false
   env(STRIPE_TAX_ACCOUNT): ""
   env(KYC_MIRAKL_SHOP_DISABLE_UPDATE): false
 
@@ -48,6 +49,7 @@ parameters:
   app.workflow.enable_seller_onboarding: "%env(bool:ENABLE_SELLER_ONBOARDING)%"
   app.workflow.payment_metadata_commercial_order_id: "%env(default:deprecated_payment_metadata_commercial_order_id:PAYMENT_METADATA_COMMERCIAL_ORDER_ID)%"
   app.workflow.enable_payment_tax_split: "%env(bool:ENABLE_PAYMENT_TAX_SPLIT)%"
+  app.workflow.enable_ignore_tax: "%env(bool:ENABLE_IGNORE_TAX)"
   app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
   app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
@@ -92,6 +94,7 @@ services:
 
       $enablePaymentTaxSplit: "%app.workflow.enable_payment_tax_split%"
       $stripeTaxAccount: "%app.stripe.tax_account%"
+      $enableIgnoreTax: "%app.workflow.enable_ignore_tax%"
       $taxOrderPostfix: "_TAX"
       $miraklShopKycDisable: "%app.mirakl.shop_kyc_disable%"
 
