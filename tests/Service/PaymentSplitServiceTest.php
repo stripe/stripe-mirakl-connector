@@ -54,6 +54,7 @@ class PaymentSplitServiceTest extends KernelTestCase
             $container->get('App\Service\StripeClient'),
             'acc_xxxxxxx',
             '_TAX',
+            false,
             false
         );
         $stripeTransferFactory->setLogger(new NullLogger());

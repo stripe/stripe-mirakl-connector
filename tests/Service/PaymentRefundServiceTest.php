@@ -75,6 +75,7 @@ class PaymentRefundServiceTest extends KernelTestCase
             $stripeClient,
             'acc_xxxxxxx',
             '_TAX',
+            false,
             false
         );
         $stripeTransferFactory->setLogger(new NullLogger());
@@ -112,7 +113,8 @@ class PaymentRefundServiceTest extends KernelTestCase
             $stripeClient,
             'acc_xxxxxxx',
             '_TAX',
-            $enablePaymentTaxSplit
+            $enablePaymentTaxSplit,
+            false
         );
         $stripeTransferFactory->setLogger(new NullLogger());
 
