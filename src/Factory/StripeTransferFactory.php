@@ -59,7 +59,6 @@ class StripeTransferFactory implements LoggerAwareInterface
     private $stripeTaxAccount;
     private $taxOrderPostfix;
     private $enablePaymentTaxSplit;
-
     private $enableIgnoreTax;
 
     public function __construct(
@@ -124,7 +123,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         if ($transfer->getTransferId()) {
             return $this->markTransferAsCreated($transfer);
         }
-        
+
         if ($isForTax && $this->enableIgnoreTax) {
             return $this->ignoreTransfer($transfer, "Tax is being ignored.");
         }
