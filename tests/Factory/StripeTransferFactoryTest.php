@@ -195,8 +195,10 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function provideCreateFromProductOrder()
     {
         return [
-            [true, 7205],
-            [false, 8073],
+            [true, true, 7205],
+            [true, false, 7205],
+            [false, false, 8073],
+            [false, true, 8073],
         ];
     }
 
@@ -349,18 +351,30 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function provideProductOrderDifferentAmounts()
     {
         return [
-            [true, 'NO_COMMISSION', 7604],
-            [true, 'NO_TAX', 6513],
-            [true, 'TAX_INCLUDED', 5645],
-            [true, 'PARTIAL_TAX', 6959],
-            [true, 'NO_SALES_TAX', 7205],
-            [true, 'NO_SHIPPING_TAX', 6513],
-            [false, 'NO_COMMISSION', 8472],
-            [false, 'NO_TAX', 6513],
-            [false, 'TAX_INCLUDED', 6513],
-            [false, 'PARTIAL_TAX', 7293],
-            [false, 'NO_SALES_TAX', 7205],
-            [false, 'NO_SHIPPING_TAX', 7381],
+            [true, false, 'NO_COMMISSION', 7604],
+            [true, false, 'NO_TAX', 6513],
+            [true, false, 'TAX_INCLUDED', 5645],
+            [true, false, 'PARTIAL_TAX', 6959],
+            [true, false, 'NO_SALES_TAX', 7205],
+            [true, false, 'NO_SHIPPING_TAX', 6513],
+            [true, true, 'NO_COMMISSION', 7604],
+            [true, true, 'NO_TAX', 6513],
+            [true, true, 'TAX_INCLUDED', 5645],
+            [true, true, 'PARTIAL_TAX', 6959],
+            [true, true, 'NO_SALES_TAX', 7205],
+            [true, true, 'NO_SHIPPING_TAX', 6513],
+            [false, false, 'NO_COMMISSION', 8472],
+            [false, false, 'NO_TAX', 6513],
+            [false, false, 'TAX_INCLUDED', 6513],
+            [false, false, 'PARTIAL_TAX', 7293],
+            [false, false, 'NO_SALES_TAX', 7205],
+            [false, false, 'NO_SHIPPING_TAX', 7381],
+            [false, true, 'NO_COMMISSION', 8472],
+            [false, true, 'NO_TAX', 6513],
+            [false, true, 'TAX_INCLUDED', 6513],
+            [false, true, 'PARTIAL_TAX', 7293],
+            [false, true, 'NO_SALES_TAX', 7205],
+            [false, true, 'NO_SHIPPING_TAX', 7381],
         ];
     }
 
@@ -461,8 +475,10 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function provideCreateFromServiceOrder()
     {
         return [
-            [true, 1081],
-            [false, 1415],
+            [true, true, 1081],
+            [true, false, 1081],
+            [false, false, 1415],
+            [false, true, 1415],
         ];
     }
 
@@ -602,14 +618,22 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function provideServiceOrderDifferentAmounts()
     {
         return [
-            [true, 'NO_COMMISSION', 1480],
-            [true, 'NO_TAX', 1081],
-            [true, 'TAX_INCLUDED', 1081],
-            [true, 'PARTIAL_TAX', 1081],
-            [false, 'NO_COMMISSION', 1814],
-            [false, 'NO_TAX', 1081],
-            [false, 'TAX_INCLUDED', 1081],
-            [false, 'PARTIAL_TAX', 1237],
+            [true, true, 'NO_COMMISSION', 1480],
+            [true, true, 'NO_TAX', 1081],
+            [true, true, 'TAX_INCLUDED', 1081],
+            [true, true, 'PARTIAL_TAX', 1081],
+            [true, false, 'NO_COMMISSION', 1480],
+            [true, false, 'NO_TAX', 1081],
+            [true, false, 'TAX_INCLUDED', 1081],
+            [true, false, 'PARTIAL_TAX', 1081],
+            [false, true, 'NO_COMMISSION', 1814],
+            [false, true, 'NO_TAX', 1081],
+            [false, true, 'TAX_INCLUDED', 1081],
+            [false, true, 'PARTIAL_TAX', 1237],
+            [false, false, 'NO_COMMISSION', 1814],
+            [false, false, 'NO_TAX', 1081],
+            [false, false, 'TAX_INCLUDED', 1081],
+            [false, false, 'PARTIAL_TAX', 1237],
         ];
     }
 
