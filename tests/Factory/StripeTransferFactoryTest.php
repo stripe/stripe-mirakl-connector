@@ -65,12 +65,13 @@ class StripeTransferFactoryTest extends KernelTestCase
             $container->get('App\Service\StripeClient'),
             'acc_xxxxxxx',
             '_TAX',
+            false,
             false
         );
         $this->stripeTransferFactory->setLogger(new NullLogger());
     }
 
-    private function mockConfiguration(bool $enablePaymentTaxSplit)
+    private function mockConfiguration(bool $enablePaymentTaxSplit, bool $enableIgnoreTax)
     {
         $container = self::$kernel->getContainer();
         $this->stripeTransferFactory = new StripeTransferFactory(
@@ -82,7 +83,8 @@ class StripeTransferFactoryTest extends KernelTestCase
             $container->get('App\Service\StripeClient'),
             'acc_xxxxxxx',
             '_TAX',
-            $enablePaymentTaxSplit
+            $enablePaymentTaxSplit,
+            $enableIgnoreTax
         );
         $this->stripeTransferFactory->setLogger(new NullLogger());
     }
@@ -168,9 +170,9 @@ class StripeTransferFactoryTest extends KernelTestCase
     /**
      * @dataProvider provideCreateFromProductOrder
      */
-    public function testCreateFromProductOrder($enablePaymentTaxSplit, $expectedAmount)
+    public function testCreateFromProductOrder($enablePaymentTaxSplit, $enableIgnoreTax, $expectedAmount)
     {
-        $this->mockConfiguration($enablePaymentTaxSplit);
+        $this->mockConfiguration($enablePaymentTaxSplit, $enableIgnoreTax);
 
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listProductOrdersById([
@@ -327,9 +329,9 @@ class StripeTransferFactoryTest extends KernelTestCase
     /**
      * @dataProvider provideProductOrderDifferentAmounts
      */
-    public function testProductOrderDifferentAmounts(bool $enablePaymentTaxSplit, $const, $expectedAmount)
+    public function testProductOrderDifferentAmounts(bool $enablePaymentTaxSplit, $enableIgnoreTax, $const, $expectedAmount)
     {
-        $this->mockConfiguration($enablePaymentTaxSplit);
+        $this->mockConfiguration($enablePaymentTaxSplit, $enableIgnoreTax);
 
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listProductOrdersById([
@@ -431,9 +433,9 @@ class StripeTransferFactoryTest extends KernelTestCase
     /**
      * @dataProvider provideCreateFromServiceOrder
      */
-    public function testCreateFromServiceOrder(bool $enablePaymentTaxSplit, $expectedAmount)
+    public function testCreateFromServiceOrder(bool $enablePaymentTaxSplit, $enableIgnoreTax, $expectedAmount)
     {
-        $this->mockConfiguration($enablePaymentTaxSplit);
+        $this->mockConfiguration($enablePaymentTaxSplit, $enableIgnoreTax);
 
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listServiceOrdersById([
@@ -577,9 +579,9 @@ class StripeTransferFactoryTest extends KernelTestCase
     /**
      * @dataProvider provideServiceOrderDifferentAmounts
      */
-    public function testServiceOrderDifferentAmounts(bool $enablePaymentTaxSplit, $const, $expectedAmount)
+    public function testServiceOrderDifferentAmounts(bool $enablePaymentTaxSplit, $enableIgnoreTax, $const, $expectedAmount)
     {
-        $this->mockConfiguration($enablePaymentTaxSplit);
+        $this->mockConfiguration($enablePaymentTaxSplit, $enableIgnoreTax);
 
         $transfer = $this->stripeTransferFactory->createFromOrder(
             current($this->miraklClient->listServiceOrdersById([
