@@ -2,10 +2,12 @@
 
 namespace App\Handler;
 
+use App\Entity\MiraklProductOrder;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
 use App\Repository\StripeTransferRepository;
 use App\Service\StripeClient;
+use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -25,12 +27,19 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
      */
     private $stripeTransferRepository;
 
+    /**
+     * @var MiraklClient
+     */
+    private $miraklClient;
+
     public function __construct(
         StripeClient $stripeClient,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        MiraklClient $miraklClient
     ) {
         $this->stripeClient = $stripeClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->miraklClient = $miraklClient;
     }
 
     public function __invoke(ProcessTransferMessage $message): void
@@ -48,6 +57,10 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
 
         try {
             $metadata = ['miraklId' => $transfer->getMiraklId()];
+            if ($type == StripeTransfer::TRANSFER_PRODUCT_ORDER) {
+                $order = $this->miraklClient->listProductOrdersById([$transfer->getMiraklId()]);
+                $metadata = array_merge($metadata, $this->additionalMetaDataForProductOrderTransfer($order[$transfer->getMiraklId()]));
+            }
             switch ($type) {
                 case StripeTransfer::TRANSFER_PRODUCT_ORDER:
                 case StripeTransfer::TRANSFER_SERVICE_ORDER:
@@ -99,6 +112,9 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
             $this->logger->error($message, [
                 'miraklId' => $transfer->getMiraklId(),
+                'transferId' => $transfer->getTransferId(),
+                'transactionId' => $transfer->getTransactionId(),
+                'amount' => $transfer->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);
 
@@ -107,5 +123,14 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
         }
 
         $this->stripeTransferRepository->flush();
+    }
+
+    private function additionalMetaDataForProductOrderTransfer(MiraklProductOrder $order): array
+    {
+        return [
+            'ORDER_TAX_AMOUNT' => $order->getTotalTypeTaxes('taxes'),
+            'SHIPPING_TAX_AMOUNT' => $order->getTotalTypeTaxes('shipping_taxes'),
+            'COMMISSION_FEES' => $order->getOperatorCommission()
+        ];
     }
 }

@@ -33,14 +33,21 @@ class StripeRefundFactory implements LoggerAwareInterface
      */
     private $stripeClient;
 
+    /**
+     * @var bool
+     */
+    private $processRefundsWithoutOriginalTransaction;
+
     public function __construct(
         PaymentMappingRepository $paymentMappingRepository,
         StripeTransferRepository $stripeTransferRepository,
-        StripeClient $stripeClient
+        StripeClient $stripeClient,
+        $processRefundsWithoutOriginalTransaction
     ) {
         $this->paymentMappingRepository = $paymentMappingRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->stripeClient = $stripeClient;
+        $this->processRefundsWithoutOriginalTransaction = $processRefundsWithoutOriginalTransaction;
     }
 
     public function createFromOrderRefund(MiraklPendingRefund $pendingRefund): StripeRefund
@@ -65,6 +72,10 @@ class StripeRefundFactory implements LoggerAwareInterface
 
     public function updateRefund(StripeRefund $refund): StripeRefund
     {
+        if ($this->processRefundsWithoutOriginalTransaction) {
+            return $refund->setStatus(StripeRefund::REFUND_PENDING);
+        }
+
         // Find charge ID
         $transactionId = $refund->getTransactionId();
         if (!$transactionId) {
@@ -211,7 +222,14 @@ class StripeRefundFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Refund on hold: '.$reason,
-            ['refund_id' => $refund->getMiraklRefundId()]
+            [
+                'refund_id' => $refund->getMiraklRefundId(),
+                'mirakle_order_id' => $refund->getMiraklOrderId(),
+                'mirakle_commercial_order_id' => $refund->getMiraklRefundId(),
+                'transaction_id' => $refund->getMiraklRefundId(),
+                'stripe_refund_id' => $refund->getMiraklRefundId(),
+                'type' => $refund->getType()
+            ]
         );
 
         return $refund
@@ -223,7 +241,15 @@ class StripeRefundFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Refund aborted: '.$reason,
-            ['refund_id' => $refund->getMiraklRefundId()]
+            [
+                'refund_id' => $refund->getMiraklRefundId(),
+                'mirakle_order_id' => $refund->getMiraklOrderId(),
+                'mirakle_commercial_order_id' => $refund->getMiraklRefundId(),
+                'transaction_id' => $refund->getMiraklRefundId(),
+                'stripe_refund_id' => $refund->getMiraklRefundId(),
+                'type' => $refund->getType()
+
+            ]
         );
 
         return $refund

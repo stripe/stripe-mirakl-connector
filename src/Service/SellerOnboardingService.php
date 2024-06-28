@@ -53,6 +53,11 @@ class SellerOnboardingService
      */
     private $ignoredShopFieldCode;
 
+    /**
+     * @var string
+     */
+    private $stripeAccountMetadata;
+
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
         MiraklClient $miraklClient,
@@ -61,7 +66,8 @@ class SellerOnboardingService
         string $redirectOnboarding,
         bool $stripePrefillOnboarding,
         string $customFieldCode,
-        string $ignoredShopFieldCode
+        string $ignoredShopFieldCode,
+        string $stripeAccountMetadata
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->miraklClient = $miraklClient;
@@ -71,6 +77,7 @@ class SellerOnboardingService
         $this->stripePrefillOnboarding = $stripePrefillOnboarding;
         $this->customFieldCode = $customFieldCode;
         $this->ignoredShopFieldCode = $ignoredShopFieldCode;
+        $this->stripeAccountMetadata = $stripeAccountMetadata;
     }
 
     /**
@@ -93,6 +100,11 @@ class SellerOnboardingService
             }
             $accountMapping->setPayinEnabled((bool) $stripeAccount->charges_enabled);
             $this->accountMappingRepository->persistAndFlush($accountMapping);
+        } else {
+            $stripeAccount = $this->stripeClient->retrieveAccount($accountMapping->getStripeAccountId());
+            if ($stripeAccount && $stripeAccount->id) {
+                $this->updateStripeAccountFromShop($shop, $stripeAccount);
+            }
         }
 
         return $accountMapping;
@@ -102,6 +114,12 @@ class SellerOnboardingService
     {
         $accountMapping->setIgnored($ignored);
         $this->accountMappingRepository->persistAndFlush($accountMapping);
+    }
+
+    protected function updateStripeAccountFromShop(MiraklShop $shop, Account $stripeAccount)
+    {
+        $additionalMetaDataFields = $this->getAdditionalMetaDataFields($shop);
+        $this->stripeClient->updateStripeAccount($stripeAccount->id, [], $additionalMetaDataFields);
     }
 
     /**
@@ -117,13 +135,43 @@ class SellerOnboardingService
                 'business_profile' => [
                     'name' => $rawShop['shop_name'] ?? null,
                     'url' => $rawShop['contact_informations']['web_site'] ?? null,
-                    'support_email' => $rawShop['contact_informations']['email'] ?? null,
-                    'support_phone' => $rawShop['contact_informations']['phone'] ?? null,
+                    'support_email' => $rawShop['contact_informations']['email'] ?? null
                 ],
             ];
+
+            if ($rawShop['contact_informations']['phone'] && $rawShop['contact_informations']['phone'] != '') {
+                $details['business_profile']['support_phone'] = $rawShop['contact_informations']['phone'];
+            }
         }
 
-        return $this->stripeClient->createStripeAccount($shop->getId(), $details, ['miraklShopId' => $shop->getId()]);
+        $additionalMetaDataFields = $this->getAdditionalMetaDataFields($shop);
+
+        $metaData = array_merge($additionalMetaDataFields, [
+            'miraklShopId' => $shop->getId()
+        ]);
+
+        return $this->stripeClient->createStripeAccount($shop->getId(), $details, $metaData);
+    }
+
+    /**
+     * @param $shop
+     * @return array
+     */
+    private function getAdditionalMetaDataFields($shop)
+    {
+        $additionalMetaDataFields = [];
+        if ($this->stripeAccountMetadata) {
+            $shopData = $shop->getShop();
+            $additionalMetaData = json_decode($this->stripeAccountMetadata);
+
+            foreach ($additionalMetaData as $fieldKey => $fieldValue) {
+                if (isset($shopData[$fieldKey])) {
+                    $additionalMetaDataFields[$fieldValue] = $shopData[$fieldKey];
+                }
+            }
+        }
+
+        return $additionalMetaDataFields;
     }
 
     /**

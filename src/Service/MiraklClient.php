@@ -408,9 +408,20 @@ class MiraklClient
     public function getTransactionsForInvoce(string $invoiceId): array
     {
         $params['accounting_document_number'] = $invoiceId;
-        $response = $this->get('/api/sellerpayment/transactions_logs', array_merge(['max' => 100], $params));
-        $objects = $this->parseResponse($response, 'data');
-        $res_map = $this->arraysToMap($objects, 'id');
+        $response = $this->get('/api/sellerpayment/transactions_logs', array_merge(['limit' => 150], $params));
+        $body = $this->parseResponse($response, 'data');
+
+        while ($next = $this->getNextPage($response)) {
+            $response = $this->get('/api/sellerpayment/transactions_logs', ['page_token' => $next]);
+            $objects = $this->parseResponse($response, 'data');
+            if (empty($objects)) {
+                break;
+            }
+
+            $body = array_merge($body, $objects);
+        }
+
+        $res_map = $this->arraysToMap($body, 'id');
 
         return $res_map;
     }

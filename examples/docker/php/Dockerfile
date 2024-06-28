@@ -1,4 +1,5 @@
-FROM php:8.2-fpm as application
+FROM php:8.2.0-fpm as application
+
 
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.29/supercronic-linux-amd64 \
     SUPERCRONIC=supercronic-linux-amd64 \
@@ -8,6 +9,26 @@ USER root
 
 # Configure PHP
 COPY examples/docker/php/php.ini /usr/local/etc/php/conf.d/docker-php-config.ini
+COPY examples/docker/php/php_run.sh /usr/share/php_run.sh
+RUN chmod +x /usr/share/php_run.sh
+
+COPY examples/docker/certs/ca.crt /etc/ssl/certs/root.crt
+COPY examples/docker/certs/server.crt /etc/ssl/certs/server.crt
+COPY examples/docker/certs/server.key /etc/ssl/private/server.key
+
+RUN chmod 600 /etc/ssl/private/server.key
+RUN chmod 600 /etc/ssl/certs/server.crt
+RUN chmod 600 /etc/ssl/certs/root.crt
+RUN chown -R www-data:www-data /etc/ssl/private
+RUN chown www-data:www-data /etc/ssl/certs/server.crt
+RUN chown www-data:www-data /etc/ssl/certs/root.crt
+
+
+# Set environment variables
+ENV PGSSLROOTCERT=/etc/ssl/certs/root.crt
+ENV PGSSLCERT=/etc/ssl/certs/server.crt
+ENV PGSSLKEY=/etc/ssl/private/server.key
+ENV PGSSLMODE=verify-full
 
 # Install packages
 RUN apt-get update && apt-get install -y \
@@ -87,6 +108,7 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
 RUN chown -R www-data /var/log/supervisor
 
 USER www-data
+CMD ["/usr/share/php_run.sh"]
 
 FROM nginx:latest as nginx
 

@@ -90,6 +90,10 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 [
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
+                    'miraklCommecrialOrderId' => $refund->getMiraklCommercialOrderId(),
+                    'stripeRefundId' => $refund->getStripeRefundId(),
+                    'transactionId' => $refund->getTransactionId(),
+                    'amount' => $refund->getAmount(),
                 ]
             );
 
@@ -102,6 +106,9 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                     'stripeRefundId' => $refund->getStripeRefundId(),
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
+                    'miraklCommecrialOrderId' => $refund->getMiraklCommercialOrderId(),
+                    'transactionId' => $refund->getTransactionId(),
+                    'amount' => $refund->getAmount(),
                 ]
             );
 
@@ -114,6 +121,10 @@ class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterf
                 [
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
+                    'miraklCommecrialOrderId' => $refund->getMiraklCommercialOrderId(),
+                    'stripeRefundId' => $refund->getStripeRefundId(),
+                    'transactionId' => $refund->getTransactionId(),
+                    'amount' => $refund->getAmount(),
                 ]
             );
 

@@ -116,8 +116,14 @@ class StripePayoutFactory implements LoggerAwareInterface
     private function putPayoutOnHold(StripePayout $payout, string $reason): StripePayout
     {
         $this->logger->info(
-            'Payout on hold: '.$reason,
-            ['invoice_id' => $payout->getMiraklInvoiceId()]
+              'Payout on hold: '.$reason,
+            [
+                'invoice_id' => $payout->getMiraklInvoiceId(),
+                'amount' => $payout->getAmount(),
+                'payout_id' => $payout->getId(),
+                'status' => $payout->getStatus(),
+                'status_reason' => $payout->getStatusReason()
+            ]
         );
 
         $payout->setStatusReason($reason);
@@ -129,7 +135,13 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Payout aborted: '.$reason,
-            ['invoice_id' => $payout->getMiraklInvoiceId()]
+            [
+                'invoice_id' => $payout->getMiraklInvoiceId(),
+                'amount' => $payout->getAmount(),
+                'payout_id' => $payout->getId(),
+                'status' => $payout->getStatus(),
+                'status_reason' => $payout->getStatusReason()
+            ]
         );
 
         $payout->setStatusReason($reason);

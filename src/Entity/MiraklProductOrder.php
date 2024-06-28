@@ -205,6 +205,34 @@ class MiraklProductOrder extends MiraklOrder
             $taxes += (float) $tax['amount'];
         }
 
+        $shippingTaxes = $orderLine['shipping_taxes'] ?? [];
+        foreach ($shippingTaxes as $shippingTax) {
+            $taxes += (float) $shippingTax['amount'];
+        }
+
+        return $taxes;
+    }
+
+    public function getTotalTypeTaxes($type): float
+    {
+        $amount = 0;
+        foreach ($this->getOrderLines() as $orderLine) {
+            if (!in_array($orderLine['order_line_state'], ['REFUSED', 'CANCELED'])) {
+                $amount += $this->getOrderLineTypeTaxes($orderLine, $type);
+            }
+        }
+
+        return $amount;
+    }
+
+    protected function getOrderLineTypeTaxes(array $orderLine, $type): float
+    {
+        $taxes = 0;
+        $allTaxes = $orderLine[$type] ?? [];
+        foreach ($allTaxes as $tax) {
+            $taxes += (float) $tax['amount'];
+        }
+
         return $taxes;
     }
 }

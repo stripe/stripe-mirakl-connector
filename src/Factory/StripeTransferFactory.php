@@ -60,6 +60,11 @@ class StripeTransferFactory implements LoggerAwareInterface
     private $taxOrderPostfix;
     private $enablePaymentTaxSplit;
 
+    /**
+     * @var bool
+     */
+    private $enableSubtractTaxesFromTransferAmount;
+
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
@@ -69,7 +74,8 @@ class StripeTransferFactory implements LoggerAwareInterface
         StripeClient $stripeClient,
         string $stripeTaxAccount,
         string $taxOrderPostfix,
-        bool $enablePaymentTaxSplit
+        bool $enablePaymentTaxSplit,
+        bool $enableSubtractTaxesFromTransferAmount
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -80,6 +86,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $this->stripeTaxAccount = $stripeTaxAccount;
         $this->taxOrderPostfix = $taxOrderPostfix;
         $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
+        $this->enableSubtractTaxesFromTransferAmount = $enableSubtractTaxesFromTransferAmount;
     }
 
     public function createFromOrder(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
@@ -225,6 +232,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $amount = $order->getAmountDue();
         $commission = $order->getOperatorCommission();
         $transferAmount = $amount - $commission;
+
         if ($this->enablePaymentTaxSplit) {
             $orderTaxTotal = $order->getOrderTaxTotal();
             if ($isForTax) {
@@ -232,7 +240,11 @@ class StripeTransferFactory implements LoggerAwareInterface
             } else {
                 $transferAmount = $transferAmount - $orderTaxTotal;
             }
+        } elseif ($this->enableSubtractTaxesFromTransferAmount) {
+            $orderTaxTotal = $order->getOrderTaxTotal();
+            $transferAmount = $transferAmount - $orderTaxTotal;
         }
+
         if ($transferAmount <= 0) {
             return $this->abortTransfer($transfer, sprintf(
                 StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
@@ -318,6 +330,9 @@ class StripeTransferFactory implements LoggerAwareInterface
                 } else {
                     $transferAmount = $transferAmount - $refundedTax;
                 }
+            } elseif ($this->enableSubtractTaxesFromTransferAmount) {
+                $orderTaxTotal = $order->getOrderTaxTotal() * 100;
+                $transferAmount = $transferAmount - $orderTaxTotal;
             }
             $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
@@ -494,7 +509,14 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Transfer on hold: '.$reason,
-            ['order_id' => $transfer->getMiraklId()]
+            [
+                'order_id' => $transfer->getMiraklId(),
+                'transfer_id' => $transfer->getTransferId(),
+                'transaction_id' => $transfer->getTransactionId(),
+                'status_reason' => $transfer->getStatusReason(),
+                'status' => $transfer->getStatus(),
+                'amount' => $transfer->getAmount()
+            ]
         );
 
         return $transfer
@@ -505,8 +527,15 @@ class StripeTransferFactory implements LoggerAwareInterface
     private function abortTransfer(StripeTransfer $transfer, string $reason): StripeTransfer
     {
         $this->logger->info(
-            'Transfer aborted: '.$reason,
-            ['order_id' => $transfer->getMiraklId()]
+              'Transfer aborted: '.$reason,
+            [
+                'order_id' => $transfer->getMiraklId(),
+                'transfer_id' => $transfer->getTransferId(),
+                'transaction_id' => $transfer->getTransactionId(),
+                'status_reason' => $transfer->getStatusReason(),
+                'status' => $transfer->getStatus(),
+                'amount' => $transfer->getAmount(),
+            ]
         );
 
         return $transfer
@@ -517,8 +546,15 @@ class StripeTransferFactory implements LoggerAwareInterface
     private function ignoreTransfer(StripeTransfer $transfer, string $reason): StripeTransfer
     {
         $this->logger->info(
-            'Transfer ignored: '.$reason,
-            ['order_id' => $transfer->getMiraklId()]
+              'Transfer ignored: '.$reason,
+            [
+                'order_id' => $transfer->getMiraklId(),
+                'transfer_id' => $transfer->getTransferId(),
+                'transaction_id' => $transfer->getTransactionId(),
+                'status_reason' => $transfer->getStatusReason(),
+                'status' => $transfer->getStatus(),
+                'amount' => $transfer->getAmount(),
+            ]
         );
 
         return $transfer

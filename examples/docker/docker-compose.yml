@@ -2,13 +2,26 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:11.5-alpine
+    build:
+      context: .
+      dockerfile: ./postgres/Dockerfile
+    expose:
+      - "5432"
     ports:
-      - "54320:5432"
+      - "5432:5432"
     environment:
       POSTGRES_DB: symfony
       POSTGRES_USER: symfony
       POSTGRES_PASSWORD: symfony
+
+    volumes:
+      - ./config/config-ssl.sql:/docker-entrypoint-initdb.d/config-ssl.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U symfony" ]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
   php:
     env_file:
@@ -19,8 +32,12 @@ services:
       target: 'application'
     depends_on:
       db:
-        condition: service_started
-
+        condition: service_healthy
+    environment:
+      PGSSLROOTCERT: /etc/ssl/certs/root.crt
+      PGSSLCERT: /etc/ssl/certs/client.crt
+      PGSSLKEY: /etc/ssl/private/client.key
+      PGSSLMODE: verify-full
   nginx:
     build:
       context: ./../../
@@ -31,3 +48,5 @@ services:
         condition: service_started
     ports:
       - "8000:8000"
+volumes:
+  postgres-data:

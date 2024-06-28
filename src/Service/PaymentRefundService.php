@@ -29,7 +29,14 @@ class PaymentRefundService
      */
     private $stripeTransferRepository;
 
+    /**
+     * @var string
+     */
     private $taxOrderPostfix;
+
+    /**
+     * @var bool
+     */
     private $enablePaymentTaxSplit;
 
     public function __construct(

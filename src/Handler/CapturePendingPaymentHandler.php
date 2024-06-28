@@ -52,6 +52,7 @@ class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwa
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not capture Stripe Charge: %s.', $e->getMessage()), [
                 'chargeId' => $paymentMapping->getStripeChargeId(),
+                'mirakl_commercial_id' => $paymentMapping->getMiraklCommercialOrderId(),
                 'amount' => $message->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);

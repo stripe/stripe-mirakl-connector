@@ -159,6 +159,11 @@ class MiraklServiceOrder extends MiraklOrder
             $taxes += (float) $tax['amount'];
         }
 
+        $shippingTaxes = $orderLine['shipping_taxes'] ?? [];
+        foreach ($shippingTaxes as $shippingTax) {
+            $taxes += (float) $shippingTax['amount'];
+        }
+
         return $taxes;
     }
 }

@@ -41,6 +41,7 @@ parameters:
   app.stripe.webhook_operator_secret: "%env(default:deprecated_webhook_secret:STRIPE_OPERATOR_WEBHOOK_SECRET)%"
   app.stripe.prefill_onboarding: "%env(bool:STRIPE_PREFILL_ONBOARDING)%"
   app.stripe.tax_account: "%env(STRIPE_TAX_ACCOUNT)%"
+  app.stripe.stripe_account_metadata: "%env(STRIPE_ACCOUNT_METADATA)%"
   app.workflow.enable_product_payment_split: "%env(default:deprecated_enable_product_payment_split:bool:ENABLE_PRODUCT_PAYMENT_SPLIT)%"
   app.workflow.enable_service_payment_split: "%env(bool:ENABLE_SERVICE_PAYMENT_SPLIT)%"
   app.workflow.enable_product_payment_refund: "%env(default:deprecated_enable_product_payment_refund:bool:ENABLE_PRODUCT_PAYMENT_REFUND)%"
@@ -48,6 +49,8 @@ parameters:
   app.workflow.enable_seller_onboarding: "%env(bool:ENABLE_SELLER_ONBOARDING)%"
   app.workflow.payment_metadata_commercial_order_id: "%env(default:deprecated_payment_metadata_commercial_order_id:PAYMENT_METADATA_COMMERCIAL_ORDER_ID)%"
   app.workflow.enable_payment_tax_split: "%env(bool:ENABLE_PAYMENT_TAX_SPLIT)%"
+  app.workflow.enable_subtract_taxes_from_transfer_amount: "%env(bool:ENABLE_SUBTRACT_TAXES_FROM_TRANSFER_AMOUNT)%"
+  app.workflow.process_refunds_without_original_transaction: "%env(bool:PROCESS_REFUNDS_WITHOUT_ORIGINAL_TRANSACTION)%"
   app.mirakl.api_key: "%env(MIRAKL_API_KEY)%"
   app.mirakl.host_name: "%env(MIRAKL_HOST_NAME)%"
   app.mirakl.stripe_custom_field_code: "%env(MIRAKL_CUSTOM_FIELD_CODE)%"
@@ -91,7 +94,10 @@ services:
       $baseHostOverride: "%app.base_host%"
 
       $enablePaymentTaxSplit: "%app.workflow.enable_payment_tax_split%"
+      $enableSubtractTaxesFromTransferAmount: "%app.workflow.enable_subtract_taxes_from_transfer_amount%"
+      $processRefundsWithoutOriginalTransaction: "%app.workflow.process_refunds_without_original_transaction%"
       $stripeTaxAccount: "%app.stripe.tax_account%"
+      $stripeAccountMetadata: "%app.stripe.stripe_account_metadata%"
       $taxOrderPostfix: "_TAX"
       $miraklShopKycDisable: "%app.mirakl.shop_kyc_disable%"
 
@@ -136,7 +142,7 @@ services:
     calls:
       - method: setFormatter
         arguments:
-            - '@monolog.formatter.html'
+          - '@monolog.formatter.html'
     arguments:
       $mailer: '@mailer'
       $messageFactory: '@symfony_mailer_monolog.mail_message_factory'
@@ -148,31 +154,31 @@ services:
 
   App\Command\SellerOnboardingCommand:
     calls:
-        - setLogger: ['@monolog.logger.onboarding']
+      - setLogger: ['@monolog.logger.onboarding']
 
   App\Command\AlertingCommand:
     calls:
-        - setLogger: ['@monolog.logger.failed_operation']
+      - setLogger: ['@monolog.logger.failed_operation']
 
   App\Command\PaymentRefundCommand:
     calls:
-        - setLogger: ['@monolog.logger.process_refund']
+      - setLogger: ['@monolog.logger.process_refund']
 
   App\Command\PaymentSplitCommand:
     calls:
-        - setLogger: ['@monolog.logger.process_transfer']
+      - setLogger: ['@monolog.logger.process_transfer']
 
   App\Command\PaymentValidationCommand:
     calls:
-        - setLogger: ['@monolog.logger.pending_debit']
+      - setLogger: ['@monolog.logger.pending_debit']
 
   App\Command\SellerSettlementCommand:
     calls:
-        - setLogger: ['@monolog.logger.process_payout']
-        
+      - setLogger: ['@monolog.logger.process_payout']
+
   App\Command\SellerMonitorKYCStatusCommand:
     calls:
-        - setLogger: ['@monolog.logger.monitor_kyc_status']        
+      - setLogger: ['@monolog.logger.monitor_kyc_status']
 
   App\Service\StripeClient:
     bind:

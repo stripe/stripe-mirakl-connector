@@ -61,6 +61,7 @@ class ProcessPayoutHandler implements MessageHandlerInterface, LoggerAwareInterf
                 sprintf('Could not create Stripe Payout: %s.', $e->getMessage()),
                 [
                     'miraklShopId' => $accountMapping->getMiraklShopId(),
+                    'stripeAccountId' => $accountMapping->getStripeAccountId(),
                     'stripePayoutId' => $payout->getMiraklInvoiceId(),
                     'stripeErrorCode' => $e->getStripeCode(),
                 ]

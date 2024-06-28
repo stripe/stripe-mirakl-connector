@@ -8,15 +8,15 @@ Based on [TrafeX/docker-php-nginx](https://github.com/TrafeX/docker-php-nginx), 
 Although not production-ready as-is, it shows the basic configuration required.
 
 Some examples of tasks required to complete the configuration for production:
-- Replace the [certs](app/certs) content with valid certificates.
+- Replace the [certs](examples/docker/certs) content with valid certificates.
 - Update [nginx.conf](app/config/nginx.conf) and [php.ini](app/config/php.ini) to fit your server configuration.
 - Deny access to the OpenAPI specs.
 
 ## Installation
 
 1. Rename [.env.dist](../../.env.dist) to `.env` and update the configuration, see the [Configuration](https://stripe.com/docs/plugins/mirakl/configuration) step in our docs.
-2. From the [examples/docker](./) folder, run `make install` to start the application.
-3. If you are starting the application for the first time, run `make db-install` to set up the database.
+2. From the [examples/docker](./) folder, run `docker compose build --no-cache` to build the application.
+3. After the build is done successfully, from the [examples/docker](./) folder, run `docker compose up` to start the application.
 
 ## Versioning
 
@@ -45,3 +45,9 @@ To downgrade:
 ## Read logs
 
 Logs are available under the `app` service: `docker-compose logs -tf app`.
+
+## Setting up SSL Connection
+
+Create the `server.key` `server.crt` and `ca.crt` files in the `examples/docker/certs` folder.
+Update in the `.env` file the `DATABASE_URL` with the following format: `pgsql://symfony:symfony@db:5432/symfony?sslmode=require`
+```
