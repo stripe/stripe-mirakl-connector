@@ -1,0 +1,36 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  check_changed_files:
+    runs-on: k8s-ci
+    outputs:
+      changed_files: ${{ steps.verify-changed.outputs.all_changed_files }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify Changed files
+        uses: tj-actions/changed-files@v40
+        id: verify-changed
+  build_docker_image_app:
+    needs: check_changed_files
+    if: contains(needs.check_changed_files.outputs.changed_files, 'examples/docker/php')
+    uses: seidor-cx/github-actions/.github/workflows/docker_build_and_push.yml@main
+    with:
+      CONTEXT: "examples/docker/php"
+      IMAGE: "connector-stripe-mirakle-app"
+      TAG: "${{ github.sha }}"
+  build_docker_image_proxy:
+    needs: check_changed_files
+    if: contains(needs.check_changed_files.outputs.changed_files, 'examples/docker/nginx')
+    uses: seidor-cx/github-actions/.github/workflows/docker_build_and_push.yml@main
+    with:
+      CONTEXT: "examples/docker/nginx"
+      IMAGE: "connector-stripe-mirakle-proxy"
+      TAG: "${{ github.sha }}"
