@@ -2,13 +2,17 @@ doctrine:
     dbal:
         # configure these for your database server
         driver: 'pdo_pgsql'
-        server_version: '11.5'
+        server_version: '12.5'
         charset: utf8
         default_table_options:
             charset: utf8
             collate: utf8_unicode_ci
 
         url: '%env(resolve:DATABASE_URL)%'
+        sslmode: '%env(POSTGRES_SSL_MODE)%'
+        sslrootcert: '%env(CERT_DIR)%/postgres-ca-cert.crt'
+        sslcert: '%env(CERT_DIR)%/postgres-client.crt'
+        sslkey: '%env(CERT_DIR)%/postgres-client.key'
         schema_filter: '~^(?!messenger_messages)~'
     orm:
         auto_generate_proxy_classes: true

@@ -2,10 +2,12 @@
 
 namespace App\Handler;
 
+use App\Entity\MiraklProductOrder;
 use App\Entity\StripeTransfer;
 use App\Message\ProcessTransferMessage;
 use App\Repository\StripeTransferRepository;
 use App\Service\StripeClient;
+use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -25,12 +27,19 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
      */
     private $stripeTransferRepository;
 
+    /**
+     * @var MiraklClient
+     */
+    private $miraklClient;
+
     public function __construct(
         StripeClient $stripeClient,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        MiraklClient $miraklClient
     ) {
         $this->stripeClient = $stripeClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->miraklClient = $miraklClient;
     }
 
     public function __invoke(ProcessTransferMessage $message): void
@@ -48,10 +57,19 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
 
         try {
             $metadata = ['miraklId' => $transfer->getMiraklId()];
+            if ($type == StripeTransfer::TRANSFER_PRODUCT_ORDER) {
+                $order = $this->miraklClient->listProductOrdersById([$transfer->getMiraklId()]);
+                $metadata = array_merge($metadata, $this->additionalMetaDataForProductOrderTransfer($order[$transfer->getMiraklId()]));
+            }
             switch ($type) {
                 case StripeTransfer::TRANSFER_PRODUCT_ORDER:
                 case StripeTransfer::TRANSFER_SERVICE_ORDER:
+                case StripeTransfer::TRANSFER_REFUND:
+                case StripeTransfer::TRANSFER_EXTRA_INVOICES:
+                case StripeTransfer::TRANSFER_SUBSCRIPTION:
                 case StripeTransfer::TRANSFER_EXTRA_CREDITS:
+                    break;
+                case StripeTransfer::TRANSFER_INVOICE:
                     $accountMapping = $transfer->getAccountMapping();
                     assert(null !== $accountMapping);
                     assert(null !== $accountMapping->getStripeAccountId());
@@ -61,29 +79,6 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
                         $currency,
                         $amount,
                         $accountMapping->getStripeAccountId(),
-                        $transfer->getTransactionId(),
-                        $metadata
-                    );
-                    break;
-                case StripeTransfer::TRANSFER_SUBSCRIPTION:
-                case StripeTransfer::TRANSFER_EXTRA_INVOICES:
-                    $accountMapping = $transfer->getAccountMapping();
-                    assert(null !== $accountMapping);
-                    assert(null !== $accountMapping->getStripeAccountId());
-
-                    $metadata['miraklShopId'] = $accountMapping->getMiraklShopId();
-                    $response = $this->stripeClient->createTransferFromConnectedAccount(
-                        $currency,
-                        $amount,
-                        $accountMapping->getStripeAccountId(),
-                        $metadata
-                    );
-                    break;
-                case StripeTransfer::TRANSFER_REFUND:
-                    assert(null !== $transfer->getTransactionId());
-
-                    $response = $this->stripeClient->reverseTransfer(
-                        $amount,
                         $transfer->getTransactionId(),
                         $metadata
                     );
@@ -99,7 +94,15 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
             $this->logger->error($message, [
                 'miraklId' => $transfer->getMiraklId(),
+                'transferId' => $transfer->getTransferId(),
+                'transactionId' => $transfer->getTransactionId(),
+                'amount' => $transfer->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),
+                'miraklShopId' => $transfer->getAccountMapping()->getMiraklShopId() ?? 'No shop id available.',
+                'accountMapping' => json_encode($transfer->getAccountMapping() ?? []),
+                'file' => $e->getFile() ??  'No file available.',
+                'line' => $e->getLine() ?? 'No line available.',
+                'trace' => $e->getTraceAsString() ?? 'No trace available.',
             ]);
 
             $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);
@@ -107,5 +110,14 @@ class ProcessTransferHandler implements MessageHandlerInterface, LoggerAwareInte
         }
 
         $this->stripeTransferRepository->flush();
+    }
+
+    private function additionalMetaDataForProductOrderTransfer(MiraklProductOrder $order): array
+    {
+        return [
+            'ORDER_TAX_AMOUNT' => $order->getTotalTypeTaxes('taxes'),
+            'SHIPPING_TAX_AMOUNT' => $order->getTotalTypeTaxes('shipping_taxes'),
+            'COMMISSION_FEES' => $order->getOperatorCommission()
+        ];
     }
 }

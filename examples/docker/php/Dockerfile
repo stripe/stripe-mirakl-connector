@@ -2,12 +2,15 @@ FROM php:8.2-fpm as application
 
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.29/supercronic-linux-amd64 \
     SUPERCRONIC=supercronic-linux-amd64 \
-    SUPERCRONIC_SHA1SUM=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b
+    SUPERCRONIC_SHA1SUM=cd48d45c4b10f3f0bfdd3a57d054cd05ac96812b \
+    CERT_DIR=/usr/share/ssl
 
 USER root
 
 # Configure PHP
 COPY examples/docker/php/php.ini /usr/local/etc/php/conf.d/docker-php-config.ini
+COPY examples/docker/php/php_run.sh /usr/local/bin/php_run.sh
+RUN chmod +x /usr/local/bin/php_run.sh
 
 # Install packages
 RUN apt-get update && apt-get install -y \
@@ -86,7 +89,14 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
 # Create supervisor log directory and let www-data user read it
 RUN chown -R www-data /var/log/supervisor
 
+RUN mkdir /usr/share/ssl
+RUN chown www-data /usr/share/ssl
+
+COPY examples/docker/php/dumpcerts.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/dumpcerts.sh
+
 USER www-data
+CMD ["/usr/local/bin/php_run.sh"]
 
 FROM nginx:latest as nginx
 

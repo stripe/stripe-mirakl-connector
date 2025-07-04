@@ -3,7 +3,7 @@
 namespace App\Handler;
 
 use App\Exception\InvalidStripeAccountException;
-use App\Message\AccountUpdateMessage;
+use App\Message\AccountUpdateKYCMessage;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
@@ -34,29 +34,48 @@ class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscrib
      */
     private $stripeClient;
 
-    public function __construct(MiraklClient $miraklClient, StripeClient $stripeClient)
-    {
+    /**
+     * @param MiraklClient $miraklClient
+     * @param StripeClient $stripeClient
+     */
+    public function __construct(
+        MiraklClient $miraklClient,
+        StripeClient $stripeClient
+    ) {
         $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
     }
 
-    public function __invoke(AccountUpdateMessage $message): void
+    /**
+     * @param AccountUpdateKYCMessage $message
+     * @return void
+     * @throws InvalidStripeAccountException
+     */
+    public function __invoke(AccountUpdateKYCMessage $message): void
     {
         $messagePayload = $message->getContent()['payload'];
         $this->logger->info('Received Stripe `account.updated` webhook. Updating KYC status.', $messagePayload);
 
-        $stripeAccount = $this->stripeClient->retrieveAccount($messagePayload['stripeUserId']);
+        $stripeAccount = $messagePayload['stripeAccount'];
 
         $this->miraklClient->updateShopKycStatus($messagePayload['miraklShopId'], $this->getKYCStatus($stripeAccount));
     }
 
+    /**
+     * @return iterable
+     */
     public static function getHandledMessages(): iterable
     {
-        yield AccountUpdateMessage::class => [
+        yield AccountUpdateKYCMessage::class => [
             'from_transport' => 'update_kyc_status',
         ];
     }
 
+    /**
+     * @param Account $stripeAccount
+     * @return string
+     * @throws InvalidStripeAccountException
+     */
     private function getKYCStatus(Account $stripeAccount): string
     {
         $requirements = $stripeAccount->requirements;

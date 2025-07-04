@@ -63,6 +63,7 @@ class StripeTransfer
 
     // Transfer types
     public const TRANSFER_PRODUCT_ORDER = 'TRANSFER_PRODUCT_ORDER';
+    public const TRANSFER_INVOICE = 'TRANSFER_INVOICE';
     public const TRANSFER_SERVICE_ORDER = 'TRANSFER_SERVICE_ORDER';
     public const TRANSFER_REFUND = 'TRANSFER_REFUND';
     public const TRANSFER_SUBSCRIPTION = 'TRANSFER_SUBSCRIPTION';
@@ -178,6 +179,7 @@ class StripeTransfer
             self::TRANSFER_SUBSCRIPTION,
             self::TRANSFER_EXTRA_CREDITS,
             self::TRANSFER_EXTRA_INVOICES,
+            self::TRANSFER_INVOICE
         ];
     }
 
@@ -195,6 +197,7 @@ class StripeTransfer
             self::TRANSFER_SUBSCRIPTION,
             self::TRANSFER_EXTRA_CREDITS,
             self::TRANSFER_EXTRA_INVOICES,
+            self::TRANSFER_INVOICE
         ];
     }
 

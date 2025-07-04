@@ -51,8 +51,15 @@ class StripePayoutFactory implements LoggerAwareInterface
         try {
             $payout->setAmount($this->getInvoiceAmount($invoice, $mclient));
             $payout->setCurrency(strtolower($invoice['currency_iso_code']));
+
+            $shop_accountMapping = $this->getAccountMapping($invoice['shop_id'] ?? 0);
+            if ($shop_accountMapping->getIgnored()) {
+                $shopId = $shop_accountMapping->getMiraklShopId();
+
+                return $this->abortPayout($payout, $shopId, "Shop $shopId is ignored");
+            }
         } catch (InvalidArgumentException $e) {
-            return $this->abortPayout($payout, $e->getMessage());
+            return $this->abortPayout($payout, $invoice['shop_id'], $e->getMessage());
         }
 
         // Save Stripe account corresponding with this shop
@@ -64,10 +71,10 @@ class StripePayoutFactory implements LoggerAwareInterface
             switch ($e->getCode()) {
                 // Problem is final, let's abort
                 case 10:
-                    return $this->abortPayout($payout, $e->getMessage());
+                    return $this->abortPayout($payout, $invoice['shop_id'], $e->getMessage());
                     // Problem is just temporary, let's put on hold
                 case 20:
-                    return $this->putPayoutOnHold($payout, $e->getMessage());
+                    return $this->putPayoutOnHold($payout, $invoice['shop_id'], $e->getMessage());
             }
         }
 
@@ -113,11 +120,15 @@ class StripePayoutFactory implements LoggerAwareInterface
         return $amount;
     }
 
-    private function putPayoutOnHold(StripePayout $payout, string $reason): StripePayout
+    private function putPayoutOnHold(StripePayout $payout, $shopId, string $reason): StripePayout
     {
         $this->logger->info(
-            'Payout on hold: '.$reason,
-            ['invoice_id' => $payout->getMiraklInvoiceId()]
+            'Payout on hold: '. $reason,
+            [
+                'invoiceId' => $payout->getMiraklInvoiceId(),
+                'statusReason' => $reason,
+                'miraklShopId' => $shopId
+            ]
         );
 
         $payout->setStatusReason($reason);
@@ -125,11 +136,15 @@ class StripePayoutFactory implements LoggerAwareInterface
         return $payout->setStatus(StripePayout::PAYOUT_ON_HOLD);
     }
 
-    private function abortPayout(StripePayout $payout, string $reason): StripePayout
+    private function abortPayout(StripePayout $payout, int $shopId, string $reason): StripePayout
     {
         $this->logger->info(
-            'Payout aborted: '.$reason,
-            ['invoice_id' => $payout->getMiraklInvoiceId()]
+            'Payout aborted: '. $reason,
+            [
+                'invoiceId' => $payout->getMiraklInvoiceId(),
+                'statusReason' => $reason,
+                'miraklShopId' => $shopId
+            ]
         );
 
         $payout->setStatusReason($reason);
@@ -141,7 +156,13 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Payout created',
-            ['invoice_id' => $payout->getMiraklInvoiceId()]
+            [
+                'invoiceId' => $payout->getMiraklInvoiceId(),
+                'payoutId' => $payout->getPayoutId(),
+                'statusReason' => $payout->getStatusReason(),
+                'miraklShopId' => ($payout->getAccountMapping()) ? $payout->getAccountMapping()->getMiraklShopId() : 'No shop id available.',
+                'accountMapping' => json_encode($payout->getAccountMapping() ?? [])
+            ]
         );
 
         $payout->setStatusReason(null);

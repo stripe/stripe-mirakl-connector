@@ -56,7 +56,7 @@ class StripeClient
     {
         return [
             'pluginName' => self::APP_NAME,
-            'pluginVersion' => $this->version,
+            'pluginVersion' => $this->version
         ];
     }
 
@@ -96,6 +96,13 @@ class StripeClient
                 'schedule' => ['interval' => 'manual'],
             ]],
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
+        ], $details));
+    }
+
+    public function updateStripeAccount(string $stripeAccountId, array $details, array $metaData = []): Account
+    {
+        return Account::update($stripeAccountId, array_merge([
+            'metadata' => array_merge($metaData, $this->getDefaultMetadata())
         ], $details));
     }
 

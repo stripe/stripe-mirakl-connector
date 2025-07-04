@@ -92,7 +92,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         $invoices = $this->miraklClient->listInvoicesByShopId($shopId);
 
         $this->dispatchTransfers(
-            $this->sellerSettlementService->getTransfersFromInvoices($invoices)
+            $this->sellerSettlementService->createTransfersFromInvoices($invoices)
         );
 
         $this->dispatchPayouts(
@@ -155,7 +155,7 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         }
 
         $this->dispatchTransfers(
-            $this->sellerSettlementService->getTransfersFromInvoices($invoices)
+            $this->sellerSettlementService->createTransfersFromInvoices($invoices)
         );
 
         $this->dispatchPayouts(

@@ -48,7 +48,11 @@ class CancelPendingPaymentHandler implements MessageHandlerInterface, LoggerAwar
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not cancel Stripe Charge: %s.', $e->getMessage()), [
                 'chargeId' => $paymentMapping->getStripeChargeId(),
+                'mirakl_commercial_id' => $paymentMapping->getMiraklCommercialOrderId(),
                 'stripeErrorCode' => $e->getStripeCode(),
+                'file' => $e->getFile() ??  'No file available.',
+                'line' => $e->getLine() ?? 'No line available.',
+                'trace' => $e->getTraceAsString() ?? 'No trace available.',
             ]);
         }
     }

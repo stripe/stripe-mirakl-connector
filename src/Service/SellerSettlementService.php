@@ -94,6 +94,33 @@ class SellerSettlementService
         return $transfersByInvoiceId;
     }
 
+    public function createTransfersFromInvoices(array $invoices): array
+    {
+        // Retrieve existing StripeTransfers with provided invoice IDs
+        $existingTransfers = $this->stripeTransferRepository
+            ->findTransfersByInvoiceIds(array_keys($invoices));
+        $type = StripeTransfer::TRANSFER_INVOICE;
+        $transfersByInvoiceId = [];
+        foreach ($invoices as $invoice) {
+            $invoiceId = $invoice['invoice_id'];
+            if (isset($existingTransfers[$invoiceId][$type])) {
+                continue;
+            }
+            
+            // Create new transfer
+            $transfer = $this->stripeTransferFactory
+            ->createFromInvoiceTransfer($invoice, $type);
+            $this->stripeTransferRepository->persist($transfer);
+
+            $transfersByInvoiceId[$invoiceId][$type] = $transfer;
+        }
+
+        // Save
+        $this->stripeTransferRepository->flush();
+
+        return $transfersByInvoiceId;
+    }
+
     /**
      * @return array [ invoice_id => StripeTransfer[] ]
      */

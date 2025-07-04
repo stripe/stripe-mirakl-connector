@@ -8,6 +8,7 @@ use App\Entity\StripeRefund;
 use App\Exception\InvalidArgumentException;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripeTransferRepository;
+use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -33,14 +34,28 @@ class StripeRefundFactory implements LoggerAwareInterface
      */
     private $stripeClient;
 
+    /**
+     * @var MiraklClient
+     */
+    private $miraklClient;
+
+    /**
+     * @var bool
+     */
+    private $processRefundsWithoutOriginalTransaction;
+
     public function __construct(
         PaymentMappingRepository $paymentMappingRepository,
         StripeTransferRepository $stripeTransferRepository,
-        StripeClient $stripeClient
+        StripeClient $stripeClient,
+        MiraklClient $miraklClient,
+        $processRefundsWithoutOriginalTransaction
     ) {
         $this->paymentMappingRepository = $paymentMappingRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->stripeClient = $stripeClient;
+        $this->miraklClient = $miraklClient;
+        $this->processRefundsWithoutOriginalTransaction = $processRefundsWithoutOriginalTransaction;
     }
 
     public function createFromOrderRefund(MiraklPendingRefund $pendingRefund): StripeRefund
@@ -65,6 +80,10 @@ class StripeRefundFactory implements LoggerAwareInterface
 
     public function updateRefund(StripeRefund $refund): StripeRefund
     {
+        if ($this->processRefundsWithoutOriginalTransaction) {
+            return $refund->setStatus(StripeRefund::REFUND_CREATED);
+        }
+
         // Find charge ID
         $transactionId = $refund->getTransactionId();
         if (!$transactionId) {
@@ -209,9 +228,19 @@ class StripeRefundFactory implements LoggerAwareInterface
 
     private function putRefundOnHold(StripeRefund $refund, string $reason): StripeRefund
     {
+        $orderData = $this->getMiraklShopIdFromOrder($refund->getMiraklOrderId());
         $this->logger->info(
             'Refund on hold: '.$reason,
-            ['refund_id' => $refund->getMiraklRefundId()]
+            [
+                'refundId' => $refund->getMiraklRefundId(),
+                'miraklOrderId' => $refund->getMiraklOrderId(),
+                'miraklCommercialOrderId' => $refund->getMiraklCommercialOrderId(),
+                'miraklOrderLineId' => $refund->getMiraklOrderLineId(),
+                'miraklShopId' => ($orderData) ? $orderData['shop_id'] : 'No shop id available.',
+                'transactionId' => $refund->getTransactionId(),
+                'stripeRefundId' => $refund->getStripeRefundId(),
+                'type' => $refund->getType()
+            ]
         );
 
         return $refund
@@ -221,13 +250,34 @@ class StripeRefundFactory implements LoggerAwareInterface
 
     private function abortRefund(StripeRefund $refund, string $reason): StripeRefund
     {
+        $orderData = $this->getMiraklShopIdFromOrder($refund->getMiraklOrderId());
         $this->logger->info(
             'Refund aborted: '.$reason,
-            ['refund_id' => $refund->getMiraklRefundId()]
+            [
+                'refundId' => $refund->getMiraklRefundId(),
+                'miraklOrderId' => $refund->getMiraklOrderId(),
+                'miraklCommercialOrderId' => $refund->getMiraklCommercialOrderId(),
+                'miraklOrderLineId' => $refund->getMiraklOrderLineId(),
+                'miraklShopId' => ($orderData) ? $orderData['shop_id'] : 'No shop id available.',
+                'transactionId' => $refund->getTransactionId(),
+                'stripeRefundId' => $refund->getStripeRefundId(),
+                'type' => $refund->getType()
+            ]
         );
 
         return $refund
             ->setStatus(StripeRefund::REFUND_ABORTED)
             ->setStatusReason(substr($reason, 0, 1024));
+    }
+
+    private function getMiraklShopIdFromOrder($miraklOrderId)
+    {
+        $order = $this->miraklClient->listProductOrdersById([$miraklOrderId]);
+        $orderData = null;
+        if (isset($order[$miraklOrderId])) {
+            $orderData = $order[$miraklOrderId];
+        }
+
+        return $orderData;
     }
 }

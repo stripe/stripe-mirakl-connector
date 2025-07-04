@@ -60,6 +60,11 @@ class StripeTransferFactory implements LoggerAwareInterface
     private $taxOrderPostfix;
     private $enablePaymentTaxSplit;
 
+    /**
+     * @var bool
+     */
+    private $enableSubtractTaxesFromTransferAmount;
+
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
@@ -69,7 +74,8 @@ class StripeTransferFactory implements LoggerAwareInterface
         StripeClient $stripeClient,
         string $stripeTaxAccount,
         string $taxOrderPostfix,
-        bool $enablePaymentTaxSplit
+        bool $enablePaymentTaxSplit,
+        bool $enableSubtractTaxesFromTransferAmount
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -80,6 +86,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $this->stripeTaxAccount = $stripeTaxAccount;
         $this->taxOrderPostfix = $taxOrderPostfix;
         $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
+        $this->enableSubtractTaxesFromTransferAmount = $enableSubtractTaxesFromTransferAmount;
     }
 
     public function createFromOrder(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
@@ -225,6 +232,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $amount = $order->getAmountDue();
         $commission = $order->getOperatorCommission();
         $transferAmount = $amount - $commission;
+
         if ($this->enablePaymentTaxSplit) {
             $orderTaxTotal = $order->getOrderTaxTotal();
             if ($isForTax) {
@@ -232,7 +240,11 @@ class StripeTransferFactory implements LoggerAwareInterface
             } else {
                 $transferAmount = $transferAmount - $orderTaxTotal;
             }
+        } elseif ($this->enableSubtractTaxesFromTransferAmount) {
+            $orderTaxTotal = $order->getOrderTaxTotal();
+            $transferAmount = $transferAmount - $orderTaxTotal;
         }
+
         if ($transferAmount <= 0) {
             return $this->abortTransfer($transfer, sprintf(
                 StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
@@ -318,6 +330,10 @@ class StripeTransferFactory implements LoggerAwareInterface
                 } else {
                     $transferAmount = $transferAmount - $refundedTax;
                 }
+            } elseif ($this->enableSubtractTaxesFromTransferAmount) {
+                $refundedTax = $order->getRefundedTax($refund);
+                $refundedTax = gmp_intval((string) ($refundedTax * 100));
+                $transferAmount = $transferAmount - $refundedTax;
             }
             $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
@@ -354,11 +370,42 @@ class StripeTransferFactory implements LoggerAwareInterface
         return $this->updateFromInvoice($transfer, $invoice, $type);
     }
 
+    public function createFromInvoiceTransfer(array $invoice, string $type): StripeTransfer
+    {
+        $transfer = new StripeTransfer();
+        $transfer->setType($type);
+        $transfer->setMiraklId($invoice['invoice_id']);
+
+        try {
+            $transfer->setMiraklCreatedDate(
+                MiraklClient::getDatetimeFromString($invoice['date_created'])
+            );
+        } catch (InvalidArgumentException $e) {
+            // Shouldn't happen, see MiraklClient::getDatetimeFromString
+            return $this->abortTransfer($transfer, $e->getMessage());
+        }
+
+        return $this->updateFromInvoice($transfer, $invoice, $type);
+    }
+
     public function updateFromInvoice(StripeTransfer $transfer, array $invoice, string $type): StripeTransfer
     {
         // Transfer already created
         if ($transfer->getTransferId()) {
             return $this->markTransferAsCreated($transfer);
+        }
+
+        // Shop must have a Stripe account
+        try {
+            $shop_accountMapping = $this->getAccountMapping($invoice['shop_id'] ?? 0);
+        } catch (InvalidArgumentException $e) {
+            // Onboarding still to be completed, let's wait
+            return $this->putTransferOnHold($transfer, $e->getMessage());
+        }
+        if ($shop_accountMapping->getIgnored()) {
+            $shopId = $shop_accountMapping->getMiraklShopId();
+
+            return $this->ignoreTransfer($transfer, "Shop $shopId is ignored");
         }
 
         // Save Stripe account corresponding with this shop
@@ -378,6 +425,39 @@ class StripeTransferFactory implements LoggerAwareInterface
         // Amount and currency
         try {
             $transfer->setAmount($this->getInvoiceAmount($invoice, $type));
+            $transfer->setCurrency(strtolower($invoice['currency_iso_code']));
+        } catch (InvalidArgumentException $e) {
+            return $this->abortTransfer($transfer, $e->getMessage());
+        }
+
+        // All good
+        return $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+    }
+
+    public function updateFromInvoiceTransfer(StripeTransfer $transfer, array $invoice, string $type): StripeTransfer
+    {
+        // Transfer already created
+        if ($transfer->getTransferId()) {
+            return $this->markTransferAsCreated($transfer);
+        }
+
+        // Save Stripe account corresponding with this shop
+        try {
+            $transfer->setAccountMapping($this->getAccountMapping($invoice['shop_id'] ?? 0));
+        } catch (InvalidArgumentException $e) {
+            switch ($e->getCode()) {
+                // Problem is final, let's abort
+                case 10:
+                    return $this->abortTransfer($transfer, $e->getMessage());
+                // Problem is just temporary, let's put on hold
+                case 20:
+                    return $this->putTransferOnHold($transfer, $e->getMessage());
+            }
+        }
+
+        // Amount and currency
+        try {
+            $transfer->setAmount($invoice['summary']['amount_transferred'] ?? 0);
             $transfer->setCurrency(strtolower($invoice['currency_iso_code']));
         } catch (InvalidArgumentException $e) {
             return $this->abortTransfer($transfer, $e->getMessage());
@@ -479,6 +559,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             StripeTransfer::TRANSFER_SUBSCRIPTION => 'total_subscription_incl_tax',
             StripeTransfer::TRANSFER_EXTRA_CREDITS => 'total_other_credits_incl_tax',
             StripeTransfer::TRANSFER_EXTRA_INVOICES => 'total_other_invoices_incl_tax',
+            StripeTransfer::TRANSFER_INVOICE => 'amount_transferred'
         ];
 
         $amount = $invoice['summary'][$typeToKey[$type]] ?? 0;
@@ -494,7 +575,14 @@ class StripeTransferFactory implements LoggerAwareInterface
     {
         $this->logger->info(
             'Transfer on hold: '.$reason,
-            ['order_id' => $transfer->getMiraklId()]
+            [
+                'orderId' => $transfer->getMiraklId(),
+                'transferId' => $transfer->getTransferId(),
+                'transactionId' => $transfer->getTransactionId(),
+                'statusReason' => $transfer->getStatusReason(),
+                'miraklShopId' => ($transfer->getAccountMapping()) ? $transfer->getAccountMapping()->getMiraklShopId() : 'No shop id available.',
+                'accountMapping' => json_encode($transfer->getAccountMapping() ?? [])
+            ]
         );
 
         return $transfer
@@ -505,8 +593,15 @@ class StripeTransferFactory implements LoggerAwareInterface
     private function abortTransfer(StripeTransfer $transfer, string $reason): StripeTransfer
     {
         $this->logger->info(
-            'Transfer aborted: '.$reason,
-            ['order_id' => $transfer->getMiraklId()]
+            'Transfer aborted: '. $reason,
+            [
+                'orderId' => $transfer->getMiraklId(),
+                'transferId' => $transfer->getTransferId(),
+                'transactionId' => $transfer->getTransactionId(),
+                'statusReason' => $transfer->getStatusReason(),
+                'miraklShopId' => ($transfer->getAccountMapping()) ? $transfer->getAccountMapping()->getMiraklShopId() : 'No shop id available.',
+                'accountMapping' => json_encode($transfer->getAccountMapping() ?? [])
+            ]
         );
 
         return $transfer
@@ -517,8 +612,15 @@ class StripeTransferFactory implements LoggerAwareInterface
     private function ignoreTransfer(StripeTransfer $transfer, string $reason): StripeTransfer
     {
         $this->logger->info(
-            'Transfer ignored: '.$reason,
-            ['order_id' => $transfer->getMiraklId()]
+            'Transfer ignored: '. $reason,
+            [
+                'orderId' => $transfer->getMiraklId(),
+                'transferId' => $transfer->getTransferId(),
+                'transactionId' => $transfer->getTransactionId(),
+                'statusReason' => $transfer->getStatusReason(),
+                'miraklShopId' => ($transfer->getAccountMapping()) ? $transfer->getAccountMapping()->getMiraklShopId() : 'No shop id available.',
+                'accountMapping' => json_encode($transfer->getAccountMapping() ?? [])
+            ]
         );
 
         return $transfer

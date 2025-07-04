@@ -141,58 +141,78 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
         $this->logger->info('starting');
-        echo 'process start';
+        echo 'Process Start' . PHP_EOL;
 
-        $stripeAccts = $this->stripeClient->retrieveAllAccounts();
-
-        //  echo count($stripeAccts);
-
+        $stripeAccounts = $this->stripeClient->retrieveAllAccounts();
         $accountsInDB = $this->accountMappingRepository->findAll();
 
-        $mirakl_update_shop_kyc_reqs = [];
-
+        $miraklUpdateShopKycReqs = [];
         $kycRequiredAccountDets = [];
 
-        foreach ($stripeAccts as $st_acc) {
-            $kyc_disabled_status = $this->getKYCStatus($st_acc);
+        foreach ($stripeAccounts as $stripeAccount) {
 
-            // echo "\n-----".$st_acc->id."  ".$kyc_disabled_status."mmmmm";
+            echo '----------------- Start of record -----------------' . PHP_EOL;
+            $kycStatus = $this->getKYCStatus($stripeAccount);
+            echo 'KYC Disabled Status: ' . $kycStatus . PHP_EOL;
 
-            $dbAccount = $this->findAccount($st_acc->id, $accountsInDB);
+            $dbAccount = $this->findAccount($stripeAccount->id, $accountsInDB);
+            echo 'Stripe Account ID: ' . $stripeAccount->id . ', KYC Status: ' . $kycStatus . PHP_EOL;
 
-            if ('' != $kyc_disabled_status && null != $dbAccount) {
+            if ('' != $kycStatus && null != $dbAccount) {
                 $dbAccount->setIgnored(true);
                 $this->accountMappingRepository->persistAndFlush($dbAccount);
 
-                $account_link = $this->stripeClient->createAccountLink($st_acc->id, 'https://dashboard.stripe.com', 'https://dashboard.stripe.com');
+                $accountLink = $this->stripeClient->createAccountLink($stripeAccount->id, 'https://dashboard.stripe.com', 'https://dashboard.stripe.com');
 
-                $mirakl_update_shop_kyc_reqs[] = ['shop_id' => $dbAccount->getMiraklShopId(),
-                         'kyc' => ['status' => $kyc_disabled_status, 'reason' => 'STRIPE CONNECT ACCOUNT DISABLEMENT'],
-                    'shop_additional_fields' => [['code' => $this->customFieldCode, 'value' => $account_link->url]],
+                $miraklUpdateShopKycReqs[] = [
+                    'shop_id' => $dbAccount->getMiraklShopId(),
+                     'kyc' => [
+                         'status' => $kycStatus,
+                         'reason' => 'STRIPE CONNECT ACCOUNT DISABLEMENT'
+                     ],
+                    'shop_additional_fields' => [
+                        [
+                            'code' => $this->customFieldCode,
+                            'value' => $accountLink->url
+                        ]
+                    ]
                 ];
 
-                $kycRequiredAccountDets[] = ['id' => $dbAccount->getId(), 'shop_id' => $dbAccount->getMiraklShopId(),
-                    'connect_account_id' => $st_acc->id, 'reason' => $kyc_disabled_status];
-            } elseif ('' == $kyc_disabled_status && null != $dbAccount && $dbAccount->getIgnored()) {
-                $dbAccount->setIgnored(false);
+                $kycRequiredAccountDets[] = [
+                    'id' => $dbAccount->getId(),
+                    'shop_id' => $dbAccount->getMiraklShopId(),
+                    'connect_account_id' => $stripeAccount->id,
+                    'reason' => $kycStatus
+                ];
+            } elseif ('' == $kycStatus && null != $dbAccount) {
+                //$dbAccount->setIgnored(false);
                 $this->accountMappingRepository->persistAndFlush($dbAccount);
 
-                $account_link = $this->stripeClient->createLoginLink($st_acc->id);
+                $accountLink = $this->stripeClient->createLoginLink($stripeAccount->id);
 
-                $mirakl_update_shop_kyc_reqs[] = ['shop_id' => $dbAccount->getMiraklShopId(),
-                    'kyc' => ['status' => 'APPROVED', 'reason' => 'KYC aaproved'],
-                    'shop_additional_fields' => [['code' => $this->customFieldCode, 'value' => $account_link->url]],
+                $miraklUpdateShopKycReqs[] = [
+                    'shop_id' => $dbAccount->getMiraklShopId(),
+                    'kyc' => [
+                        'status' => 'APPROVED',
+                        'reason' => 'KYC approved'
+                    ],
+                    'shop_additional_fields' => [
+                        [
+                            'code' => $this->customFieldCode,
+                            'value' => $accountLink->url
+                        ]
+                    ]
                 ];
             }
         }
 
-        echo $this->mirakl_shop_kyc_disable;
+        echo 'Mirakl Shop KYC: ' . $this->mirakl_shop_kyc_disable . PHP_EOL;
+        echo 'Count Update Shop KYC: ' . count($miraklUpdateShopKycReqs) . PHP_EOL;
+        echo '----------------- End of record -----------------' . PHP_EOL;
 
-        if ($this->mirakl_shop_kyc_disable && count($mirakl_update_shop_kyc_reqs) > 0) {
-            $this->miraklClient->updateShopKycStatusWithReason($mirakl_update_shop_kyc_reqs);
+        if ($this->mirakl_shop_kyc_disable && count($miraklUpdateShopKycReqs) > 0) {
+            $this->miraklClient->updateShopKycStatusWithReason($miraklUpdateShopKycReqs);
         }
-
-        // print_r($kycRequiredAccountDets);
 
         if (count($kycRequiredAccountDets) > 0) {
             $email = (new TemplatedEmail())
@@ -207,7 +227,7 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
         }
 
         $this->logger->info('job succeeded');
-        echo 'process end';
+        echo 'Process End';
 
         return 0;
     }

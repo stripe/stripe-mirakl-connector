@@ -3,7 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\PaymentMapping;
-use App\Message\AccountUpdateMessage;
+use App\Message\AccountUpdateKYCMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
@@ -68,6 +68,15 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private $metadataCommercialOrderId;
 
+    /**
+     * @param MessageBusInterface $bus
+     * @param StripeClient $stripeClient
+     * @param AccountMappingRepository $accountMappingRepository
+     * @param PaymentMappingRepository $paymentMappingRepository
+     * @param string $webhookSellerSecret
+     * @param string $webhookOperatorSecret
+     * @param string $metadataCommercialOrderId
+     */
     public function __construct(
         MessageBusInterface $bus,
         StripeClient $stripeClient,
@@ -249,7 +258,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         $this->accountMappingRepository->flush();
 
-        $this->bus->dispatch(new AccountUpdateMessage($accountMapping->getMiraklShopId(), $stripeAccount['id']));
+        $this->bus->dispatch(new AccountUpdateKYCMessage($accountMapping->getMiraklShopId(), $stripeAccount));
 
         return 'Account mapping updated.';
     }

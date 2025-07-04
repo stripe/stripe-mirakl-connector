@@ -2,13 +2,19 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:11.5-alpine
-    ports:
-      - "54320:5432"
+    image: postgres:14.0-alpine
+    ports: ["54320:5432"]
     environment:
       POSTGRES_DB: symfony
       POSTGRES_USER: symfony
       POSTGRES_PASSWORD: symfony
+
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U symfony" ]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
 
   php:
     env_file:
@@ -17,9 +23,15 @@ services:
       context: ../../
       dockerfile: ./examples/docker/php/Dockerfile
       target: 'application'
+    environment:
+      POSTGRES_SSL_MODE: "disable"
+      #POSTGRES_SSL_MODE: "verify-ca"
+      POSTGRES_SSL_CA_CERT: ${POSTGRES_SSL_CA_CERT}
+      POSTGRES_SSL_CLIENT_CERT: ${POSTGRES_SSL_CLIENT_CERT}
+      POSTGRES_SSL_CLIENT_KEY: ${POSTGRES_SSL_CLIENT_KEY}
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
 
   nginx:
     build:
@@ -31,3 +43,4 @@ services:
         condition: service_started
     ports:
       - "8000:8000"
+
