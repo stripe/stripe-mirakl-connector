@@ -9,10 +9,10 @@ use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Account;
-use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
-use Symfony\Component\Messenger\Handler\MessageSubscriberInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-class UpdateKYCStatusHandler implements MessageHandlerInterface, MessageSubscriberInterface, LoggerAwareInterface
+#[AsMessageHandler]
+class UpdateKYCStatusHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

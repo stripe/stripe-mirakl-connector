@@ -9,9 +9,10 @@ use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
-use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-class CapturePendingPaymentHandler implements MessageHandlerInterface, LoggerAwareInterface
+#[AsMessageHandler]
+class CapturePendingPaymentHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

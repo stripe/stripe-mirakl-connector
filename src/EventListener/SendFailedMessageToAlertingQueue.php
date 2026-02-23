@@ -45,7 +45,7 @@ class SendFailedMessageToAlertingQueue implements EventSubscriberInterface, Logg
 
         $throwable = $event->getThrowable();
         if ($throwable instanceof HandlerFailedException) {
-            $throwable = $throwable->getNestedExceptions()[0];
+            $throwable = $throwable->getWrappedExceptions()[0];
         }
 
         $this->messageBus->dispatch(new NotificationFailedMessage($throwable, $envelope->getMessage()));

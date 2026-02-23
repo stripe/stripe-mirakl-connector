@@ -1,4 +1,4 @@
-FROM php:8.2-fpm as application
+FROM php:8.4-fpm as application
 
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.29/supercronic-linux-amd64 \
     SUPERCRONIC=supercronic-linux-amd64 \

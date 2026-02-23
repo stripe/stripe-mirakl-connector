@@ -38,6 +38,10 @@ class ProcessRefundHandlerTest extends KernelTestCase
      */
     private $messageBus;
 
+    private $httpNotificationReceiver;
+
+    private $handler;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
@@ -45,13 +49,13 @@ class ProcessRefundHandlerTest extends KernelTestCase
 
         $this->stripeRefundRepository = $container->get('doctrine')->getRepository(StripeRefund::class);
 
-        $this->httpNotificationReceiver = self::$container->get('messenger.transport.operator_http_notification');
+        $this->httpNotificationReceiver = static::getContainer()->get('messenger.transport.operator_http_notification');
 
         $this->handler = new ProcessRefundHandler(
             $container->get('App\Service\MiraklClient'),
             $container->get('App\Service\StripeClient'),
             $this->stripeRefundRepository,
-            self::$container->get(MessageBusInterface::class)
+            static::getContainer()->get(MessageBusInterface::class)
         );
         $this->handler->setLogger(new NullLogger());
     }

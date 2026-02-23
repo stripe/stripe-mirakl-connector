@@ -12,12 +12,12 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'connector:dispatch:process-refund')]
 class PaymentRefundCommand extends Command implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
-
-    protected static $defaultName = 'connector:dispatch:process-refund';
 
     /**
      * @var MessageBusInterface

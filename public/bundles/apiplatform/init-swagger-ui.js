@@ -9,7 +9,7 @@ window.onload = function() {
 
         self.disconnect();
 
-        op.querySelector('.opblock-summary').click();
+        op.querySelector('.opblock-summary-control').click();
         const tryOutObserver = new MutationObserver(function (mutations, self) {
             const tryOut = op.querySelector('.try-out__btn');
             if (!tryOut) return;
@@ -41,10 +41,12 @@ window.onload = function() {
     }).observe(document, {childList: true, subtree: true});
 
     const data = JSON.parse(document.getElementById('swagger-data').innerText);
-    const ui = SwaggerUIBundle({
+    const ui = SwaggerUIBundle(Object.assign({
         spec: data.spec,
         dom_id: '#swagger-ui',
         validatorUrl: null,
+        persistAuthorization: data.persistAuthorization,
+        deepLinking: true,
         oauth2RedirectUrl: data.oauth.redirectUrl,
         presets: [
             SwaggerUIBundle.presets.apis,
@@ -54,7 +56,7 @@ window.onload = function() {
             SwaggerUIBundle.plugins.DownloadUrl,
         ],
         layout: 'StandaloneLayout',
-    });
+    }, data.extraConfiguration));
 
     if (data.oauth.enabled) {
         ui.initOAuth({
@@ -63,7 +65,8 @@ window.onload = function() {
             realm: data.oauth.type,
             appName: data.spec.info.title,
             scopeSeparator: ' ',
-            additionalQueryStringParams: {}
+            additionalQueryStringParams: {},
+            usePkceWithAuthorizationCodeGrant: data.oauth.pkce,
         });
     }
 
@@ -148,4 +151,8 @@ window.onload = function() {
             }, 10000);
         });
     }
+
+    // Make SwaggerUIBundle and data available for some other scripts
+    window.swaggerUI = ui;
+    window.swaggerData = data;
 };

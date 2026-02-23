@@ -31,12 +31,16 @@ class ProcessTransferHandlerTest extends KernelTestCase
      */
     private $stripeTransferRepository;
 
+    private $httpNotificationReceiver;
+
+    private $handler;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
         $container = self::$kernel->getContainer();
 
-        $this->httpNotificationReceiver = self::$container->get('messenger.transport.operator_http_notification');
+        $this->httpNotificationReceiver = static::getContainer()->get('messenger.transport.operator_http_notification');
 
         $this->accountMappingRepository = $container->get('doctrine')->getRepository(AccountMapping::class);
         $this->stripeTransferRepository = $container->get('doctrine')->getRepository(StripeTransfer::class);
@@ -44,7 +48,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
         $this->handler = new ProcessTransferHandler(
             $container->get('App\Service\StripeClient'),
             $this->stripeTransferRepository,
-            self::$container->get(MessageBusInterface::class)
+            static::getContainer()->get(MessageBusInterface::class)
         );
         $this->handler->setLogger(new NullLogger());
     }

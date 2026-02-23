@@ -39,6 +39,12 @@ class StripeTransferFactoryTest extends KernelTestCase
      */
     private $stripeTransferRepository;
 
+    private $paymentMappingRepository;
+
+    private $stripeRefundRepository;
+
+    private $accountMappingRepository;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();

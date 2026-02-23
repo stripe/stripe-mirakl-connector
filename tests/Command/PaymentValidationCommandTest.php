@@ -45,11 +45,11 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->command = $application->find('connector:validate:pending-debit');
         $this->commandTester = new CommandTester($this->command);
 
-        $this->validateReceiver = self::$container->get('messenger.transport.validate_mirakl_order');
-        $this->captureReceiver = self::$container->get('messenger.transport.capture_pending_payment');
-        $this->cancelReceiver = self::$container->get('messenger.transport.cancel_pending_payment');
+        $this->validateReceiver = static::getContainer()->get('messenger.transport.validate_mirakl_order');
+        $this->captureReceiver = static::getContainer()->get('messenger.transport.capture_pending_payment');
+        $this->cancelReceiver = static::getContainer()->get('messenger.transport.cancel_pending_payment');
 
-        $this->paymentMappingRepository = self::$container->get('doctrine')->getRepository(PaymentMapping::class);
+        $this->paymentMappingRepository = static::getContainer()->get('doctrine')->getRepository(PaymentMapping::class);
     }
 
     private function executeCommand()

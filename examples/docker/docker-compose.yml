@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:14.0-alpine
+    image: postgres:18.0-alpine
     ports:
       - "54320:5432"
     environment:
@@ -19,6 +17,7 @@ services:
   php:
     env_file:
       - ./../../.env
+      - ./../../.env.test
     build:
       context: ../../
       dockerfile: ./examples/docker/php/Dockerfile

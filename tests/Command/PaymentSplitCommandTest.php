@@ -29,15 +29,17 @@ class PaymentSplitCommandTest extends KernelTestCase
      */
     private $stripeTransferRepository;
 
+    private $doctrineReceiver;
+
     protected function setUp(): void
     {
         $application = new Application(self::bootKernel());
         $this->command = $application->find('connector:dispatch:process-transfer');
         $this->commandTester = new CommandTester($this->command);
 
-        $this->doctrineReceiver = self::$container->get('messenger.transport.process_transfers');
-        $this->configService = self::$container->get('App\Service\ConfigService');
-        $this->stripeTransferRepository = self::$container->get('doctrine')->getRepository(StripeTransfer::class);
+        $this->doctrineReceiver = static::getContainer()->get('messenger.transport.process_transfers');
+        $this->configService = static::getContainer()->get('App\Service\ConfigService');
+        $this->stripeTransferRepository = static::getContainer()->get('doctrine')->getRepository(StripeTransfer::class);
     }
 
     private function executeCommand($arguments = null)

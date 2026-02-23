@@ -28,7 +28,7 @@ class ConfigServiceTest extends KernelTestCase
     protected function setUp(): void
     {
         self::bootKernel();
-        $this->configRepository = self::$container->get('doctrine')->getRepository(Config::class);
+        $this->configRepository = static::getContainer()->get('doctrine')->getRepository(Config::class);
         $this->configService = new ConfigService($this->configRepository);
     }
 

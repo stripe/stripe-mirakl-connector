@@ -16,12 +16,13 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'connector:dispatch:monitor-kyc-status')]
 class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 
-    protected static $defaultName = 'connector:dispatch:monitor-kyc-status';
 
     public const CURRENTLY_DUE = 'currently_due';
     public const PENDING_VERIFICATION = 'pending_verification';

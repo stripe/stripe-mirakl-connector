@@ -3,80 +3,57 @@
 namespace App\Entity;
 
 use ApiPlatform\Core\Annotation\ApiResource;
-use Doctrine\ORM\Mapping as ORM;
-use Gedmo\Mapping\Annotation as Gedmo;
+use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\GeneratedValue;
+use Doctrine\ORM\Mapping\Id;
+use Gedmo\Mapping\Annotation\Timestampable;
 
-/**
- * @ApiResource(
- *      collectionOperations={
- *          "get"={"path"="/mappings"}
- *      },
- *      itemOperations={
- *          "get"={"path"="/mappings/{id}", "requirements"={"id"="\d+"}},
- *          "delete"={"path"="/mappings/{id}", "requirements"={"id"="\d+"}},
- *      }
- * )
- *
- * @ORM\Entity(repositoryClass="App\Repository\AccountMappingRepository")
- */
+#[ApiResource(
+    collectionOperations: [
+        'get' => ['path' => '/mappings']
+    ],
+    itemOperations: [
+        'get' => ['path' => '/mappings/{id}', 'requirements' => ['id' => '\d+']],
+        'delete' => ['path' => '/mappings/{id}', 'requirements' => ['id' => '\d+']]
+    ]
+)]
+#[Entity(repositoryClass: 'App\Repository\AccountMappingRepository')]
 class AccountMapping
 {
-    /**
-     * @ORM\Id()
-     *
-     * @ORM\GeneratedValue()
-     *
-     * @ORM\Column(type="integer")
-     */
+    #[Id]
+    #[GeneratedValue]
+    #[Column(type: 'integer')]
     private int $id;
 
-    /**
-     * @ORM\Column(type="integer", unique=true)
-     */
+    #[Column(type: 'integer', unique: true)]
     private int $miraklShopId;
 
-    /**
-     * @ORM\Column(type="string", length=255, unique=true)
-     */
+    #[Column(type: 'string', length: 255, unique: true)]
     private string $stripeAccountId;
 
-    /**
-     * @ORM\Column(type="string", length=255, nullable=true)
-     */
+    #[Column(type: 'string', length: 255, nullable: true)]
     private ?string $onboardingToken = null;
 
-    /**
-     * @ORM\Column(type="boolean", options={"default" : false})
-     */
+    #[Column(type: 'boolean', options: ['default' => false])]
     private bool $payoutEnabled = false;
 
-    /**
-     * @ORM\Column(type="boolean", options={"default" : false})
-     */
+    #[Column(type: 'boolean', options: ['default' => false])]
     private bool $payinEnabled = false;
 
-    /**
-     * @ORM\Column(type="boolean", options={"default" : false})
-     */
+    #[Column(type: 'boolean', options: ['default' => false])]
     private bool $ignored = false;
 
-    /**
-     * @ORM\Column(type="string", length=255, nullable=true)
-     */
+    #[Column(type: 'string', length: 255, nullable: true)]
     private ?string $disabledReason;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="create")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'create')]
     private \DateTimeInterface $creationDatetime;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="update")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'update')]
     private \DateTimeInterface $modificationDatetime;
 
     public function getId(): int

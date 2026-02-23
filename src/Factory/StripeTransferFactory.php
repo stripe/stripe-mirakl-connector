@@ -82,7 +82,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
     }
 
-    public function createFromOrder(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
+    public function createFromOrder(MiraklOrder $order, ?MiraklPendingDebit $pendingDebit = null): StripeTransfer
     {
         if (is_a($order, MiraklServiceOrder::class)) {
             $type = StripeTransfer::TRANSFER_SERVICE_ORDER;
@@ -98,7 +98,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         return $this->updateFromOrder($transfer, $order, $pendingDebit);
     }
 
-    public function createFromOrderForTax(MiraklOrder $order, MiraklPendingDebit $pendingDebit = null): StripeTransfer
+    public function createFromOrderForTax(MiraklOrder $order, ?MiraklPendingDebit $pendingDebit = null): StripeTransfer
     {
         if (is_a($order, MiraklServiceOrder::class)) {
             $type = StripeTransfer::TRANSFER_SERVICE_ORDER;
@@ -114,7 +114,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         return $this->updateFromOrder($transfer, $order, $pendingDebit, true);
     }
 
-    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, MiraklPendingDebit $pendingDebit = null, bool $isForTax = false): StripeTransfer
+    public function updateFromOrder(StripeTransfer $transfer, MiraklOrder $order, ?MiraklPendingDebit $pendingDebit = null, bool $isForTax = false): StripeTransfer
     {
         // Transfer already created
         if ($transfer->getTransferId()) {

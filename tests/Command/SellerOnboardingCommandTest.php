@@ -40,8 +40,8 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->command = $application->find('connector:sync:onboarding');
         $this->commandTester = new CommandTester($this->command);
 
-        $this->configService = self::$container->get('App\Service\ConfigService');
-        $this->accountMappingRepository = self::$container->get('doctrine')->getRepository(AccountMapping::class);
+        $this->configService = static::getContainer()->get('App\Service\ConfigService');
+        $this->accountMappingRepository = static::getContainer()->get('doctrine')->getRepository(AccountMapping::class);
     }
 
     private function getAccountMappingsFromRepository()

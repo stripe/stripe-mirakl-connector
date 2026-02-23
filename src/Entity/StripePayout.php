@@ -3,21 +3,23 @@
 namespace App\Entity;
 
 use ApiPlatform\Core\Annotation\ApiResource;
-use Doctrine\ORM\Mapping as ORM;
-use Gedmo\Mapping\Annotation as Gedmo;
+use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\GeneratedValue;
+use Doctrine\ORM\Mapping\Id;
+use Doctrine\ORM\Mapping\ManyToOne;
+use Gedmo\Mapping\Annotation\Timestampable;
 
-/**
- * @ApiResource(
- *      collectionOperations={
- *          "get"={"path"="/payouts"}
- *      },
- *      itemOperations={
- *          "get"={"path"="/payouts/{id}", "requirements"={"id"="\d+"}},
- *      }
- * )
- *
- * @ORM\Entity(repositoryClass="App\Repository\StripePayoutRepository")
- */
+#[ApiResource(
+    collectionOperations: [
+        'get' => ['path' => '/payouts']
+    ],
+    itemOperations: [
+        'get' => ['path' => '/payouts/{id}', 'requirements' => ['id' => '\d+']]
+    ]
+)]
+#[Entity(repositoryClass: 'App\Repository\StripePayoutRepository')]
 class StripePayout
 {
     public const PAYOUT_ON_HOLD = 'PAYOUT_ON_HOLD';
@@ -34,67 +36,41 @@ class StripePayout
     public const PAYOUT_STATUS_REASON_INVALID_AMOUNT = 'Amount must be positive, input was: %d';
     public const PAYOUT_STATUS_REASON_NO_SHOP_ID = 'No shop ID provided';
 
-    /**
-     * @ORM\Id()
-     *
-     * @ORM\GeneratedValue()
-     *
-     * @ORM\Column(type="integer")
-     */
+    #[Id]
+    #[GeneratedValue]
+    #[Column(type: 'integer')]
     private int $id;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="AccountMapping")
-     */
+    #[ManyToOne(targetEntity: 'AccountMapping')]
     private ?AccountMapping $accountMapping;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[Column(type: 'integer', nullable: true)]
     private ?int $amount = 0;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $currency;
 
-    /**
-     * @ORM\Column(type="integer", unique=true)
-     */
+    #[Column(type: 'integer', unique: true)]
     private int $miraklInvoiceId;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $payoutId = null;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[Column(type: 'string')]
     private string $status;
 
-    /**
-     * @ORM\Column(type="string", length=1024, nullable=true)
-     */
+    #[Column(type: 'string', length: 1024, nullable: true)]
     private ?string $statusReason = null;
 
-    /**
-     * @ORM\Column(type="datetime", nullable=true)
-     */
+    #[Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $miraklCreatedDate;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="create")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'create')]
     private \DateTimeInterface $creationDatetime;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="update")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'update')]
     private \DateTimeInterface $modificationDatetime;
 
     public static function getAvailableStatus(): array

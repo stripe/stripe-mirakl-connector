@@ -5,8 +5,9 @@ namespace App\Tests\Controller;
 use App\Factory\EmailFactory;
 use App\Monolog\Handler\SymfonyMailerHandler;
 use DateTimeImmutable;
+use Monolog\Level;
+use Monolog\LogRecord;
 use PHPUnit\Framework\TestCase;
-use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 
@@ -29,17 +30,14 @@ class SymfonyMailerHandlerTest extends TestCase
 
     public function testCreateMessage()
     {
-        $logRecord = [
-            'message' => 'new log message',
-            'context' => [],
-            'level' => Logger::ERROR,
-            'level_name' => 'ERROR',
-            'channel' => 'app',
-            'datetime' => new DateTimeImmutable(),
-            'extra' => [],
-        ];
-
-        $expectedMessage = new Email();
+        $logRecord = new LogRecord(
+            datetime: new DateTimeImmutable(),
+            channel: 'app',
+            level: Level::Error,
+            message: 'new log message',
+            context: [],
+            extra: []
+        );
 
         $this
             ->mailer
@@ -56,7 +54,7 @@ class SymfonyMailerHandlerTest extends TestCase
                     && str_contains($email->getHtmlBody(), 'ERROR');
             }));
 
-        $email = $this->symfonyMailerHandler->handleBatch([$logRecord]);
+        $this->symfonyMailerHandler->handleBatch([$logRecord]);
 
 
     }

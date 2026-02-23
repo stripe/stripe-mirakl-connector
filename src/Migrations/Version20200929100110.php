@@ -6,6 +6,7 @@ namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 
 final class Version20200929100110 extends AbstractMigration
 {
@@ -16,7 +17,7 @@ final class Version20200929100110 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf(!$this->connection->getDatabasePlatform() instanceof PostgreSQLPlatform, 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER SEQUENCE mirakl_stripe_mapping_id_seq RENAME TO account_mapping_id_seq;');
         $this->addSql('ALTER TABLE mirakl_stripe_mapping RENAME TO account_mapping;');
@@ -39,7 +40,7 @@ final class Version20200929100110 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf(!$this->connection->getDatabasePlatform() instanceof PostgreSQLPlatform, 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER SEQUENCE account_mapping_id_seq RENAME TO mirakl_stripe_mapping_id_seq;');
         $this->addSql('ALTER TABLE account_mapping RENAME TO mirakl_stripe_mapping;');

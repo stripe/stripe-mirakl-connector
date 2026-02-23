@@ -59,7 +59,7 @@ class SellerMonitorKYCStatusCommandTest extends KernelTestCase
         $this->miraklClient = $this->createMock(MiraklClient::class);
         $this->stripeClient = $this->createMock(StripeClient::class);
         $this->mailer = $this->createMock(MailerInterface::class);
-        $this->accountMappingRepository = self::$container->get('doctrine')->getRepository(AccountMapping::class);
+        $this->accountMappingRepository = static::getContainer()->get('doctrine')->getRepository(AccountMapping::class);
         $application = new Application($kernel);
         $this->command = $application->find('connector:dispatch:monitor-kyc-status');
         $this->command->setStripeClient($this->stripeClient);
@@ -71,7 +71,7 @@ class SellerMonitorKYCStatusCommandTest extends KernelTestCase
 
         $this->commandTester = new CommandTester($this->command);
 
-        //$this->configService = self::$container->get('App\Service\ConfigService')
+        //$this->configService = static::getContainer()->get('App\Service\ConfigService')
     }
 
     

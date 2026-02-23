@@ -2,7 +2,6 @@
 
 namespace App\Service;
 
-use Shivas\VersioningBundle\Service\VersionManagerInterface;
 use Stripe\Account;
 use Stripe\AccountLink;
 use Stripe\ApiRequestor;
@@ -41,11 +40,10 @@ class StripeClient
     public const APP_API_VERSION = '2019-08-14';
 
     public function __construct(
-        VersionManagerInterface $versionManager,
         string $stripeClientSecret,
         bool $verifyWebhookSignature
     ) {
-        $this->version = $versionManager->getVersion();
+        $this->version = VersionService::getVersion();
         $this->verifyWebhookSignature = $verifyWebhookSignature;
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(self::APP_NAME, $this->version, self::APP_REPO, self::APP_PARTNER_ID);

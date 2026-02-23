@@ -3,23 +3,15 @@
 namespace App\DTO;
 
 use Symfony\Component\Validator\Constraints as Assert;
+use App\Validator as AppAssert;
 
 class AccountMappingDTO
 {
-    /**
-     * @var int
-     *
-     * @App\Validator\MiraklShopId()
-     *
-     * @Assert\NotNull
-     */
+    #[AppAssert\MiraklShopId]
+    #[Assert\NotNull]
     private $miraklShopId;
 
-    /**
-     * @var string
-     *
-     * @Assert\NotNull
-     */
+    #[Assert\NotNull]
     private $stripeUserId;
 
     public function getMiraklShopId(): int

@@ -7,10 +7,10 @@ use App\Repository\AccountMappingRepository;
 use App\Service\SellerOnboardingService;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
-use Symfony\Component\Messenger\Handler\MessageSubscriberInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-class UpdateAccountLoginLinkHandler implements MessageHandlerInterface, MessageSubscriberInterface, LoggerAwareInterface
+#[AsMessageHandler]
+class UpdateAccountLoginLinkHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

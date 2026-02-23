@@ -64,14 +64,14 @@ class PaymentRefundCommandTest extends KernelTestCase
                 $this->command = $application->find('connector:dispatch:process-refund');
                 $this->commandTester = new CommandTester($this->command);
 
-                $this->refundReceiver = self::$container->get('messenger.transport.process_refunds');
-                $this->transferReceiver = self::$container->get('messenger.transport.process_transfers');
+                $this->refundReceiver = static::getContainer()->get('messenger.transport.process_refunds');
+                $this->transferReceiver = static::getContainer()->get('messenger.transport.process_transfers');
 
-                $this->miraklClient = self::$container->get('App\Service\MiraklClient');
+                $this->miraklClient = static::getContainer()->get('App\Service\MiraklClient');
 
-                $this->paymentMappingRepository = self::$container->get('doctrine')->getRepository(PaymentMapping::class);
-                $this->stripeRefundRepository = self::$container->get('doctrine')->getRepository(StripeRefund::class);
-                $this->stripeTransferRepository = self::$container->get('doctrine')->getRepository(StripeTransfer::class);
+                $this->paymentMappingRepository = static::getContainer()->get('doctrine')->getRepository(PaymentMapping::class);
+                $this->stripeRefundRepository = static::getContainer()->get('doctrine')->getRepository(StripeRefund::class);
+                $this->stripeTransferRepository = static::getContainer()->get('doctrine')->getRepository(StripeTransfer::class);
         }
 
         private function executeCommand()
@@ -89,10 +89,26 @@ class PaymentRefundCommandTest extends KernelTestCase
                 ]);
         }
 
+        private function getBasicProductRefundTransferFromRepository()
+        {
+                return $this->stripeTransferRepository->findOneBy([
+                        'type' => StripeTransfer::TRANSFER_REFUND,
+                        'miraklId' => MiraklMock::PRODUCT_ORDER_REFUND_BASIC
+                ]);
+        }
+
         private function getBasicServiceRefundFromRepository()
         {
                 return $this->stripeRefundRepository->findOneBy([
                         'miraklRefundId' => MiraklMock::SERVICE_ORDER_REFUND_BASIC
+                ]);
+        }
+
+        private function getBasicServiceRefundTransferFromRepository()
+        {
+                return $this->stripeTransferRepository->findOneBy([
+                        'type' => StripeTransfer::TRANSFER_REFUND,
+                        'miraklId' => MiraklMock::SERVICE_ORDER_REFUND_BASIC
                 ]);
         }
 
@@ -182,7 +198,10 @@ class PaymentRefundCommandTest extends KernelTestCase
                 $this->assertCount(0, $this->transferReceiver->getSent());
                 $this->assertCount(14, $refunds = $this->getProductRefundsFromRepository());
                 $this->assertCount(14, $this->getProductTransfersFromRepository());
-                $this->assertEquals(StripeRefund::REFUND_PENDING, $refunds[0]->getStatus());
+                $this->assertEquals(
+                        StripeRefund::REFUND_PENDING,
+                        $this->getBasicProductRefundFromRepository()->getStatus()
+                );
 
                 // Mock ORDER_REFUND_BASIC has been created
                 $refunds = $this->getProductRefundsFromRepository();
@@ -194,7 +213,10 @@ class PaymentRefundCommandTest extends KernelTestCase
                 $this->assertCount(1, $this->transferReceiver->getSent());
                 $this->assertCount(14, $this->getProductRefundsFromRepository());
                 $this->assertCount(14, $transfers = $this->getProductTransfersFromRepository());
-                $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfers[0]->getStatus());
+                $this->assertEquals(
+                        StripeTransfer::TRANSFER_PENDING,
+                        $this->getBasicProductRefundTransferFromRepository()->getStatus()
+                );
 
                 // Nothing is ready again
                 $this->executeCommand();
@@ -223,7 +245,10 @@ class PaymentRefundCommandTest extends KernelTestCase
                 $this->assertCount(0, $this->transferReceiver->getSent());
                 $this->assertCount(14, $refunds = $this->getServiceRefundsFromRepository());
                 $this->assertCount(14, $this->getServiceTransfersFromRepository());
-                $this->assertEquals(StripeRefund::REFUND_PENDING, $refunds[0]->getStatus());
+                $this->assertEquals(
+                        StripeRefund::REFUND_PENDING,
+                        $this->getBasicServiceRefundFromRepository()->getStatus()
+                );
 
                 // Mock ORDER_REFUND_BASIC has been created
                 $refunds = $this->getServiceRefundsFromRepository();
@@ -235,7 +260,10 @@ class PaymentRefundCommandTest extends KernelTestCase
                 $this->assertCount(1, $this->transferReceiver->getSent());
                 $this->assertCount(14, $this->getServiceRefundsFromRepository());
                 $this->assertCount(14, $transfers = $this->getServiceTransfersFromRepository());
-                $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfers[0]->getStatus());
+                $this->assertEquals(
+                        StripeTransfer::TRANSFER_PENDING,
+                        $this->getBasicServiceRefundTransferFromRepository()->getStatus()
+                );
 
                 // Nothing is ready again
                 $this->executeCommand();

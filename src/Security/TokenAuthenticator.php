@@ -7,11 +7,14 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
-use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Security\Core\User\UserProviderInterface;
-use Symfony\Component\Security\Guard\AbstractGuardAuthenticator;
+use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
+use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CustomCredentials;
+use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
 
-class TokenAuthenticator extends AbstractGuardAuthenticator
+class TokenAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
     public const AUTH_HEADER_NAME = 'X-AUTH-TOKEN';
     public const OPERATOR_ACCOUNT_NAME = 'operator';
@@ -27,34 +30,28 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
     }
 
     /**
-     * Called on every request. Return whatever credentials you want to
-     * be passed to getUser() as $credentials.
+     * Create a Passport object representing the authentication attempt.
      */
-    public function getCredentials(Request $request): array
+    public function authenticate(Request $request): Passport
     {
-        return [
-            'token' => $request->headers->get(self::AUTH_HEADER_NAME),
-        ];
-    }
+        $token = $request->headers->get(self::AUTH_HEADER_NAME);
 
-    public function getUser($credentials, UserProviderInterface $userProvider): ?UserInterface
-    {
-        return $userProvider->loadUserByIdentifier(self::OPERATOR_ACCOUNT_NAME);
-    }
-
-    public function checkCredentials($credentials, UserInterface $user): bool
-    {
-        if (is_array($credentials) && $credentials['token'] === $user->getPassword()) {
-            return true;
-        } else {
-            return false;
+        if (null === $token) {
+            throw new CustomUserMessageAuthenticationException('No authentication token provided.');
         }
+
+        return new Passport(
+            new UserBadge(self::OPERATOR_ACCOUNT_NAME),
+            new CustomCredentials(
+                function ($credentials, $user) {
+                    return $credentials === $user->getPassword();
+                },
+                $token
+            )
+        );
     }
 
-    /**
-     * @return null
-     */
-    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $providerKey)
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
         return null;
     }
@@ -69,16 +66,8 @@ class TokenAuthenticator extends AbstractGuardAuthenticator
     /**
      * Called when authentication is needed, but it's not sent.
      */
-    public function start(Request $request, AuthenticationException $authException = null): Response
+    public function start(Request $request, ?AuthenticationException $authException = null): Response
     {
         return new JsonResponse(['message' => 'Authentication Required'], Response::HTTP_UNAUTHORIZED);
-    }
-
-    /**
-     * @codeCoverageIgnore
-     */
-    public function supportsRememberMe(): bool
-    {
-        return false;
     }
 }

@@ -3,11 +3,12 @@
 namespace App\Entity;
 
 use App\Exception\InvalidArgumentException;
-use Doctrine\ORM\Mapping as ORM;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\GeneratedValue;
+use Doctrine\ORM\Mapping\Id;
 
-/**
- * @ORM\Entity(repositoryClass="App\Repository\ConfigRepository")
- */
+#[Entity(repositoryClass: 'App\Repository\ConfigRepository')]
 class Config
 {
     public const PRODUCT_PAYMENT_SPLIT_CHECKPOINT = 'product_payment_split_checkpoint';
@@ -15,23 +16,15 @@ class Config
     public const SELLER_SETTLEMENT_CHECKPOINT = 'seller_settlement_checkpoint';
     public const SELLER_ONBOARDING_CHECKPOINT = 'seller_onboarding_checkpoint';
 
-    /**
-     * @ORM\Id()
-     *
-     * @ORM\GeneratedValue()
-     *
-     * @ORM\Column(type="integer")
-     */
+    #[Id]
+    #[GeneratedValue]
+    #[Column(type: 'integer')]
     private int $id;
 
-    /**
-     * @ORM\Column(name="`key`", type="string", unique=true)
-     */
+    #[Column(name: '`key`', type: 'string', unique: true)]
     private string $key;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $value = null;
 
     public static function getAvailableKeys(): array
