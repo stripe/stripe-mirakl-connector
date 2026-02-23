@@ -17,7 +17,7 @@ services:
   php:
     env_file:
       - ./../../.env
-      - ./../../.env.test
+#      - ./../../.env.test - only while running unit tests
     build:
       context: ../../
       dockerfile: ./examples/docker/php/Dockerfile
