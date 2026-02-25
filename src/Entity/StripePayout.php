@@ -2,7 +2,9 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
@@ -12,11 +14,9 @@ use Doctrine\ORM\Mapping\ManyToOne;
 use Gedmo\Mapping\Annotation\Timestampable;
 
 #[ApiResource(
-    collectionOperations: [
-        'get' => ['path' => '/payouts']
-    ],
-    itemOperations: [
-        'get' => ['path' => '/payouts/{id}', 'requirements' => ['id' => '\d+']]
+    operations: [
+        new GetCollection(uriTemplate: '/payouts'),
+        new Get(uriTemplate: '/payouts/{id}', requirements: ['id' => '\d+'])
     ]
 )]
 #[Entity(repositoryClass: 'App\Repository\StripePayoutRepository')]

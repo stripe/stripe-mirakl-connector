@@ -2,7 +2,10 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
@@ -11,12 +14,10 @@ use Doctrine\ORM\Mapping\Id;
 use Gedmo\Mapping\Annotation\Timestampable;
 
 #[ApiResource(
-    collectionOperations: [
-        'get' => ['path' => '/mappings']
-    ],
-    itemOperations: [
-        'get' => ['path' => '/mappings/{id}', 'requirements' => ['id' => '\d+']],
-        'delete' => ['path' => '/mappings/{id}', 'requirements' => ['id' => '\d+']]
+    operations: [
+        new GetCollection(uriTemplate: '/mappings'),
+        new Get(uriTemplate: '/mappings/{id}', requirements: ['id' => '\d+']),
+        new Delete(uriTemplate: '/mappings/{id}', requirements: ['id' => '\d+'])
     ]
 )]
 #[Entity(repositoryClass: 'App\Repository\AccountMappingRepository')]

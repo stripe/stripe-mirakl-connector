@@ -2,9 +2,11 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Core\Annotation\ApiFilter;
-use ApiPlatform\Core\Annotation\ApiResource;
-use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Exception\InvalidArgumentException;
 use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
 use Doctrine\ORM\Mapping\Column;
@@ -12,14 +14,13 @@ use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Id;
 use Doctrine\ORM\Mapping\ManyToOne;
+use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation\Timestampable;
 
 #[ApiResource(
-    collectionOperations: [
-        'get' => ['path' => '/transfers']
-    ],
-    itemOperations: [
-        'get' => ['path' => '/transfers/{id}', 'requirements' => ['id' => '\d+']]
+    operations: [
+        new GetCollection(uriTemplate: '/transfers'),
+        new Get(uriTemplate: '/transfers/{id}', requirements: ['id' => '\d+'])
     ]
 )]
 #[ApiFilter(SearchFilter::class, properties: ['miraklId' => 'exact'])]

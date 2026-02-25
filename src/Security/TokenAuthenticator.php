@@ -8,6 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CustomCredentials;
@@ -43,7 +44,7 @@ class TokenAuthenticator extends AbstractAuthenticator implements Authentication
         return new Passport(
             new UserBadge(self::OPERATOR_ACCOUNT_NAME),
             new CustomCredentials(
-                function ($credentials, $user) {
+                function ($credentials, PasswordAuthenticatedUserInterface $user): bool {
                     return $credentials === $user->getPassword();
                 },
                 $token

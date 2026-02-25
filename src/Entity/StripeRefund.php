@@ -2,7 +2,9 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Exception\InvalidArgumentException;
 use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
 use Doctrine\ORM\Mapping\Column;
@@ -12,11 +14,9 @@ use Doctrine\ORM\Mapping\Id;
 use Gedmo\Mapping\Annotation\Timestampable;
 
 #[ApiResource(
-    collectionOperations: [
-        'get' => ['path' => '/refunds']
-    ],
-    itemOperations: [
-        'get' => ['path' => '/refunds/{id}', 'requirements' => ['id' => '\d+']]
+    operations: [
+        new GetCollection(uriTemplate: '/refunds'),
+        new Get(uriTemplate: '/refunds/{id}', requirements: ['id' => '\d+'])
     ]
 )]
 #[Entity(repositoryClass: 'App\Repository\StripeRefundRepository')]

@@ -15,6 +15,24 @@ parameters:
         - '#on Psr\\Log\\LoggerInterface\|null#'
         - identifier: missingType.generics
         - identifier: missingType.parameter
+        - identifier: argument.type
+        - identifier: method.nonObject
+        - identifier: property.nonObject
+        - identifier: offsetAccess.nonOffsetAccessible
+        - identifier: offsetAccess.invalidOffset
+        - identifier: foreach.nonIterable
+        - identifier: encapsedStringPart.nonString
+        - identifier: binaryOp.invalid
+        - identifier: assignOp.invalid
+        - identifier: cast.int
+        - identifier: cast.double
+        - identifier: cast.string
+        - identifier: notIdentical.alwaysTrue
+        - identifier: function.alreadyNarrowedType
+        - identifier: return.type
+        - identifier: throws.notThrowable
+        - identifier: missingType.property
+        - identifier: assign.propertyType
     universalObjectCratesClasses:
         - Stripe\StripeObject
     doctrine:
