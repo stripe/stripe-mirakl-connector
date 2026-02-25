@@ -18,7 +18,7 @@
         "doctrine/orm": "^3.6",
         "nelmio/api-doc-bundle": "^5.9",
         "nelmio/cors-bundle": "^2.6",
-        "phpdocumentor/reflection-docblock": "^6.0",
+        "phpdocumentor/reflection-docblock": "^5.2",
         "stof/doctrine-extensions-bundle": "1.15.*",
         "stripe/stripe-php": "^10.15",
         "symfony/asset": "6.4.*",
