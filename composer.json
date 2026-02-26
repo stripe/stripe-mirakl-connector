@@ -38,6 +38,7 @@
         "symfony/property-info": "6.4.*",
         "symfony/proxy-manager-bridge": "6.4.*",
         "symfony/security-bundle": "6.4.*",
+        "symfony/security-core": "6.4.*",
         "symfony/security-http": "6.4.*",
         "symfony/serializer": "6.4.*",
         "symfony/type-info": "7.4.*",
