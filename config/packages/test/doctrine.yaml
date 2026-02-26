@@ -1,5 +1,0 @@
-doctrine:
-    dbal:
-        schema_filter: ''
-
-                
