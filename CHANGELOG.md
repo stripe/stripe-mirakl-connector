@@ -4,6 +4,7 @@
 - Update nelmio config for v4 (#120 thanks @cysp)
 - Run migrations and supervisord on container start (#137)
 - Support for PHP 8.4 and upgrade to Symfony 6.4
+- Fix payout amount calculation when tax split is enabled
 
 ## Version 4.0.0
 - Added Support for PHP 8.1 and upgrade to Symfony 5.4.
