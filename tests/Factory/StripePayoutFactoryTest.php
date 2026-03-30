@@ -120,11 +120,10 @@ class StripePayoutFactoryTest extends KernelTestCase
         $this->assertEquals(StripePayout::PAYOUT_CREATED, $payout->getStatus());
     }
 
-    private function createStripePayoutFactory(bool $enablePaymentTaxSplit = false): StripePayoutFactory
+    private function createStripePayoutFactory(): StripePayoutFactory
     {
         $factory = new StripePayoutFactory(
             $this->accountMappingRepository,
-            $enablePaymentTaxSplit
         );
         $factory->setLogger(new NullLogger());
 
@@ -245,12 +244,8 @@ class StripePayoutFactoryTest extends KernelTestCase
         $mapping->setPayoutEnabled(false);
         $this->accountMappingRepository->flush();
 
-        $factoryWithTaxSplit = $this->createStripePayoutFactory(true);
-        $factoryWithoutTaxSplit = $this->createStripePayoutFactory(false);
-
-        $payoutWithTaxSplit = $factoryWithTaxSplit->createFromInvoice($invoice, $this->miraklClient);
-        $payoutWithoutTaxSplit = $factoryWithoutTaxSplit->createFromInvoice($invoice, $this->miraklClient);
-
-        $this->assertSame($payoutWithoutTaxSplit->getAmount(), $payoutWithTaxSplit->getAmount());
+        $factory = $this->createStripePayoutFactory();
+        $factory = $factory->createFromInvoice($invoice, $this->miraklClient);
+        $this->assertNotEmpty($factory->getAmount());
     }
 }
