@@ -7,7 +7,7 @@ use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Service\StripeClient;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Event;
@@ -15,7 +15,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
 class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInterface
 {
@@ -86,45 +86,32 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $this->metadataCommercialOrderId = $metadataCommercialOrderId;
     }
 
-    /**
-     * Should only be called by Stripe Webhooks.
-     *
-     * @OA\Response(
-     *     response=200,
-     *     description="Webhook ok",
-     * )
-     * @OA\Response(
-     *     response=400,
-     *     description="Bad request",
-     * )
-     *
-     * @OA\Post(deprecated=true)
-     *
-     * @OA\Tag(name="Webhook")
-     *
-     * @Route("/api/public/webhook", methods={"POST"}, name="handle_stripe_webhook")
-     */
+    #[Route('/api/public/webhook', methods: ['POST'], name: 'handle_stripe_webhook')]
+    #[OA\Post(
+        summary: 'Handle Stripe webhook (deprecated)',
+        description: 'Should only be called by Stripe Webhooks.',
+        deprecated: true,
+        responses: [
+            new OA\Response(response: 200, description: 'Webhook ok'),
+            new OA\Response(response: 400, description: 'Bad request'),
+        ],
+        tags: ['Webhook']
+    )]
     public function handleStripeWebhookDeprecated(Request $request): Response
     {
         return $this->handleStripeSellerWebhook($request);
     }
 
-    /**
-     * Should only be called by Stripe Webhooks (with seller secret).
-     *
-     * @OA\Response(
-     *     response=200,
-     *     description="Webhook ok",
-     * )
-     * @OA\Response(
-     *     response=400,
-     *     description="Bad request",
-     * )
-     *
-     * @OA\Tag(name="Sellers Webhook")
-     *
-     * @Route("/api/public/webhook/sellers", methods={"POST"}, name="handle_stripe_seller_webhook")
-     */
+    #[Route('/api/public/webhook/sellers', methods: ['POST'], name: 'handle_stripe_seller_webhook')]
+    #[OA\Post(
+        summary: 'Handle Stripe webhook for sellers',
+        description: 'Should only be called by Stripe Webhooks (with seller secret).',
+        responses: [
+            new OA\Response(response: 200, description: 'Webhook ok'),
+            new OA\Response(response: 400, description: 'Bad request'),
+        ],
+        tags: ['Sellers Webhook']
+    )]
     public function handleStripeSellerWebhook(Request $request): Response
     {
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';
@@ -138,22 +125,16 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         return $this->handleStripeWebhook($payload, $signatureHeader, $this->webhookSellerSecret);
     }
 
-    /**
-     * Should only be called by Stripe Webhooks (with operator secret).
-     *
-     * @OA\Response(
-     *     response=200,
-     *     description="Webhook ok",
-     * )
-     * @OA\Response(
-     *     response=400,
-     *     description="Bad request",
-     * )
-     *
-     * @OA\Tag(name="Operator Webhook")
-     *
-     * @Route("/api/public/webhook/operator", methods={"POST"}, name="handle_stripe_operator_webhook")
-     */
+    #[Route('/api/public/webhook/operator', methods: ['POST'], name: 'handle_stripe_operator_webhook')]
+    #[OA\Post(
+        summary: 'Handle Stripe webhook for operator',
+        description: 'Should only be called by Stripe Webhooks (with operator secret).',
+        responses: [
+            new OA\Response(response: 200, description: 'Webhook ok'),
+            new OA\Response(response: 400, description: 'Bad request'),
+        ],
+        tags: ['Operator Webhook']
+    )]
     public function handleStripeOperatorWebhook(Request $request): Response
     {
         $signatureHeader = $request->headers->get('stripe-signature') ?? '';

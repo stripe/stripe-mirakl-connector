@@ -6,9 +6,10 @@ use App\Message\ValidateMiraklOrderMessage;
 use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-class ValidateMiraklOrderHandler implements MessageHandlerInterface, LoggerAwareInterface
+#[AsMessageHandler]
+class ValidateMiraklOrderHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

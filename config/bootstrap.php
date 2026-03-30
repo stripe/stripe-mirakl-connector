@@ -16,7 +16,7 @@ if (is_array($env = @include dirname(__DIR__).'/.env.local.php')) {
 } else {
     // load all the .env files
     try {
-        (new Dotenv(false))->loadEnv(dirname(__DIR__).'/.env');
+        (new Dotenv())->loadEnv(dirname(__DIR__).'/.env');
     } catch (PathException $e) {
         // Missing .env file. Ignore
     }

@@ -1,4 +1,17 @@
 # Changelog
+
+## Version 4.1.0
+- Update nelmio config for v4 (#120 thanks @cysp)
+- Run migrations and supervisord on container start (#137)
+- Support for PHP 8.4 and upgrade to Symfony 6.4
+- Fix payout amount calculation when tax split is enabled
+
+## Version 4.0.0
+- Added Support for PHP 8.1 and upgrade to Symfony 5.4.
+
+## Version 3.2.0
+- Added KYC Monitor job to detect Stripe “KYC required” accounts, flag them as ignored, optionally update Mirakl shop status (S07), and notify operators to prevent payment transfer failures.
+
 ## Version 3.1.0
 
 - Added tax split functionality (#116 thanks @tejpal-mirakl)

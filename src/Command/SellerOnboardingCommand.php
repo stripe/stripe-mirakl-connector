@@ -13,12 +13,12 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\HttpClient\Exception\ClientException;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'connector:sync:onboarding')]
 class SellerOnboardingCommand extends Command implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
-
-    protected static $defaultName = 'connector:sync:onboarding';
 
     /**
      * @var bool

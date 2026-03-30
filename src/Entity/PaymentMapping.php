@@ -2,12 +2,14 @@
 
 namespace App\Entity;
 
-use Doctrine\ORM\Mapping as ORM;
-use Gedmo\Mapping\Annotation as Gedmo;
+use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\GeneratedValue;
+use Doctrine\ORM\Mapping\Id;
+use Gedmo\Mapping\Annotation\Timestampable;
 
-/**
- * @ORM\Entity(repositoryClass="App\Repository\PaymentMappingRepository")
- */
+#[Entity(repositoryClass: 'App\Repository\PaymentMappingRepository')]
 class PaymentMapping
 {
     public const TO_CAPTURE = 'to_capture';
@@ -15,47 +17,29 @@ class PaymentMapping
     public const CANCELED = 'canceled';
     public const FAILED = 'failed';
 
-    /**
-     * @ORM\Id()
-     *
-     * @ORM\GeneratedValue()
-     *
-     * @ORM\Column(type="integer")
-     */
+    #[Id]
+    #[GeneratedValue]
+    #[Column(type: 'integer')]
     private int $id;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $miraklCommercialOrderId;
 
-    /**
-     * @ORM\Column(type="string", unique=true)
-     */
+    #[Column(type: 'string', unique: true)]
     private string $stripeChargeId;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[Column(type: 'string')]
     private string $status = self::TO_CAPTURE;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[Column(type: 'integer', nullable: true)]
     private ?int $stripeAmount;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="create")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'create')]
     private \DateTimeInterface $creationDatetime;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="update")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'update')]
     private \DateTimeInterface $modificationDatetime;
 
     public function getId(): int

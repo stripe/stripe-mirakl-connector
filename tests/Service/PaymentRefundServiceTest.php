@@ -46,6 +46,8 @@ class PaymentRefundServiceTest extends KernelTestCase
      */
     private $stripeTransferRepository;
 
+    private $paymentMappingRepository;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();

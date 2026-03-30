@@ -9,10 +9,11 @@ use App\Message\RefundFailedMessage;
 use App\Message\TransferFailedMessage;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
-use Symfony\Component\Messenger\Handler\MessageSubscriberInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class OperatorHttpNotificationHandler implements MessageSubscriberInterface, LoggerAwareInterface
+#[AsMessageHandler]
+class OperatorHttpNotificationHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

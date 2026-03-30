@@ -2,36 +2,33 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Core\Annotation\ApiFilter;
-use ApiPlatform\Core\Annotation\ApiResource;
-use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Exception\InvalidArgumentException;
+use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\GeneratedValue;
+use Doctrine\ORM\Mapping\Id;
+use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping as ORM;
-use Doctrine\ORM\Mapping\UniqueConstraint;
-use Gedmo\Mapping\Annotation as Gedmo;
+use Gedmo\Mapping\Annotation\Timestampable;
 
-/**
- * @ApiResource(
- *      collectionOperations={
- *          "get"={"path"="/transfers"}
- *      },
- *      itemOperations={
- *          "get"={"path"="/transfers/{id}", "requirements"={"id"="\d+"}},
- *      }
- * )
- *
- * @ApiFilter(SearchFilter::class, properties={"miraklId":"exact" })
- *
- * @ORM\Table(
- *    uniqueConstraints={
- *
- *        @UniqueConstraint(name="transfer",
- *            columns={"type", "mirakl_id"})
- *    }
- * )
- *
- * @ORM\Entity(repositoryClass="App\Repository\StripeTransferRepository")
- */
+#[ApiResource(
+    operations: [
+        new GetCollection(uriTemplate: '/transfers'),
+        new Get(uriTemplate: '/transfers/{id}', requirements: ['id' => '\d+'])
+    ]
+)]
+#[ApiFilter(SearchFilter::class, properties: ['miraklId' => 'exact'])]
+#[ORM\UniqueConstraint(
+    name: 'transfer',
+    columns: ['type', 'mirakl_id']
+)]
+#[Entity(repositoryClass: 'App\Repository\StripeTransferRepository')]
 class StripeTransfer
 {
     // Transfer status
@@ -69,77 +66,47 @@ class StripeTransfer
     public const TRANSFER_EXTRA_CREDITS = 'TRANSFER_EXTRA_CREDITS';
     public const TRANSFER_EXTRA_INVOICES = 'TRANSFER_EXTRA_INVOICES';
 
-    /**
-     * @ORM\Id()
-     *
-     * @ORM\GeneratedValue()
-     *
-     * @ORM\Column(type="integer")
-     */
+    #[Id]
+    #[GeneratedValue]
+    #[Column(type: 'integer')]
     private int $id;
 
-    /**
-     * @ORM\Column(name="mirakl_id", type="string")
-     */
+    #[Column(name: 'mirakl_id', type: 'string')]
     private string $miraklId;
 
-    /**
-     * @ORM\Column(name="type", type="string")
-     */
+    #[Column(name: 'type', type: 'string')]
     private string $type;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="AccountMapping")
-     */
+    #[ManyToOne(targetEntity: 'AccountMapping')]
     private ?AccountMapping $accountMapping;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $transferId = null;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $transactionId = null;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[Column(type: 'integer', nullable: true)]
     private ?int $amount;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[Column(type: 'string')]
     private string $status;
 
-    /**
-     * @ORM\Column(type="string", length=1024, nullable=true)
-     */
+    #[Column(type: 'string', length: 1024, nullable: true)]
     private ?string $statusReason = null;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $currency;
 
-    /**
-     * @ORM\Column(type="datetime", nullable=true)
-     */
+    #[Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $miraklCreatedDate = null;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="create")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'create')]
     private \DateTimeInterface $creationDatetime;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="update")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'update')]
     private \DateTimeInterface $modificationDatetime;
 
     public static function getAvailableStatus(): array

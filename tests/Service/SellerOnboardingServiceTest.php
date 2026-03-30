@@ -35,9 +35,9 @@ class SellerOnboardingServiceTest extends KernelTestCase
     protected function setUp(): void
     {
         self::bootKernel();
-        $this->miraklClient = self::$container->get('App\Service\MiraklClient');
-        $this->sellerOnboardingService = self::$container->get('App\Service\SellerOnboardingService');
-        $this->accountMappingRepository = self::$container->get('doctrine')->getRepository(AccountMapping::class);
+        $this->miraklClient = static::getContainer()->get('App\Service\MiraklClient');
+        $this->sellerOnboardingService = static::getContainer()->get('App\Service\SellerOnboardingService');
+        $this->accountMappingRepository = static::getContainer()->get('doctrine')->getRepository(AccountMapping::class);
     }
 
     private function getAccountMappingsFromRepository()

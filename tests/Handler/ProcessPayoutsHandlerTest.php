@@ -31,12 +31,15 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
      */
     private $stripePayoutRepository;
 
+    private $httpNotificationReceiver;
+    private $handler;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
         $container = self::$kernel->getContainer();
 
-        $this->httpNotificationReceiver = self::$container->get('messenger.transport.operator_http_notification');
+        $this->httpNotificationReceiver = static::getContainer()->get('messenger.transport.operator_http_notification');
 
         $this->accountMappingRepository = $container->get('doctrine')->getRepository(AccountMapping::class);
         $this->stripePayoutRepository = $container->get('doctrine')->getRepository(StripePayout::class);
@@ -44,7 +47,7 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
         $this->handler = new ProcessPayoutHandler(
             $container->get('App\Service\StripeClient'),
             $this->stripePayoutRepository,
-            self::$container->get(MessageBusInterface::class)
+            static::getContainer()->get(MessageBusInterface::class)
         );
         $this->handler->setLogger(new NullLogger());
     }

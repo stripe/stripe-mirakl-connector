@@ -171,7 +171,7 @@ class StripeRefundFactory implements LoggerAwareInterface
         /**
          * if charge has a payment intent of status in the below condition, then cancel the payment intent -start
          */
-        $pi =  $ch->payment_intent;
+        $pi =  $ch->payment_intent ?? null;
         if (is_string($pi)) {
             $pi = $this->stripeClient->paymentIntentRetrieve($pi);
         }

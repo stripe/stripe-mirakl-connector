@@ -4,24 +4,19 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
+use App\Service\VersionService;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
-use Shivas\VersioningBundle\Service\VersionManagerInterface;
 use Stripe\Stripe;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 
-final class Version20201127154506 extends AbstractMigration implements ContainerAwareInterface
+final class Version20201127154506 extends AbstractMigration
 {
     private const APP_NAME = 'MiraklConnector';
     private const APP_REPO = 'https://github.com/stripe/stripe-mirakl-connector';
     private const APP_PARTNER_ID = 'pp_partner_FuvjRG4UuotFXS';
     private const APP_API_VERSION = '2019-08-14';
 
-    /**
-     * @var ContainerInterface|null
-     */
-    private $container;
 
     public function getDescription(): string
     {
@@ -34,7 +29,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf(!$this->connection->getDatabasePlatform() instanceof PostgreSQLPlatform, 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->connectStripe();
         $this->changePaymentIntentIdForChargeId();
@@ -46,19 +41,12 @@ final class Version20201127154506 extends AbstractMigration implements Container
     public function down(Schema $schema): void
     {
         // this down() migration is auto-generated, please modify it to your needs
-        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf(!$this->connection->getDatabasePlatform() instanceof PostgreSQLPlatform, 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE stripe_charge RENAME TO stripe_payment');
         $this->addSql('ALTER TABLE stripe_payment RENAME COLUMN stripe_charge_id TO stripe_payment_id ');
     }
 
-    /**
-     * Sets the container.
-     */
-    public function setContainer(ContainerInterface $container = null)
-    {
-        $this->container = $container;
-    }
 
     private function changePaymentIntentIdForChargeId()
     {
@@ -86,7 +74,7 @@ final class Version20201127154506 extends AbstractMigration implements Container
         }
 
         // Retrieve stripe_transfer records linked to a PI
-        $stripeTransfers = $this->connection->fetchAll('SELECT id, transaction_id FROM stripe_transfer WHERE transaction_id LIKE \'pi_%\'');
+        $stripeTransfers = $this->connection->fetchAllAssociative('SELECT id, transaction_id FROM stripe_transfer WHERE transaction_id LIKE \'pi_%\'');
 
         $updateQuery = 'UPDATE stripe_transfer SET transaction_id = :stripePaymentId WHERE id = :id';
 
@@ -109,26 +97,22 @@ final class Version20201127154506 extends AbstractMigration implements Container
         }
     }
 
-    // Or get the version from the service
-    public function indexAction(VersionManagerInterface $manager)
-    {
-        $this->version = $manager->getVersion();
-    }
-
     /**
      * @throws \Exception
      */
     private function connectStripe()
     {
-        if (null === $this->container) {
-            throw new \Exception('Missing container');
+        $stripeClientSecret = getenv('STRIPE_CLIENT_SECRET') ?: ($_SERVER['STRIPE_CLIENT_SECRET'] ?? $_ENV['STRIPE_CLIENT_SECRET'] ?? null);
+        if (!$stripeClientSecret) {
+            throw new \Exception('Stripe client secret is not set in environment variables.');
         }
 
-        $stripeClientSecret = $this->container->getParameter('app.stripe.client_secret');
+        $version = VersionService::getVersion();
+
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(
             self::APP_NAME,
-            $this->version->__toString(),
+            $version,
             self::APP_REPO,
             self::APP_PARTNER_ID
         );

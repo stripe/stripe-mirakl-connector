@@ -28,7 +28,7 @@ class SellerOnboardingRefreshUrlTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client =  self::createClient();
-        $this->accountMappingRepository = self::$container->get('doctrine')->getRepository(AccountMapping::class);
+        $this->accountMappingRepository = static::getContainer()->get('doctrine')->getRepository(AccountMapping::class);
     }
 
     private function executeRequest(?string $token = null)

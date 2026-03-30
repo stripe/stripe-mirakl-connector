@@ -1,6 +1,15 @@
 monolog:
     channels: ['onboarding', 'pending_debit', 'process_transfer', 'process_refund', 'process_payout', 'monitor_kyc_status', 'failed_operation']
     handlers:
+        deprecation:
+            type: null
+        deprecation_filter:
+            type: filter
+            handler: deprecation
+            max_level: info
+            channels: ["php"]
+            bubble: false
+
         main:
             type: fingers_crossed
             action_level: info

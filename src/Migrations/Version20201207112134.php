@@ -5,19 +5,14 @@ declare(strict_types=1);
 namespace DoctrineMigrations;
 
 use App\Service\StripeClient;
+use App\Service\VersionService;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
-use Shivas\VersioningBundle\Service\VersionManagerInterface;
 use Stripe\Stripe;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
-final class Version20201207112134 extends AbstractMigration implements ContainerAwareInterface
+final class Version20201207112134 extends AbstractMigration
 {
-    /**
-     * @var ContainerInterface|null
-     */
-    private $container;
 
     public function getDescription(): string
     {
@@ -29,7 +24,7 @@ final class Version20201207112134 extends AbstractMigration implements Container
      */
     public function up(Schema $schema): void
     {
-        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf(!$this->connection->getDatabasePlatform() instanceof PostgreSQLPlatform, 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->connectStripe();
 
@@ -40,18 +35,11 @@ final class Version20201207112134 extends AbstractMigration implements Container
 
     public function down(Schema $schema): void
     {
-        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf(!$this->connection->getDatabasePlatform() instanceof PostgreSQLPlatform, 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE stripe_charge DROP COLUMN stripe_amount');
     }
 
-    /**
-     * Sets the container.
-     */
-    public function setContainer(ContainerInterface $container = null)
-    {
-        $this->container = $container;
-    }
 
     private function fetchAndUpdateMissingAmounts()
     {
@@ -75,26 +63,22 @@ final class Version20201207112134 extends AbstractMigration implements Container
         }
     }
 
-    // Or get the version from the service
-    public function indexAction(VersionManagerInterface $manager)
-    {
-        $this->version = $manager->getVersion();
-    }
-
     /**
      * @throws \Exception
      */
     private function connectStripe()
     {
-        if (null === $this->container) {
-            throw new \Exception('Missing container');
+        $stripeClientSecret = getenv('STRIPE_CLIENT_SECRET') ?: ($_SERVER['STRIPE_CLIENT_SECRET'] ?? $_ENV['STRIPE_CLIENT_SECRET'] ?? null);
+        if (!$stripeClientSecret) {
+            throw new \Exception('Stripe client secret is not set in environment variables.');
         }
 
-        $stripeClientSecret = $this->container->getParameter('app.stripe.client_secret');
+        $version = VersionService::getVersion();
+
         Stripe::setApiKey($stripeClientSecret);
         Stripe::setAppInfo(
             StripeClient::APP_NAME,
-            $this->version->__toString(),
+            $version,
             StripeClient::APP_REPO,
             StripeClient::APP_PARTNER_ID
         );

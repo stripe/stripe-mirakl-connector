@@ -19,14 +19,10 @@ class StripePayoutFactory implements LoggerAwareInterface
      */
     private $accountMappingRepository;
 
-    private $enablePaymentTaxSplit;
-
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
-        bool $enablePaymentTaxSplit
     ) {
         $this->accountMappingRepository = $accountMappingRepository;
-        $this->enablePaymentTaxSplit = $enablePaymentTaxSplit;
     }
 
     public function createFromInvoice(array $invoice, MiraklClient $mclient): StripePayout
@@ -99,11 +95,6 @@ class StripePayoutFactory implements LoggerAwareInterface
     private function getInvoiceAmount(array $invoice, MiraklClient $mclient): int
     {
         $amount = $invoice['summary']['amount_transferred'] ?? 0;
-        $transactions = $mclient->getTransactionsForInvoce($invoice['invoice_id']);
-        if ($this->enablePaymentTaxSplit) {
-            $total_tax = $this->findTotalOrderTax($transactions);
-            $amount = $amount - $total_tax;
-        }
 
         $amount = gmp_intval((string) ($amount * 100));
         if ($amount <= 0) {
@@ -147,17 +138,5 @@ class StripePayoutFactory implements LoggerAwareInterface
         $payout->setStatusReason(null);
 
         return $payout->setStatus(StripePayout::PAYOUT_CREATED);
-    }
-
-    private function findTotalOrderTax(array $transactions): float
-    {
-        $taxes = 0;
-        foreach ($transactions as $trx) {
-            if ('ORDER_AMOUNT_TAX' == $trx['type']) {
-                $taxes += (float) $trx['amount'];
-            }
-        }
-
-        return $taxes;
     }
 }

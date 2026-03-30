@@ -7,9 +7,10 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-class OperatorHttpNotificationFailedHandler implements MessageHandlerInterface, LoggerAwareInterface
+#[AsMessageHandler]
+class OperatorHttpNotificationFailedHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

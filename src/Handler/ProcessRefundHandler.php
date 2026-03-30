@@ -12,9 +12,10 @@ use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Component\HttpClient\Exception\TransportException;
-use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
-class ProcessRefundHandler implements MessageHandlerInterface, LoggerAwareInterface
+#[AsMessageHandler]
+class ProcessRefundHandler implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
 

@@ -33,7 +33,7 @@ body {
     content: "";
     width: 185px;
     height: 50px;
-    background: url("./logo-header.svg") no-repeat;
+    background: url("logo-header.svg") no-repeat;
     vertical-align: middle;
     border-right: 1px solid white;
 }

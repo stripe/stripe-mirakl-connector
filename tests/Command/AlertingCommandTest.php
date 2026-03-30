@@ -19,6 +19,13 @@ use Symfony\Component\Console\Formatter\OutputFormatter;
 
 class AlertingCommandTest extends TestCase
 {
+    protected $mailer;
+    protected $transferRepository;
+    protected $payoutRepository;
+    protected $refundRepository;
+    protected $input;
+    protected $output;
+
     protected $command;
 
     protected function setUp(): void

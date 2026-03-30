@@ -141,7 +141,7 @@ class MiraklClient
         return $objects;
     }
 
-    private function objectsToMap(array $objects, string $getter1, string $getter2 = null): array
+    private function objectsToMap(array $objects, string $getter1, ?string $getter2 = null): array
     {
         $map = [];
         foreach ($objects as $object) {

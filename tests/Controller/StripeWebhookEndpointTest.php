@@ -46,10 +46,10 @@ class StripeWebhookEndpointTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client =  self::createClient();
-        $this->accountMappingRepository = self::$container->get('doctrine')->getRepository(AccountMapping::class);
-        $this->paymentMappingRepository = self::$container->get('doctrine')->getRepository(PaymentMapping::class);
-        $this->updateLoginLinkQueue = self::$container->get('messenger.transport.update_login_link');
-        $this->paymentKey = self::$container->getParameter('app.workflow.payment_metadata_commercial_order_id');
+        $this->accountMappingRepository = static::getContainer()->get('doctrine')->getRepository(AccountMapping::class);
+        $this->paymentMappingRepository = static::getContainer()->get('doctrine')->getRepository(PaymentMapping::class);
+        $this->updateLoginLinkQueue = static::getContainer()->get('messenger.transport.update_login_link');
+        $this->paymentKey = static::getContainer()->getParameter('app.workflow.payment_metadata_commercial_order_id');
     }
 
     private function executeRequest(string $endpoint, string $payload, ?string $signature = null)

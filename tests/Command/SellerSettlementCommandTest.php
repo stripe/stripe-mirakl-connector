@@ -32,6 +32,10 @@ class SellerSettlementCommandTest extends KernelTestCase
      */
     protected $stripePayoutRepository;
 
+    protected $transfersReceiver;
+    protected $payoutsReceiver;
+    protected $configService;
+
     protected function setUp(): void
     {
         $kernel = self::bootKernel();
@@ -40,11 +44,11 @@ class SellerSettlementCommandTest extends KernelTestCase
         $this->command = $application->find('connector:dispatch:process-payout');
         $this->commandTester = new CommandTester($this->command);
 
-        $this->transfersReceiver = self::$container->get('messenger.transport.process_transfers');
-        $this->payoutsReceiver = self::$container->get('messenger.transport.process_payouts');
-        $this->configService = self::$container->get('App\Service\ConfigService');
-        $this->stripeTransferRepository = self::$container->get('doctrine')->getRepository(StripeTransfer::class);
-        $this->stripePayoutRepository = self::$container->get('doctrine')->getRepository(StripePayout::class);
+        $this->transfersReceiver = static::getContainer()->get('messenger.transport.process_transfers');
+        $this->payoutsReceiver = static::getContainer()->get('messenger.transport.process_payouts');
+        $this->configService = static::getContainer()->get('App\Service\ConfigService');
+        $this->stripeTransferRepository = static::getContainer()->get('doctrine')->getRepository(StripeTransfer::class);
+        $this->stripePayoutRepository = static::getContainer()->get('doctrine')->getRepository(StripePayout::class);
     }
 
     private function executeCommand($arguments = null)

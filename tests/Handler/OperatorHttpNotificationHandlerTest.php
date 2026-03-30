@@ -30,6 +30,8 @@ class OperatorHttpNotificationHandlerTest extends TestCase
      */
     private $response;
 
+    private $operatorNotificationUrl;
+
     protected function setUp(): void
     {
         $this->operatorNotificationUrl = 'https://operator.com/notification';

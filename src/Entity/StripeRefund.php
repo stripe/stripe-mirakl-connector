@@ -2,23 +2,24 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Core\Annotation\ApiResource;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Exception\InvalidArgumentException;
-use Doctrine\ORM\Mapping as ORM;
-use Gedmo\Mapping\Annotation as Gedmo;
+use Doctrine\DBAL\Schema\DefaultExpression\CurrentTimestamp;
+use Doctrine\ORM\Mapping\Column;
+use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\GeneratedValue;
+use Doctrine\ORM\Mapping\Id;
+use Gedmo\Mapping\Annotation\Timestampable;
 
-/**
- * @ApiResource(
- *      collectionOperations={
- *          "get"={"path"="/refunds"}
- *      },
- *      itemOperations={
- *          "get"={"path"="/refunds/{id}", "requirements"={"id"="\d+"}},
- *      }
- * )
- *
- * @ORM\Entity(repositoryClass="App\Repository\StripeRefundRepository")
- */
+#[ApiResource(
+    operations: [
+        new GetCollection(uriTemplate: '/refunds'),
+        new Get(uriTemplate: '/refunds/{id}', requirements: ['id' => '\d+'])
+    ]
+)]
+#[Entity(repositoryClass: 'App\Repository\StripeRefundRepository')]
 class StripeRefund
 {
     public const REFUND_ON_HOLD = 'REFUND_ON_HOLD';
@@ -42,87 +43,53 @@ class StripeRefund
     public const REFUND_PRODUCT_ORDER = 'REFUND_PRODUCT_ORDER';
     public const REFUND_SERVICE_ORDER = 'REFUND_SERVICE_ORDER';
 
-    /**
-     * @ORM\Id()
-     *
-     * @ORM\GeneratedValue()
-     *
-     * @ORM\Column(type="integer")
-     */
+    #[Id]
+    #[GeneratedValue]
+    #[Column(type: 'integer')]
     private int $id;
 
-    /**
-     * @ORM\Column(name="type", type="string")
-     */
+    #[Column(name: 'type', type: 'string')]
     private string $type;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
+    #[Column(type: 'integer')]
     private int $amount;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[Column(type: 'string')]
     private string $currency;
 
-    /**
-     * @ORM\Column(type="string", unique=true)
-     */
+    #[Column(type: 'string', unique: true)]
     private string $miraklRefundId;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $miraklCommercialOrderId;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[Column(type: 'string')]
     private string $miraklOrderId;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $miraklOrderLineId;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $transactionId = null;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[Column(type: 'string', nullable: true)]
     private ?string $stripeRefundId = null;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[Column(type: 'string')]
     private string $status;
 
-    /**
-     * @ORM\Column(type="string", length=1024, nullable=true)
-     */
+    #[Column(type: 'string', length: 1024, nullable: true)]
     private ?string $statusReason = null;
 
-    /**
-     * @ORM\Column(type="datetime", nullable=true)
-     */
+    #[Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $miraklValidationTime = null;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="create")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'create')]
     private \DateTimeInterface $creationDatetime;
 
-    /**
-     * @ORM\Column(type="datetime", options={"default": "CURRENT_TIMESTAMP"})
-     *
-     * @Gedmo\Timestampable(on="update")
-     */
+    #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
+    #[Timestampable(on: 'update')]
     private \DateTimeInterface $modificationDatetime;
 
     public static function getAvailableStatus(): array

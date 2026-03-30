@@ -5,14 +5,14 @@ namespace App\Controller;
 use App\Repository\AccountMappingRepository;
 use App\Service\SellerOnboardingService;
 use App\Service\StripeClient;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -69,22 +69,16 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
         $this->validator = $validator;
     }
 
-    /**
-     * Should only be called by Stripe if the AccountLink expired.
-     *
-     * @OA\Response(
-     *     response=302,
-     *     description="Redirect to Stripe",
-     * )
-     * @OA\Response(
-     *     response=400,
-     *     description="Bad request",
-     * )
-     *
-     * @OA\Tag(name="Internal (Stripe Only)")
-     *
-     * @Route("/api/public/onboarding/refresh", methods={"GET"}, name="onboarding_refresh")
-     */
+    #[Route('/api/public/onboarding/refresh', methods: ['GET'], name: 'onboarding_refresh')]
+    #[OA\Get(
+        summary: 'Onboarding refresh',
+        description: 'Should only be called by Stripe if the AccountLink expired.',
+        responses: [
+            new OA\Response(response: 302, description: 'Redirect to Stripe'),
+            new OA\Response(response: 400, description: 'Bad request'),
+        ],
+        tags: ['Internal (Stripe Only)']
+    )]
     public function onboardingRefresh(Request $request): Response
     {
         // Retrieve onboarding token

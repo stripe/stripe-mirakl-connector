@@ -6,14 +6,13 @@ use App\DTO\AccountMappingDTO;
 use App\Entity\AccountMapping;
 use App\Repository\AccountMappingRepository;
 use App\Service\StripeClient;
-use Nelmio\ApiDocBundle\Annotation\Security;
-use OpenApi\Annotations as OA;
+use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -22,25 +21,10 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
 {
     use LoggerAwareTrait;
 
-    /**
-     * @var AccountMappingRepository
-     */
-    private $accountMappingRepository;
-
-    /**
-     * @var StripeClient
-     */
-    private $stripeClient;
-
-    /**
-     * @var SerializerInterface
-     */
-    private $serializer;
-
-    /**
-     * @var ValidatorInterface
-     */
-    private $validator;
+    private AccountMappingRepository $accountMappingRepository;
+    private StripeClient $stripeClient;
+    private SerializerInterface $serializer;
+    private ValidatorInterface $validator;
 
     public function __construct(
         AccountMappingRepository $accountMappingRepository,
@@ -54,46 +38,27 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
         $this->validator = $validator;
     }
 
-    /**
-     * Manually creates the Stripe-Mirakl mapping.
-     * Should only be called manually.
-     *
-     *   @OA\Parameter(
-     *     name="ids",
-     *     in="body",
-     *     description="Mirakl and Stripe Ids to map",
-     *
-     *     @OA\Schema(
-     *         type="object",
-     *         example={"miraklShopId": 1, "stripeUserId": "12345"}
-     *      )
-     * )
-     *
-     * @OA\Response(
-     *     response=201,
-     *     description="Mirakl - Stripe mapping created",
-     * )
-     * @OA\Response(
-     *     response=400,
-     *     description="
-     * Invalid Mirakl shop Id format
-     * Cannot find the Stripe account corresponding to this stripe Id",
-     * )
-     * @OA\Response(
-     *     response=401,
-     *     description="Unauthorized access"
-     * )
-     * @OA\Response(
-     *     response=409,
-     *     description="The provided Mirakl Shop ID or Stripe User Id is already mapped",
-     * )
-     *
-     * @OA\Tag(name="AccountMapping")
-     *
-     * @Security(name="Bearer")
-     *
-     * @Route("/api/mappings", methods={"POST"}, name="create_mapping_manually")
-     */
+    #[Route('/api/mappings', methods: ['POST'], name: 'create_mapping_manually')]
+    #[OA\Post(
+        summary: 'Create Stripe-Mirakl mapping',
+        description: 'Manually creates the Stripe-Mirakl mapping. Should only be called manually.',
+        requestBody: new OA\RequestBody(
+            description: 'Mirakl and Stripe Ids to map',
+            required: true,
+            content: new OA\JsonContent(
+                type: 'object',
+                example: ['miraklShopId' => 1, 'stripeUserId' => '12345']
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Mirakl - Stripe mapping created'),
+            new OA\Response(response: 400, description: 'Invalid Mirakl shop Id format or cannot find the Stripe account corresponding to this stripe Id'),
+            new OA\Response(response: 401, description: 'Unauthorized access'),
+            new OA\Response(response: 409, description: 'The provided Mirakl Shop ID or Stripe User Id is already mapped'),
+        ],
+        tags: ['AccountMapping'],
+        security: [['Bearer' => []]]
+    )]
     public function createMapping(Request $request): Response
     {
         $data = $request->getContent();

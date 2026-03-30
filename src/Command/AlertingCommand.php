@@ -16,12 +16,12 @@ use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 
+#[AsCommand(name: 'connector:notify:failed-operation')]
 class AlertingCommand extends Command implements LoggerAwareInterface
 {
     use LoggerAwareTrait;
-
-    protected static $defaultName = 'connector:notify:failed-operation';
 
     /**
      * @var MailerInterface
