@@ -3,9 +3,11 @@
 namespace App\Controller;
 
 use App\Entity\PaymentMapping;
+use App\Entity\StripePayout;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
+use App\Repository\StripePayoutRepository;
 use App\Service\StripeClient;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
@@ -25,6 +27,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         'account.updated',
         'charge.succeeded',
         'charge.updated',
+        'payout.failed',
     ];
 
     public const DEPRECATED_EVENT_TYPES = [
@@ -54,6 +57,11 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
     private $paymentMappingRepository;
 
     /**
+     * @var StripePayoutRepository
+     */
+    private $stripePayoutRepository;
+
+    /**
      * @var string
      */
     private $webhookSellerSecret;
@@ -73,6 +81,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
+        StripePayoutRepository $stripePayoutRepository,
         string $webhookSellerSecret,
         string $webhookOperatorSecret,
         string $metadataCommercialOrderId
@@ -81,6 +90,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
+        $this->stripePayoutRepository = $stripePayoutRepository;
         $this->webhookSellerSecret = $webhookSellerSecret;
         $this->webhookOperatorSecret = $webhookOperatorSecret;
         $this->metadataCommercialOrderId = $metadataCommercialOrderId;
@@ -194,6 +204,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 case 'charge.updated':
                     $message = $this->handleChargeEvent($event);
                     break;
+                case 'payout.failed':
+                    $message = $this->handlePayoutFailedEvent($event);
+                    break;
             }
         } catch (\Exception $e) {
             $message = $e->getMessage();
@@ -276,6 +289,31 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $this->paymentMappingRepository->flush();
 
         return $message;
+    }
+
+    private function handlePayoutFailedEvent(Event $event): string
+    {
+        $payout = $event->data->object;
+        $stripePayoutId = $payout['id'];
+
+        $stripePayout = $this->stripePayoutRepository->findOneByPayoutId($stripePayoutId);
+        if (null === $stripePayout) {
+            $this->logger->info(sprintf('Ignoring payout.failed event for unknown payout: %s', $stripePayoutId));
+
+            return 'Ignoring payout.failed event for unknown payout.';
+        }
+
+        $failureCode = $payout['failure_code'] ?? 'unknown_code';
+        $failureMessage = $payout['failure_message'] ?? 'Unknown failure reason';
+        $statusReason = $failureCode . ': ' . $failureMessage;
+        $stripePayout->setStatus(StripePayout::PAYOUT_FAILED);
+        $stripePayout->setStatusReason($statusReason);
+
+        $this->stripePayoutRepository->flush();
+
+        $this->logger->info(sprintf('Payout %s marked as failed: %s', $stripePayoutId, $statusReason));
+
+        return 'Payout status updated to failed.';
     }
 
     /**

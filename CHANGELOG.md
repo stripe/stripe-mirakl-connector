@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.1.1
+- Fix: handle `payout.failed` webhook event to correctly update connector payout status when Stripe reports a failure, preventing stale `PAYOUT_CREATED` states and enabling proper retries and downstream notifications.
+
 ## Version 4.1.0
 - Update nelmio config for v4 (#120 thanks @cysp)
 - Run migrations and supervisord on container start (#137)
