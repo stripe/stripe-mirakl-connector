@@ -62,4 +62,11 @@ class StripePayoutRepository extends ServiceEntityRepository
             'miraklInvoiceId' => $invoiceIds,
         ]));
     }
+
+    public function findOneByPayoutId(string $payoutId): ?StripePayout
+    {
+        return $this->findOneBy([
+            'payoutId' => $payoutId,
+        ]);
+    }
 }

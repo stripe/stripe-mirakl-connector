@@ -168,6 +168,28 @@ class StripePayoutFactoryTest extends KernelTestCase
         $this->assertSame('po_test_123', $updatedPayout->getPayoutId());
     }
 
+    public function testUpdateFromInvoiceRetriesFailedPayoutWithPayoutId(): void
+    {
+        $invoice = current($this->miraklClient->listInvoicesByDate(
+            MiraklMockedHttpClient::INVOICE_DATE_1_VALID
+        ));
+
+        $payout = new StripePayout();
+        $payout->setMiraklInvoiceId((int) $invoice['invoice_id']);
+        $payout->setPayoutId('po_old_failed');
+        $payout->setStatus(StripePayout::PAYOUT_FAILED);
+        $payout->setStatusReason('account_closed: The bank account has been closed');
+
+        $updatedPayout = $this->stripePayoutFactory->updateFromInvoice(
+            $payout,
+            $invoice,
+            $this->miraklClient
+        );
+
+        $this->assertSame(StripePayout::PAYOUT_PENDING, $updatedPayout->getStatus());
+        $this->assertNull($updatedPayout->getPayoutId());
+    }
+
     public function testInvoiceWithoutShopIdAbortsPayout(): void
     {
         $invoice = current($this->miraklClient->listInvoicesByDate(

@@ -4,8 +4,10 @@ namespace App\Tests\Controller;
 
 use App\Entity\AccountMapping;
 use App\Entity\PaymentMapping;
+use App\Entity\StripePayout;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
+use App\Repository\StripePayoutRepository;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
@@ -39,6 +41,11 @@ class StripeWebhookEndpointTest extends WebTestCase
     protected $paymentMappingRepository;
 
     /**
+     * @var StripePayoutRepository
+     */
+    protected $stripePayoutRepository;
+
+    /**
      * @var InMemoryTransport
      */
     protected $updateLoginLinkQueue;
@@ -48,6 +55,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->client =  self::createClient();
         $this->accountMappingRepository = static::getContainer()->get('doctrine')->getRepository(AccountMapping::class);
         $this->paymentMappingRepository = static::getContainer()->get('doctrine')->getRepository(PaymentMapping::class);
+        $this->stripePayoutRepository = static::getContainer()->get('doctrine')->getRepository(StripePayout::class);
         $this->updateLoginLinkQueue = static::getContainer()->get('messenger.transport.update_login_link');
         $this->paymentKey = static::getContainer()->getParameter('app.workflow.payment_metadata_commercial_order_id');
     }
@@ -554,6 +562,95 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals($orderId, $paymentMapping->getMiraklCommercialOrderId());
         $this->assertEquals(PaymentMapping::TO_CAPTURE, $paymentMapping->getStatus());
         $this->assertEquals(100, $paymentMapping->getStripeAmount());
+    }
+
+    private function mockStripePayout(int $invoiceId, string $payoutId, string $status = StripePayout::PAYOUT_CREATED): StripePayout
+    {
+        $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId(StripeMock::ACCOUNT_BASIC);
+
+        $payout = new StripePayout();
+        $payout->setMiraklInvoiceId($invoiceId);
+        $payout->setPayoutId($payoutId);
+        $payout->setAmount(1000);
+        $payout->setCurrency('eur');
+        $payout->setStatus($status);
+        $payout->setAccountMapping($accountMapping);
+        $payout->setMiraklCreatedDate(new \DateTime());
+
+        $this->stripePayoutRepository->persistAndFlush($payout);
+
+        return $payout;
+    }
+
+    public function testPayoutFailedUnknownPayout()
+    {
+        $payoutId = 'po_unknown';
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "payout.failed",
+            "data": {
+                "object": {
+                    "id": "$payoutId",
+                    "object": "payout",
+                    "failure_message": "account_closed"
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Ignoring payout.failed event for unknown payout.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+    }
+
+    public function testPayoutFailedKnownPayout()
+    {
+        $payoutId = StripeMock::PAYOUT_BASIC;
+        $this->mockStripePayout(9999, $payoutId);
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "payout.failed",
+            "data": {
+                "object": {
+                    "id": "$payoutId",
+                    "object": "payout",
+                    "failure_code": "account_closed",
+                    "failure_message": "The bank account has been closed"
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Payout status updated to failed.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $updatedPayout = $this->stripePayoutRepository->findOneByPayoutId($payoutId);
+        $this->assertNotNull($updatedPayout);
+        $this->assertEquals(StripePayout::PAYOUT_FAILED, $updatedPayout->getStatus());
+        $this->assertEquals('account_closed: The bank account has been closed', $updatedPayout->getStatusReason());
+    }
+
+    public function testPayoutFailedNoFailureMessage()
+    {
+        $payoutId = StripeMock::PAYOUT_BASIC;
+        $this->mockStripePayout(9998, $payoutId);
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "payout.failed",
+            "data": {
+                "object": {
+                    "id": "$payoutId",
+                    "object": "payout"
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Payout status updated to failed.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $updatedPayout = $this->stripePayoutRepository->findOneByPayoutId($payoutId);
+        $this->assertNotNull($updatedPayout);
+        $this->assertEquals(StripePayout::PAYOUT_FAILED, $updatedPayout->getStatus());
+        $this->assertEquals('unknown_code: Unknown failure reason', $updatedPayout->getStatusReason());
     }
 
     public function testChargeUpdatedMetadataInExpandedPaymentIntentIsEmpty()

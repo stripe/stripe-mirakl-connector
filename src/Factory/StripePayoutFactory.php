@@ -40,7 +40,11 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         // Payout already created
         if ($payout->getPayoutId()) {
-            return $this->markPayoutAsCreated($payout);
+            if ($payout->isRetriable()) {
+                $payout->setPayoutId(null);
+            } else {
+                return $this->markPayoutAsCreated($payout);
+            }
         }
 
         // Amount and currency
