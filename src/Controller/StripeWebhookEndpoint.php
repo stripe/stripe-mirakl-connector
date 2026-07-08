@@ -8,6 +8,7 @@ use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripePayoutRepository;
+use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
@@ -76,17 +77,24 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private $metadataCommercialOrderId;
 
+    /**
+     * @var MiraklClient
+     */
+    private $miraklClient;
+
     public function __construct(
         MessageBusInterface $bus,
         StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
         StripePayoutRepository $stripePayoutRepository,
+        MiraklClient $miraklClient,
         string $webhookSellerSecret,
         string $webhookOperatorSecret,
         string $metadataCommercialOrderId
     ) {
         $this->bus = $bus;
+        $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -188,7 +196,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         if (!in_array($event['type'], self::HANDLED_EVENT_TYPES)) {
-            $this->logger->error(sprintf('Unhandled event type %s.', (bool) $event['type']));
+            $this->logger->error(sprintf('Unhandled event type %s.', (string) $event['type']));
 
             return new Response('Unhandled event type', Response::HTTP_BAD_REQUEST);
         }
@@ -257,11 +265,36 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $charge = $event->data->object;
         assert($charge instanceof \Stripe\Charge);
 
-
+        $stripeAccount = $event->account ?? null;
 
         $miraklCommercialOrderId = $this->findMiraklCommercialOrderId($charge);
         if (!$miraklCommercialOrderId) {
+            $this->logger->info(sprintf('Ignoring event with no Mirakl Commercial Order ID for Stripe charge: %s', $charge->id));
             return 'Ignoring event with no Mirakl Commercial Order ID.';
+        }
+
+        if (!empty($stripeAccount)) {
+            $orderList = $this->miraklClient->listProductOrdersByCommercialId([$miraklCommercialOrderId]);
+            if (empty($orderList)) {
+                $orderList = $this->miraklClient->listServiceOrdersByCommercialId([$miraklCommercialOrderId]);
+            }
+            if (empty($orderList)) {
+                $this->logger->info(sprintf('Ignoring event with no Mirakl Order for Stripe charge: %s', $charge->id));
+                return 'Ignoring event with no Mirakl Order.';
+            }
+            $shopId = current(current($orderList))->getShopId();
+
+            $accountMapping = $this->accountMappingRepository->findByMiraklShopIds([$shopId]);
+            if (empty($accountMapping)) {
+                $this->logger->info(sprintf('Ignoring event for unknown Mirakl shop for Stripe charge: %s', $charge->id));
+                return 'Ignoring event for unknown Mirakl shop.';
+            }
+            $accountMapping = current($accountMapping);
+
+            if ($stripeAccount !== $accountMapping->getStripeAccountId()) {
+                $this->logger->info(sprintf('Ignoring event for unknown Stripe account for Stripe charge: %s', $charge->id));
+                return 'Ignoring event for unknown Stripe account.';
+            }
         }
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($charge->id);
