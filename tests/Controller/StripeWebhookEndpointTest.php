@@ -653,6 +653,124 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals('unknown_code: Unknown failure reason', $updatedPayout->getStatusReason());
     }
 
+    public function testChargeUpdatedWithStripeAccountMatchingOrder()
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED;
+        $stripeAccountId = StripeMock::ACCOUNT_BASIC;
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$stripeAccountId",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNotNull($paymentMapping);
+        $this->assertEquals($orderId, $paymentMapping->getMiraklCommercialOrderId());
+        $this->assertEquals(PaymentMapping::TO_CAPTURE, $paymentMapping->getStatus());
+    }
+
+    public function testChargeUpdatedWithStripeAccountMismatch()
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED;
+        $stripeAccountId = StripeMock::ACCOUNT_NEW;
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$stripeAccountId",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Ignoring event for unknown Stripe account.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNull($paymentMapping);
+    }
+
+    public function testChargeUpdatedWithStripeAccountNoMiraklOrder()
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_NOT_FOUND;
+        $stripeAccountId = StripeMock::ACCOUNT_BASIC;
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$stripeAccountId",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Ignoring event with no Mirakl Order.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNull($paymentMapping);
+    }
+
+    public function testChargeUpdatedWithStripeAccountUnknownMiraklShop()
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_INVALID_SHOP;
+        $stripeAccountId = StripeMock::ACCOUNT_BASIC;
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$stripeAccountId",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Ignoring event for unknown Mirakl shop.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNull($paymentMapping);
+    }
+
     public function testChargeUpdatedMetadataInExpandedPaymentIntentIsEmpty()
     {
         $chargeId = StripeMock::CHARGE_BASIC;

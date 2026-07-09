@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.1.2
+- Added security check to verify Stripe account matches order's shop mapping before updating payment mappings
+
 ## Version 4.1.1
 - Fix: handle `payout.failed` webhook event to correctly update connector payout status when Stripe reports a failure, preventing stale `PAYOUT_CREATED` states and enabling proper retries and downstream notifications.
 
