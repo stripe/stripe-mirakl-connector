@@ -108,7 +108,8 @@ class CancelPendingPaymentHandlerTest extends KernelTestCase
         $this->executeHandler($mapping->getId());
 
         $mapping = $this->getPaymentMapping($mapping->getId());
-        $this->assertEquals(PaymentMapping::TO_CAPTURE, $mapping->getStatus());
+        $this->assertEquals(PaymentMapping::CANCEL_FAILED, $mapping->getStatus());
+        $this->assertNotNull($mapping->getStatusReason());
     }
 
     public function testCancelChargeWithApiError()
@@ -121,6 +122,7 @@ class CancelPendingPaymentHandlerTest extends KernelTestCase
         $this->executeHandler($mapping->getId());
 
         $mapping = $this->getPaymentMapping($mapping->getId());
-        $this->assertEquals(PaymentMapping::TO_CAPTURE, $mapping->getStatus());
+        $this->assertEquals(PaymentMapping::CANCEL_FAILED, $mapping->getStatus());
+        $this->assertNotNull($mapping->getStatusReason());
     }
 }

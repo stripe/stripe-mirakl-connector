@@ -3,9 +3,11 @@
 namespace App\Tests\Command;
 
 use App\Command\AlertingCommand;
+use App\Entity\PaymentMapping;
 use App\Entity\StripePayout;
 use App\Entity\StripeTransfer;
 use App\Entity\StripeRefund;
+use App\Repository\PaymentMappingRepository;
 use App\Repository\StripePayoutRepository;
 use App\Repository\StripeTransferRepository;
 use App\Repository\StripeRefundRepository;
@@ -20,6 +22,7 @@ use Symfony\Component\Console\Formatter\OutputFormatter;
 class AlertingCommandTest extends TestCase
 {
     protected $mailer;
+    protected $paymentMappingRepository;
     protected $transferRepository;
     protected $payoutRepository;
     protected $refundRepository;
@@ -31,6 +34,7 @@ class AlertingCommandTest extends TestCase
     protected function setUp(): void
     {
         $this->mailer = $this->createMock(MailerInterface::class);
+        $this->paymentMappingRepository = $this->createMock(PaymentMappingRepository::class);
         $this->transferRepository = $this->createMock(StripeTransferRepository::class);
         $this->payoutRepository = $this->createMock(StripePayoutRepository::class);
         $this->refundRepository = $this->createMock(StripeRefundRepository::class);
@@ -42,7 +46,7 @@ class AlertingCommandTest extends TestCase
         $this->output
             ->method('getFormatter')
             ->willReturn($outputFormatter);
-        $this->command = new AlertingCommand($this->mailer, $this->transferRepository, $this->payoutRepository, $this->refundRepository, 'mailfrom@example.com', 'mailto@example.com');
+        $this->command = new AlertingCommand($this->mailer, $this->paymentMappingRepository, $this->transferRepository, $this->payoutRepository, $this->refundRepository, 'mailfrom@example.com', 'mailto@example.com');
         $this->command->setLogger(new NullLogger());
     }
 
@@ -51,6 +55,10 @@ class AlertingCommandTest extends TestCase
      */
     public function testExecuteWithNoFailedOperation()
     {
+        $this->paymentMappingRepository
+            ->expects($this->once())
+            ->method('findBy')
+            ->willReturn([]);
         $this->transferRepository
             ->expects($this->once())
             ->method('findBy')
@@ -72,9 +80,14 @@ class AlertingCommandTest extends TestCase
 
     public function testExecuteWithFailedOperations()
     {
+        $failedPayments = $this->createMock(PaymentMapping::class);
         $failedTransfers = $this->createMock(StripeTransfer::class);
         $failedPayouts = $this->createMock(StripePayout::class);
         $failedRefunds = $this->createMock(StripeRefund::class);
+        $this->paymentMappingRepository
+            ->expects($this->once())
+            ->method('findBy')
+            ->willReturn([$failedPayments]);
         $this->transferRepository
             ->expects($this->once())
             ->method('findBy')
