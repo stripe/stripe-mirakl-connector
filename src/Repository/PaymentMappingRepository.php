@@ -50,7 +50,11 @@ class PaymentMappingRepository extends ServiceEntityRepository
     public function findToCapturePayments(): array
     {
         return $this->mapByMiraklCommercialOrderId($this->findBy([
-            'status' => PaymentMapping::TO_CAPTURE,
+            'status' => [
+                PaymentMapping::TO_CAPTURE,
+                PaymentMapping::CAPTURE_FAILED,
+                PaymentMapping::CANCEL_FAILED,
+            ],
         ]));
     }
 

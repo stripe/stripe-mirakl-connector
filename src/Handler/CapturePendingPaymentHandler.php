@@ -40,22 +40,33 @@ class CapturePendingPaymentHandler implements LoggerAwareInterface
             'id' => $message->getPaymentMappingId(),
         ]);
         assert(null !== $paymentMapping);
-        assert(PaymentMapping::TO_CAPTURE === $paymentMapping->getStatus());
+        assert(in_array($paymentMapping->getStatus(), [PaymentMapping::TO_CAPTURE, PaymentMapping::CAPTURE_FAILED, PaymentMapping::CANCEL_FAILED], true));
 
         try {
-            $this->stripeClient->capturePayment(
-                $paymentMapping->getStripeChargeId(),
-                $message->getAmount()
-            );
-
-            $paymentMapping->capture();
-            $this->paymentMappingRepository->flush();
+            $stripeChargeId = $paymentMapping->getStripeChargeId();
+            if (str_starts_with($stripeChargeId, 'pi_')) {
+                $this->stripeClient->capturePayment($stripeChargeId, $message->getAmount());
+                $paymentMapping->capture();
+            } else {
+                $charge = $this->stripeClient->chargeRetrieve($stripeChargeId);
+                if ($charge->captured) {
+                    $paymentMapping->capture();
+                } else {
+                    $this->stripeClient->capturePayment($stripeChargeId, $message->getAmount());
+                    $paymentMapping->capture();
+                }
+            }
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not capture Stripe Charge: %s.', $e->getMessage()), [
                 'chargeId' => $paymentMapping->getStripeChargeId(),
                 'amount' => $message->getAmount(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);
+
+            $paymentMapping->setStatus(PaymentMapping::CAPTURE_FAILED);
+            $paymentMapping->setStatusReason(substr($e->getMessage(), 0, 1024));
         }
+
+        $this->paymentMappingRepository->flush();
     }
 }

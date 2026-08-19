@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\PaymentMapping;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
 use App\Message\ValidateMiraklOrderMessage;
@@ -85,7 +86,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         // get stripe known payment intent or charge for pending order
         $paymentMappings = $this->paymentMappingRepository->findPaymentsByCommercialOrderIdsAndStatuses(
             array_keys($ordersByCommercialId),
-            ['captured','to_capture']
+            [PaymentMapping::CAPTURED, PaymentMapping::TO_CAPTURE]
         );
 
         // Keep orders with a payment mapping and vice versa

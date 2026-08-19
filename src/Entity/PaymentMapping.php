@@ -16,6 +16,8 @@ class PaymentMapping
     public const CAPTURED = 'captured';
     public const CANCELED = 'canceled';
     public const FAILED = 'failed';
+    public const CAPTURE_FAILED = 'capture_failed';
+    public const CANCEL_FAILED = 'cancel_failed';
 
     #[Id]
     #[GeneratedValue]
@@ -30,6 +32,9 @@ class PaymentMapping
 
     #[Column(type: 'string')]
     private string $status = self::TO_CAPTURE;
+
+    #[Column(type: 'string', length: 1024, nullable: true)]
+    private ?string $statusReason = null;
 
     #[Column(type: 'integer', nullable: true)]
     private ?int $stripeAmount;
@@ -89,6 +94,8 @@ class PaymentMapping
             self::CAPTURED,
             self::CANCELED,
             self::FAILED,
+            self::CAPTURE_FAILED,
+            self::CANCEL_FAILED,
         ];
     }
 
@@ -106,11 +113,25 @@ class PaymentMapping
         return $this;
     }
 
+    public function getStatusReason(): ?string
+    {
+        return $this->statusReason;
+    }
+
+    public function setStatusReason(?string $statusReason): self
+    {
+        $this->statusReason = $statusReason;
+
+        return $this;
+    }
+
     /**
      * @return self
      */
     public function capture()
     {
+        $this->statusReason = null;
+
         return $this->setStatus(self::CAPTURED);
     }
 
@@ -119,6 +140,8 @@ class PaymentMapping
      */
     public function cancel()
     {
+        $this->statusReason = null;
+
         return $this->setStatus(self::CANCELED);
     }
 

@@ -40,17 +40,21 @@ class CancelPendingPaymentHandler implements LoggerAwareInterface
             'id' => $message->getPaymentMappingId(),
         ]);
         assert(null !== $paymentMapping);
-        assert(PaymentMapping::TO_CAPTURE === $paymentMapping->getStatus());
+        assert(in_array($paymentMapping->getStatus(), [PaymentMapping::TO_CAPTURE, PaymentMapping::CAPTURE_FAILED, PaymentMapping::CANCEL_FAILED], true));
 
         try {
             $this->stripeClient->cancelPayment($paymentMapping->getStripeChargeId());
             $paymentMapping->cancel();
-            $this->paymentMappingRepository->flush();
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not cancel Stripe Charge: %s.', $e->getMessage()), [
                 'chargeId' => $paymentMapping->getStripeChargeId(),
                 'stripeErrorCode' => $e->getStripeCode(),
             ]);
+
+            $paymentMapping->setStatus(PaymentMapping::CANCEL_FAILED);
+            $paymentMapping->setStatusReason(substr($e->getMessage(), 0, 1024));
         }
+
+        $this->paymentMappingRepository->flush();
     }
 }
