@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 4.2
+- Store failed capture reason, then include them in the daily alerting email
+- Validate if charge is captured before executing capture
+
 ## Version 4.1.2
 - Added security check to verify Stripe account matches order's shop mapping before updating payment mappings
 

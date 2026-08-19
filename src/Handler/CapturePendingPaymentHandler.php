@@ -43,12 +43,17 @@ class CapturePendingPaymentHandler implements LoggerAwareInterface
         assert(in_array($paymentMapping->getStatus(), [PaymentMapping::TO_CAPTURE, PaymentMapping::CAPTURE_FAILED, PaymentMapping::CANCEL_FAILED], true));
 
         try {
-            $this->stripeClient->capturePayment(
-                $paymentMapping->getStripeChargeId(),
-                $message->getAmount()
-            );
+            $charge = $this->stripeClient->chargeRetrieve($paymentMapping->getStripeChargeId());
+            if ($charge->captured) {
+                $paymentMapping->capture();
+            } else {
+                $this->stripeClient->capturePayment(
+                    $paymentMapping->getStripeChargeId(),
+                    $message->getAmount()
+                );
 
-            $paymentMapping->capture();
+                $paymentMapping->capture();
+            }
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not capture Stripe Charge: %s.', $e->getMessage()), [
                 'chargeId' => $paymentMapping->getStripeChargeId(),
