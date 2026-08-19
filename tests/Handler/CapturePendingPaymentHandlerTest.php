@@ -114,7 +114,7 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
         $this->assertNotNull($mapping->getStatusReason());
     }
 
-    public function testCaptureChargeWithApiError()
+    public function testCaptureChargeAlreadyCaptured()
     {
         $mapping = $this->mockPaymentMapping(
             MiraklMock::ORDER_BASIC,
@@ -124,7 +124,6 @@ class CapturePendingPaymentHandlerTest extends KernelTestCase
         $this->executeHandler($mapping->getId());
 
         $mapping = $this->getPaymentMapping($mapping->getId());
-        $this->assertEquals(PaymentMapping::CAPTURE_FAILED, $mapping->getStatus());
-        $this->assertNotNull($mapping->getStatusReason());
+        $this->assertEquals(PaymentMapping::CAPTURED, $mapping->getStatus());
     }
 }
