@@ -43,6 +43,8 @@ abstract class MiraklOrder
 
     abstract public function isAborted(): bool;
 
+    abstract public function isAccepted(): bool;
+
     abstract public function getAmountDue(): float;
 
     abstract public function getAbortedAmount(): float;

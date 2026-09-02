@@ -64,6 +64,14 @@ class MiraklServiceOrder extends MiraklOrder
         return in_array($this->getState(), ['ORDER_REFUSED', 'ORDER_EXPIRED', 'ORDER_CANCELLED']);
     }
 
+    public function isAccepted(): bool
+    {
+        return !in_array($this->getState(), [
+            'WAITING_SCORING',
+            'WAITING_ACCEPTANCE'
+        ]);
+    }
+
     public function getAmountDue(): float
     {
         $taxes = 0;

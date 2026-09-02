@@ -64,6 +64,14 @@ class MiraklProductOrder extends MiraklOrder
         return in_array($this->getState(), ['REFUSED', 'CANCELED']);
     }
 
+    public function isAccepted(): bool
+    {
+        return !in_array($this->getState(), [
+            'STAGING',
+            'WAITING_ACCEPTANCE',
+        ]);
+    }
+
     public function getAmountDue(): float
     {
         $amount = $this->order['total_price']; // REFUSED/CANCELED are already not included

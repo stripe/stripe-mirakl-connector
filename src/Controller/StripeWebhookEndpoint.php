@@ -29,6 +29,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         'charge.succeeded',
         'charge.updated',
         'payout.failed',
+        'charge.captured'
     ];
 
     public const DEPRECATED_EVENT_TYPES = [
@@ -210,6 +211,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                     break;
                 case 'charge.succeeded':
                 case 'charge.updated':
+                case 'charge.captured':
                     $message = $this->handleChargeEvent($event);
                     break;
                 case 'payout.failed':
@@ -316,6 +318,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         } else {
             $paymentMapping->setStatus($status);
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
+            if ($status === PaymentMapping::CAPTURED) {
+                $paymentMapping->setStatusReason(null);
+            }
             $message = 'Payment mapping updated.';
         }
 

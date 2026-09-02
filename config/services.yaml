@@ -21,6 +21,7 @@ parameters:
   env(ENABLE_PAYMENT_TAX_SPLIT): false
   env(STRIPE_TAX_ACCOUNT): ""
   env(KYC_MIRAKL_SHOP_DISABLE_UPDATE): false
+  env(PA01_AFTER_CAPTURE): false
 
   default_redirect_onboarding: "%env(MIRAKL_HOST_NAME)%/mmp/shop/account/shop"
   default_enable_product_payment_split: false
@@ -59,6 +60,7 @@ parameters:
   app.endpoint_down.mail_notification: "%env(bool:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN)%"
   app.endpoint_down.mail_notification_throttle: "%env(int:MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN)%"
   app.mirakl.shop_kyc_disable: "%env(bool:KYC_MIRAKL_SHOP_DISABLE_UPDATE)%"
+  app.mirakl.pa01_after_capture: "%env(bool:PA01_AFTER_CAPTURE)%"
 
 services:
   # default configuration for services in *this* file
@@ -94,6 +96,7 @@ services:
       $stripeTaxAccount: "%app.stripe.tax_account%"
       $taxOrderPostfix: "_TAX"
       $miraklShopKycDisable: "%app.mirakl.shop_kyc_disable%"
+      $pa01AfterCapture: "%app.mirakl.pa01_after_capture%"
 
   # makes classes in src/ available to be used as services
   # this creates a service per class whose id is the fully-qualified class name

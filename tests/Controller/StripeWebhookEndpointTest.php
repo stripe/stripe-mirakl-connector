@@ -98,12 +98,13 @@ class StripeWebhookEndpointTest extends WebTestCase
         return $accountMapping;
     }
 
-    private function mockPaymentMapping(string $orderId, string $chargeId, bool $captured = false)
+    private function mockPaymentMapping(string $orderId, string $chargeId, bool $captured = false, ?string $statusReason = null)
     {
         $paymentMapping = new PaymentMapping();
         $paymentMapping->setMiraklCommercialOrderId($orderId);
         $paymentMapping->setStripeChargeId($chargeId);
         $paymentMapping->setStatus($captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE);
+        $paymentMapping->setStatusReason($statusReason);
 
         $this->paymentMappingRepository->persist($paymentMapping);
         $this->paymentMappingRepository->flush();
@@ -437,13 +438,42 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals(PaymentMapping::CAPTURED, $paymentMapping->getStatus());
     }
 
+    public function testChargeCaptured()
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.captured",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNotNull($paymentMapping);
+        $this->assertEquals(PaymentMapping::CAPTURED, $paymentMapping->getStatus());
+    }
+
     public function testChargeUpdatedExistingMappingNewStatus()
     {
         $chargeId = StripeMock::CHARGE_BASIC;
         $orderId = MiraklMock::ORDER_BASIC;
-        $this->mockPaymentMapping($orderId, $chargeId, false);
+        $this->mockPaymentMapping($orderId, $chargeId, false, 'capture_failed: Previous capture failed');
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
         $this->assertEquals(PaymentMapping::TO_CAPTURE, $paymentMapping->getStatus());
+        $this->assertEquals('capture_failed: Previous capture failed', $paymentMapping->getStatusReason());
         $response = $this->executeOperatorRequest(<<<PAYLOAD
         {
             "type": "charge.updated",
@@ -464,6 +494,7 @@ class StripeWebhookEndpointTest extends WebTestCase
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
         $this->assertEquals(PaymentMapping::CAPTURED, $paymentMapping->getStatus());
+        $this->assertNull($paymentMapping->getStatusReason());
     }
 
     public function testChargeUpdatedExistingMappingSameStatus()
