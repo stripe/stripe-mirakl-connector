@@ -318,6 +318,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         } else {
             $paymentMapping->setStatus($status);
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
+            if ($status === PaymentMapping::CAPTURED) {
+                $paymentMapping->setStatusReason(null);
+            }
             $message = 'Payment mapping updated.';
         }
 
