@@ -4,12 +4,14 @@ namespace App\Tests\Command;
 
 use App\Entity\PaymentMapping;
 use App\Repository\PaymentMappingRepository;
+use App\Service\MiraklClient;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 class PaymentValidationCommandTest extends KernelTestCase
 {
@@ -52,22 +54,35 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->paymentMappingRepository = static::getContainer()->get('doctrine')->getRepository(PaymentMapping::class);
     }
 
-    private function executeCommand()
+    private function executeCommand(?bool $pa01AfterCapture = null)
     {
         $this->validateReceiver->reset();
         $this->captureReceiver->reset();
         $this->cancelReceiver->reset();
-        $this->commandTester->execute(['command' => $this->command->getName()]);
-        $this->assertEquals(0, $this->commandTester->getStatusCode());
+
+        $command = $this->command;
+        if (null !== $pa01AfterCapture) {
+            $command = new \App\Command\PaymentValidationCommand(
+                static::getContainer()->get(MessageBusInterface::class),
+                static::getContainer()->get(MiraklClient::class),
+                $this->paymentMappingRepository,
+                $pa01AfterCapture
+            );
+            $command->setLogger(static::getContainer()->get('monolog.logger.pending_debit'));
+        }
+
+        $commandTester = new CommandTester($command);
+        $commandTester->execute($command === $this->command ? ['command' => $command->getName()] : []);
+        $this->assertEquals(0, $commandTester->getStatusCode());
     }
 
-    private function mockPaymentMapping($commercialId, $paymentId, $amount)
+    private function mockPaymentMapping($commercialId, $paymentId, $amount, $status = PaymentMapping::TO_CAPTURE)
     {
         $mapping = new PaymentMapping();
         $mapping->setMiraklCommercialOrderId($commercialId);
         $mapping->setStripeChargeId($paymentId);
         $mapping->setStripeAmount($amount);
-        $mapping->setStatus(PaymentMapping::TO_CAPTURE);
+        $mapping->setStatus($status);
 
         $this->paymentMappingRepository->persist($mapping);
         $this->paymentMappingRepository->flush();
@@ -190,5 +205,64 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(0, $this->captureReceiver->getSent());
         $this->assertCount(1, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureAfterPa01ForMultipleAcceptedOrders()
+    {
+        // The commercial order contains two accepted logistical orders.
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            16944
+        );
+        $this->executeCommand(true);
+
+        $this->assertCount(1, $messages = $this->captureReceiver->getSent());
+        $this->assertEquals(16944, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testPendingValidationAfterPa01UsesCapturedMappings()
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_PARTIALLY_VALIDATED,
+            StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE,
+            16944,
+            PaymentMapping::CAPTURED
+        );
+        $this->executeCommand(true);
+
+        $this->assertCount(1, $messages = $this->validateReceiver->getSent());
+        $this->assertCount(1, $messages[0]->getMessage()->getOrders());
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureAfterPa01DeductsRefusedOrders()
+    {
+        // The commercial order contains one accepted order and one refused order.
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_PARTIALLY_REFUSED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            16944
+        );
+        $this->executeCommand(true);
+
+        $this->assertCount(1, $messages = $this->captureReceiver->getSent());
+        $this->assertEquals(8472, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureAfterPa01SkipsWaitingAcceptanceOrders()
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_NONE_VALIDATED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            16944
+        );
+        $this->executeCommand(true);
+
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
     }
 }
