@@ -154,7 +154,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
 
     private function captureWaitingOrder(MiraklOrder $order, string $commercialId, string $orderId): bool
     {
-        // Order must be validated (accepted/refused)
+        // Order must be in an accepted state
         if (!$order->isAccepted()) {
             $this->logger->info(
                 'Skipping payment capture for non-accepted logistical order.',

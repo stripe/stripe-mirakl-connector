@@ -437,6 +437,34 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals(PaymentMapping::CAPTURED, $paymentMapping->getStatus());
     }
 
+    public function testChargeCaptured()
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.captured",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNotNull($paymentMapping);
+        $this->assertEquals(PaymentMapping::CAPTURED, $paymentMapping->getStatus());
+    }
+
     public function testChargeUpdatedExistingMappingNewStatus()
     {
         $chargeId = StripeMock::CHARGE_BASIC;
