@@ -59,6 +59,7 @@ class PaymentSplitService
 
         $transfers = [];
         foreach ($orders as $orderId => $order) {
+            $tax_transfer = null;
             $pendingDebit = $pendingDebits[$orderId] ?? null;
             if (is_array($existingTransfers) && isset($existingTransfers[$orderId])) {
                 $transfer = $existingTransfers[$orderId];
@@ -79,7 +80,7 @@ class PaymentSplitService
             }
 
             $transfers[] = $transfer;
-            if (isset($tax_transfer)) {
+            if (!is_null($tax_transfer)) {
                 $transfers[] = $tax_transfer;
             }
         }

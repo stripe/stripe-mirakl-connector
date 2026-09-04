@@ -4,6 +4,7 @@ namespace App\Tests\Factory;
 
 use App\Entity\AccountMapping;
 use App\Entity\PaymentMapping;
+use App\Entity\MiraklOrder;
 use App\Entity\MiraklProductOrder;
 use App\Entity\StripeRefund;
 use App\Entity\StripeTransfer;
@@ -127,6 +128,53 @@ class PaymentSplitServiceTest extends KernelTestCase
 
         $transfers = $this->getTransfersFromRepository();
         $this->assertCount(3, $transfers);
+    }
+
+    public function testGetTransfersFromOrdersDoesNotReuseTaxTransferForExistingOrder()
+    {
+        $factory = $this->createMock(StripeTransferFactory::class);
+        $repository = $this->createMock(StripeTransferRepository::class);
+        $service = new PaymentSplitService($factory, $repository, true, '_TAX');
+
+        // The first order is new and creates a tax transfer. The second order
+        // has an existing retriable transfer and must not inherit the first
+        // order's tax transfer.
+        $firstOrder = $this->createMock(MiraklOrder::class);
+        $secondOrder = $this->createMock(MiraklOrder::class);
+        $firstTransfer = new StripeTransfer();
+        $taxTransfer = new StripeTransfer();
+        $existingSecondTransfer = new StripeTransfer();
+        $existingSecondTransfer->setStatus(StripeTransfer::TRANSFER_FAILED);
+        $updatedSecondTransfer = new StripeTransfer();
+
+        $repository->expects($this->once())
+            ->method('findTransfersByOrderIds')
+            ->with(['order-1', 'order-2'])
+            ->willReturn(['order-2' => $existingSecondTransfer]);
+        $repository->expects($this->exactly(2))
+            ->method('persist')
+            ->withConsecutive([$firstTransfer], [$taxTransfer]);
+        $repository->expects($this->once())->method('flush');
+
+        $factory->expects($this->once())
+            ->method('createFromOrder')
+            ->with($firstOrder, null)
+            ->willReturn($firstTransfer);
+        $factory->expects($this->once())
+            ->method('createFromOrderForTax')
+            ->with($firstOrder, null)
+            ->willReturn($taxTransfer);
+        $factory->expects($this->once())
+            ->method('updateFromOrder')
+            ->with($existingSecondTransfer, $secondOrder, null)
+            ->willReturn($updatedSecondTransfer);
+
+        $transfers = $service->getTransfersFromOrders(
+            ['order-1' => $firstOrder, 'order-2' => $secondOrder],
+            []
+        );
+
+        $this->assertSame([$firstTransfer, $taxTransfer, $updatedSecondTransfer], $transfers);
     }
 
     public function testUpdateTransfersFromOrders()

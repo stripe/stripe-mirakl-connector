@@ -2,6 +2,7 @@
 
 ## Version 4.3
 - Added new flag PA01_AFTER_CAPTURE to allow PA01 workflow to be executed after capture instead of before capture to validate the order after the capture has been made.
+- Fixed payment split processing so tax transfers from one order are not incorrectly reused for subsequent existing orders.
 
 ## Version 4.2
 - Store failed capture reason, then include them in the daily alerting email
