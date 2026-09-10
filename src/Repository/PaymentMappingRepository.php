@@ -36,9 +36,41 @@ class PaymentMappingRepository extends ServiceEntityRepository
 
     private function mapByMiraklCommercialOrderId(array $paymentMappings): array
     {
+        if (empty($paymentMappings)) {
+            return [];
+        }
+
+        // Collect the commercial order IDs visible in the (possibly status-filtered) input.
+        $commercialOrderIds = array_values(array_unique(array_filter(
+            array_map(static fn($pm) => $pm->getMiraklCommercialOrderId(), $paymentMappings)
+        )));
+
+        if (empty($commercialOrderIds)) {
+            return [];
+        }
+
+        // Query ALL rows for those commercial order IDs, ignoring any status filter the
+        // caller applied. A status-filtered query (e.g. findToCapturePayments) might show
+        // only one of two duplicate rows; the hidden duplicate would not be detected unless
+        // we count across every status here.
+        $conflicted = [];
+        $countPerOrder = [];
+        foreach ($this->findBy(['miraklCommercialOrderId' => $commercialOrderIds]) as $row) {
+            $id = $row->getMiraklCommercialOrderId();
+            $countPerOrder[$id] = ($countPerOrder[$id] ?? 0) + 1;
+            if ($countPerOrder[$id] > 1) {
+                $conflicted[$id] = true;
+            }
+        }
+
+        // Build the result map, excluding any commercial order that has duplicate rows in
+        // any status. Exclusion is safer than guessing which row is legitimate.
         $map = [];
         foreach ($paymentMappings as $paymentMapping) {
-            $map[$paymentMapping->getMiraklCommercialOrderId()] = $paymentMapping;
+            $commercialId = $paymentMapping->getMiraklCommercialOrderId();
+            if (!isset($conflicted[$commercialId])) {
+                $map[$commercialId] = $paymentMapping;
+            }
         }
 
         return $map;
@@ -75,7 +107,7 @@ class PaymentMappingRepository extends ServiceEntityRepository
     {
         return $this->mapByMiraklCommercialOrderId($this->findBy([
             'miraklCommercialOrderId' => $commercialOrderIds,
-            'status'=> $status
+            'status' => $status,
         ]));
     }
 
@@ -83,6 +115,13 @@ class PaymentMappingRepository extends ServiceEntityRepository
     {
         return $this->findOneBy([
             'stripeChargeId' => $stripeChargeId,
+        ]);
+    }
+
+    public function findOneByMiraklCommercialOrderId(string $commercialOrderId): ?PaymentMapping
+    {
+        return $this->findOneBy([
+            'miraklCommercialOrderId' => $commercialOrderId,
         ]);
     }
 }

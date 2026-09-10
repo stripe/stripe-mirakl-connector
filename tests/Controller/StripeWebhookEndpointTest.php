@@ -832,4 +832,350 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals("$this->paymentKey is empty in PaymentIntent.", $response->getContent());
         $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
     }
+
+    // -------------------------------------------------------------------------
+    // Security fix: duplicate commercial-order guard
+    // -------------------------------------------------------------------------
+
+    /**
+     * A second charge that claims the same commercial order ID must be rejected
+     * once a PaymentMapping already exists for that order. The existing mapping
+     * (for a different charge) must remain intact.
+     */
+    public function testChargeUpdatedSecondChargeForSameCommercialOrderIsRejected(): void
+    {
+        $existingChargeId = 'ch_already_mapped';
+        $newChargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+
+        // Pre-populate the mapping created by the first (legitimate) webhook.
+        $this->mockPaymentMapping($orderId, $existingChargeId, false);
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$newChargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 200
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals(
+            'Ignoring event: payment mapping already exists for this commercial order.',
+            $response->getContent()
+        );
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        // The original mapping must be untouched.
+        $originalMapping = $this->paymentMappingRepository->findOneByStripeChargeId($existingChargeId);
+        $this->assertNotNull($originalMapping);
+        $this->assertEquals($orderId, $originalMapping->getMiraklCommercialOrderId());
+
+        // No new mapping must have been created for the second charge.
+        $newMapping = $this->paymentMappingRepository->findOneByStripeChargeId($newChargeId);
+        $this->assertNull($newMapping);
+    }
+
+    /**
+     * When the same charge is seen again (idempotent re-delivery), the existing
+     * mapping must be updated normally — the duplicate guard must not fire because
+     * the charge ID is already in the mapping, so the code takes the update branch.
+     */
+    public function testChargeUpdatedIdempotentRedeliveryUpdatesExistingMapping(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+
+        // Existing mapping: same charge, same order, not yet captured.
+        $this->mockPaymentMapping($orderId, $chargeId, false);
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        // Should follow the update branch, not the duplicate guard.
+        $this->assertEquals('Payment mapping updated.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        $mapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNotNull($mapping);
+        $this->assertEquals(PaymentMapping::CAPTURED, $mapping->getStatus());
+        $this->assertEquals($orderId, $mapping->getMiraklCommercialOrderId());
+    }
+
+    // -------------------------------------------------------------------------
+    // Security fix: charge reassignment guard
+    // -------------------------------------------------------------------------
+
+    /**
+     * An attacker controlling a known charge ID must not be able to reassign that
+     * charge to a different commercial order via a charge.updated event. The event
+     * must be silently ignored and the original mapping left unchanged.
+     */
+    public function testChargeUpdatedReassignmentToDifferentCommercialOrderIsRejected(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $originalOrderId = MiraklMock::ORDER_BASIC;
+        $attackerOrderId = MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED;
+
+        // Legitimate existing mapping: charge → originalOrder.
+        $this->mockPaymentMapping($originalOrderId, $chargeId, false);
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$attackerOrderId"},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals(
+            'Ignoring event: charge is already mapped to a different commercial order.',
+            $response->getContent()
+        );
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        // The mapping must not have been moved to the attacker-controlled order.
+        $mapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNotNull($mapping);
+        $this->assertEquals($originalOrderId, $mapping->getMiraklCommercialOrderId());
+        // Status must also be unchanged (TO_CAPTURE, not CAPTURED).
+        $this->assertEquals(PaymentMapping::TO_CAPTURE, $mapping->getStatus());
+    }
+
+    /**
+     * Updating the same charge to a null commercial order ID (no metadata) should
+     * leave the mapping in place and not trigger the reassignment guard, since the
+     * event is rejected earlier by the "no commercial order ID" check.
+     */
+    public function testChargeUpdatedNoMetadataDoesNotAffectExistingMapping(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+
+        $this->mockPaymentMapping($orderId, $chargeId, false);
+
+        // Event with no metadata at all.
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Ignoring event with no Mirakl Commercial Order ID.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        // Existing mapping must be untouched.
+        $mapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
+        $this->assertNotNull($mapping);
+        $this->assertEquals(PaymentMapping::TO_CAPTURE, $mapping->getStatus());
+    }
+
+    // -------------------------------------------------------------------------
+    // Security fix: multi-seller authorization
+    //
+    // AccountMapping enforces stripe_account_id UNIQUE, so two Mirakl shops can
+    // never share a Stripe connected account. A connected-account event for a
+    // multi-shop commercial order therefore ALWAYS maps shops to different accounts
+    // and is always rejected. The positive case (single seller, matching account)
+    // is already covered by testChargeUpdatedWithStripeAccountMatchingOrder.
+    // -------------------------------------------------------------------------
+
+    /**
+     * A commercial order whose sub-orders come from two shops mapped to DIFFERENT
+     * Stripe accounts must be rejected: a single connected-account event cannot
+     * legitimately claim an order that spans multiple seller accounts.
+     */
+    public function testChargeUpdatedMultiSellerShopsMappedToDifferentAccountsIsRejected(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_TWO_SHOPS;
+        $eventAccountId = StripeMock::ACCOUNT_NEW;
+
+        // ORDER_COMMERCIAL_TWO_SHOPS returns SHOP_NOT_READY (99) and SHOP_NEW (299).
+        // Map them to different accounts so the event must be rejected.
+        $this->mockAccountMapping(MiraklMock::SHOP_NOT_READY, StripeMock::ACCOUNT_NEW, true);
+        $this->mockAccountMapping(MiraklMock::SHOP_NEW, StripeMock::ACCOUNT_NOT_FOUND, true);
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$eventAccountId",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Ignoring event for unknown Stripe account.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+
+        // No mapping should have been created.
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
+    }
+
+    /**
+     * Even when the event account matches one of the shops, having any shop map to
+     * a different account is still a rejection — the "all shops same account" rule
+     * is not a "at least one shop matches" rule.
+     */
+    public function testChargeUpdatedMultiSellerPartialAccountMatchIsRejected(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_TWO_SHOPS;
+
+        // SHOP_NOT_READY (99) → ACCOUNT_NOT_FOUND, SHOP_NEW (299) → ACCOUNT_NEW.
+        // Sender is ACCOUNT_NEW — matches SHOP_NEW but not SHOP_NOT_READY → rejected.
+        $this->mockAccountMapping(MiraklMock::SHOP_NOT_READY, StripeMock::ACCOUNT_NOT_FOUND, true);
+        $this->mockAccountMapping(MiraklMock::SHOP_NEW, StripeMock::ACCOUNT_NEW, true);
+
+        $senderAccount = StripeMock::ACCOUNT_NEW;
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$senderAccount",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Ignoring event for unknown Stripe account.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
+    }
+
+    /**
+     * If not every shop in the commercial order has an account mapping, the event
+     * must be rejected — the count guard catches this.
+     */
+    public function testChargeUpdatedMultiSellerOnlyOneShopMappedIsRejected(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_TWO_SHOPS;
+
+        // Map only SHOP_NOT_READY (99); leave SHOP_NEW (299) unmapped.
+        // count(accountMappings)=1 != count(shopIds)=2 → "unknown Mirakl shop".
+        $this->mockAccountMapping(MiraklMock::SHOP_NOT_READY, StripeMock::ACCOUNT_NEW, true);
+
+        $senderAccount = StripeMock::ACCOUNT_NEW;
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$senderAccount",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Ignoring event for unknown Mirakl shop.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
+    }
+
+    // -------------------------------------------------------------------------
+    // Security fix: hybrid orders — both product and service orders always fetched
+    // -------------------------------------------------------------------------
+
+    /**
+     * A hybrid commercial order (product sub-order from SHOP_NOT_READY=99, service
+     * sub-order from SHOP_NEW=299) must include the service shop in the authorization
+     * check. When SHOP_NEW has no account mapping the event must be rejected.
+     *
+     * Before the fix, the service order list was skipped whenever product orders
+     * existed, making it possible for a service seller's shop to bypass auth.
+     */
+    public function testChargeUpdatedHybridOrderServiceShopIsIncludedInAuthorization(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_COMMERCIAL_HYBRID_SERVICE_DIFF_SHOP;
+        $stripeAccountId = StripeMock::ACCOUNT_NEW;
+
+        // Map the product sub-order's shop (SHOP_NOT_READY=99) but leave the service
+        // sub-order's shop (SHOP_NEW=299) unmapped. count(mappings)=1 ≠ count(shops)=2
+        // → rejected, proving the service shop IS included in the authorization check.
+        $this->mockAccountMapping(MiraklMock::SHOP_NOT_READY, $stripeAccountId, true);
+
+        $response = $this->executeSellersRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "account": "$stripeAccountId",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+
+        // Service shop not in account mappings → count mismatch → rejected.
+        $this->assertEquals('Ignoring event for unknown Mirakl shop.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
+    }
+
 }
