@@ -45,6 +45,56 @@ class PaymentMappingRepositoryTest extends KernelTestCase
     }
 
     // -----------------------------------------------------------------------
+    // persistIfCommercialOrderIsUnmapped
+    // -----------------------------------------------------------------------
+
+    public function testPersistIfCommercialOrderIsUnmappedCreatesMapping(): void
+    {
+        $mapping = new PaymentMapping();
+        $mapping
+            ->setMiraklCommercialOrderId('order_new')
+            ->setStripeChargeId('ch_new')
+            ->setStripeAmount(100);
+
+        $existingMapping = $this->repo->persistIfCommercialOrderIsUnmapped($mapping);
+
+        $this->assertNull($existingMapping);
+
+        $persistedMapping = $this->repo->findOneByStripeChargeId('ch_new');
+        $this->assertNotNull($persistedMapping);
+        $this->assertSame('order_new', $persistedMapping->getMiraklCommercialOrderId());
+    }
+
+    public function testPersistIfCommercialOrderIsUnmappedReturnsExistingMappingWithoutPersistingCandidate(): void
+    {
+        $existingMapping = $this->createMapping('order_existing', 'ch_existing');
+
+        $candidateMapping = new PaymentMapping();
+        $candidateMapping
+            ->setMiraklCommercialOrderId('order_existing')
+            ->setStripeChargeId('ch_candidate')
+            ->setStripeAmount(200);
+
+        $result = $this->repo->persistIfCommercialOrderIsUnmapped($candidateMapping);
+
+        $this->assertNotNull($result);
+        $this->assertSame($existingMapping->getId(), $result->getId());
+        $this->assertNull($this->repo->findOneByStripeChargeId('ch_candidate'));
+    }
+
+    public function testPersistIfCommercialOrderIsUnmappedRequiresCommercialOrderId(): void
+    {
+        $mapping = new PaymentMapping();
+        $mapping
+            ->setStripeChargeId('ch_without_order')
+            ->setStripeAmount(100);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->repo->persistIfCommercialOrderIsUnmapped($mapping);
+    }
+
+    // -----------------------------------------------------------------------
     // findOneByMiraklCommercialOrderId
     // -----------------------------------------------------------------------
 

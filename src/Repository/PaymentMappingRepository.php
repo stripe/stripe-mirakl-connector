@@ -34,6 +34,51 @@ class PaymentMappingRepository extends ServiceEntityRepository
         $this->getEntityManager()->flush();
     }
 
+    /**
+     * Persists a mapping when no mapping exists for its commercial order.
+     *
+     * Returns the existing mapping when the commercial order is already mapped;
+     * otherwise returns null after creating the supplied mapping.
+     */
+    public function persistIfCommercialOrderIsUnmapped(PaymentMapping $paymentMapping): ?PaymentMapping
+    {
+        $commercialOrderId = $paymentMapping->getMiraklCommercialOrderId();
+        if (null === $commercialOrderId) {
+            throw new \InvalidArgumentException('A commercial order ID is required to create a payment mapping.');
+        }
+
+        $connection = $this->getEntityManager()->getConnection();
+        $connection->beginTransaction();
+
+        try {
+            if ($connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform) {
+                $connection->executeStatement(
+                    'SELECT pg_advisory_xact_lock(hashtextextended(:id, 0))',
+                    ['id' => $commercialOrderId]
+                );
+            }
+
+            $existingMapping = $this->findOneByMiraklCommercialOrderId($commercialOrderId);
+            if (null !== $existingMapping) {
+                $connection->rollBack();
+
+                return $existingMapping;
+            }
+
+            $this->getEntityManager()->persist($paymentMapping);
+            $this->getEntityManager()->flush();
+            $connection->commit();
+
+            return null;
+        } catch (\Throwable $exception) {
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+
+            throw $exception;
+        }
+    }
+
     private function mapByMiraklCommercialOrderId(array $paymentMappings): array
     {
         if (empty($paymentMappings)) {

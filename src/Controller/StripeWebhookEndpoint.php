@@ -341,55 +341,23 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         if (!$paymentMapping) {
-            // Wrap the duplicate-check and insert in a single database transaction so
-            // that the guard and the INSERT are atomic. On PostgreSQL a transaction-scoped
-            // advisory lock is acquired first, serializing concurrent webhook deliveries for
-            // the same commercial order ID so that only one request creates the mapping.
-            // On other platforms the transaction still provides rollback semantics on failure
-            // but does not close the concurrent-insert race; a unique database index on
-            // miraklCommercialOrderId would be required for full prevention on those platforms.
-            $em = $this->paymentMappingRepository->getEntityManager();
-            $connection = $em->getConnection();
-            $connection->beginTransaction();
-            try {
-                // On PostgreSQL, acquire a transaction-scoped advisory lock keyed on the
-                // commercial order ID. Two concurrent requests for the same ID serialise here:
-                // the second waits until the first commits or rolls back, then re-reads and
-                // finds the mapping already created. The lock is released automatically when
-                // the transaction ends — no explicit release is needed.
-                if ($connection->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform) {
-                    $connection->executeStatement(
-                        'SELECT pg_advisory_xact_lock(hashtextextended(:id, 0))',
-                        ['id' => $miraklCommercialOrderId]
-                    );
-                }
+            $paymentMapping = new PaymentMapping();
+            $paymentMapping->setStripeChargeId($charge->id);
+            $paymentMapping->setStripeAmount($charge->amount);
+            $paymentMapping->setStatus($status);
+            $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
 
-                $existingForOrder = $this->paymentMappingRepository->findOneByMiraklCommercialOrderId($miraklCommercialOrderId);
-                if ($existingForOrder !== null) {
-                    $connection->rollBack();
-                    $this->logger->info(sprintf(
-                        'Ignoring event: payment mapping already exists for commercial order %s (existing charge: %s, event charge: %s)',
-                        $miraklCommercialOrderId,
-                        $existingForOrder->getStripeChargeId(),
-                        $charge->id
-                    ));
-                    return 'Ignoring event: payment mapping already exists for this commercial order.';
-                }
-
-                $paymentMapping = new PaymentMapping();
-                $paymentMapping->setStripeChargeId($charge->id);
-                $paymentMapping->setStripeAmount($charge->amount);
-                $paymentMapping->setStatus($status);
-                $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
-                $this->paymentMappingRepository->persist($paymentMapping);
-                $this->paymentMappingRepository->flush();
-                $connection->commit();
-            } catch (\Throwable $e) {
-                if ($connection->isTransactionActive()) {
-                    $connection->rollBack();
-                }
-                throw $e;
+            $existingForOrder = $this->paymentMappingRepository->persistIfCommercialOrderIsUnmapped($paymentMapping);
+            if (null !== $existingForOrder) {
+                $this->logger->info(sprintf(
+                    'Ignoring event: payment mapping already exists for commercial order %s (existing charge: %s, event charge: %s)',
+                    $miraklCommercialOrderId,
+                    $existingForOrder->getStripeChargeId(),
+                    $charge->id
+                ));
+                return 'Ignoring event: payment mapping already exists for this commercial order.';
             }
+
             $message = 'Payment mapping created.';
         } else {
             // Reject if the event metadata tries to move this charge to a different commercial
