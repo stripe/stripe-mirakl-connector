@@ -16,6 +16,8 @@ class StripeMockedHttpClient implements ClientInterface
     public const ACCOUNT_PAYOUT_DISABLED = 'account_payout_disabled';
     public const ACCOUNT_NOT_FOUND = 'account_not_found';
     public const ACCOUNT_NEW = 'account_new';
+    public const ACCOUNT_CUSTOM = 'account_custom';
+    public const ACCOUNT_STANDARD = 'account_standard';
     public const ACCOUNT_NOT_SUBMITTED = 'account_not_submitted';
 
     public const CHARGE_BASIC = 'ch_basic';
@@ -161,6 +163,7 @@ class StripeMockedHttpClient implements ClientInterface
             throw new InvalidRequestException("Can't create Stripe Account", 400);
 
         $account = $this->getBasicObject($id ?? self::ACCOUNT_NEW, 'account');
+        $account['type'] = $id === self::ACCOUNT_CUSTOM ? 'custom' : ($id === self::ACCOUNT_STANDARD ? 'standard' : 'express');
         $account['charges_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED;
         $account['payouts_enabled'] = $id !== self::ACCOUNT_PAYIN_DISABLED && $id !== self::ACCOUNT_PAYOUT_DISABLED;
         $account['requirements'] = [];
