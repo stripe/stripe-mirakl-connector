@@ -357,4 +357,75 @@ class PaymentMappingRepositoryTest extends KernelTestCase
         $this->assertArrayHasKey('order_good', $result);
         $this->assertArrayNotHasKey('order_bad', $result);
     }
+
+    // -----------------------------------------------------------------------
+    // Logging — duplicate detection must emit an error log entry
+    // -----------------------------------------------------------------------
+
+    /**
+     * When mapByMiraklCommercialOrderId() detects duplicate rows for a commercial
+     * order it must call $logger->error() with a message that names the affected
+     * order IDs.  Without this log operators have no visibility into orders that
+     * are silently dropped from the capture queue.
+     */
+    public function testDuplicateOrderTriggersErrorLog(): void
+    {
+        $this->createMapping('order_logged_dup', 'ch_log_a', PaymentMapping::TO_CAPTURE);
+        $this->createMapping('order_logged_dup', 'ch_log_b', PaymentMapping::CAPTURED);
+
+        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(
+                $this->stringContains('order_logged_dup'),
+                $this->arrayHasKey('conflicted_order_ids')
+            );
+
+        $this->repo->setLogger($logger);
+        $this->repo->findToCapturePayments();
+    }
+
+    /**
+     * When no duplicates exist the logger must not be called.
+     */
+    public function testNoDuplicatesDoesNotTriggerErrorLog(): void
+    {
+        $this->createMapping('order_clean_log', 'ch_clean_log', PaymentMapping::TO_CAPTURE);
+
+        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+        $logger->expects($this->never())->method('error');
+
+        $this->repo->setLogger($logger);
+        $this->repo->findToCapturePayments();
+    }
+
+    /**
+     * When multiple distinct commercial orders are each conflicted, the single
+     * error log call must name all of them (they are included in the context array).
+     */
+    public function testMultipleConflictedOrdersAllNamedInLog(): void
+    {
+        $this->createMapping('order_multi_a', 'ch_ma1', PaymentMapping::TO_CAPTURE);
+        $this->createMapping('order_multi_a', 'ch_ma2', PaymentMapping::CAPTURED);
+        $this->createMapping('order_multi_b', 'ch_mb1', PaymentMapping::TO_CAPTURE);
+        $this->createMapping('order_multi_b', 'ch_mb2', PaymentMapping::CAPTURED);
+
+        $logger = $this->createMock(\Psr\Log\LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('error')
+            ->with(
+                $this->logicalAnd(
+                    $this->stringContains('order_multi_a'),
+                    $this->stringContains('order_multi_b')
+                ),
+                $this->callback(function (array $context): bool {
+                    return isset($context['conflicted_order_ids'])
+                        && in_array('order_multi_a', $context['conflicted_order_ids'], true)
+                        && in_array('order_multi_b', $context['conflicted_order_ids'], true);
+                })
+            );
+
+        $this->repo->setLogger($logger);
+        $this->repo->findToCapturePayments();
+    }
 }

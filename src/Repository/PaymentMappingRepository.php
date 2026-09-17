@@ -5,6 +5,8 @@ namespace App\Repository;
 use App\Entity\PaymentMapping;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
 
 /**
  * @method PaymentMapping|null find($id, $lockMode = null, $lockVersion = null)
@@ -12,8 +14,10 @@ use Doctrine\Persistence\ManagerRegistry;
  * @method PaymentMapping[]    findAll()
  * @method PaymentMapping[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  */
-class PaymentMappingRepository extends ServiceEntityRepository
+class PaymentMappingRepository extends ServiceEntityRepository implements LoggerAwareInterface
 {
+    use LoggerAwareTrait;
+
     /**
      * PaymentMappingRepository constructor.
      */
@@ -106,6 +110,24 @@ class PaymentMappingRepository extends ServiceEntityRepository
             if ($countPerOrder[$id] > 1) {
                 $conflicted[$id] = true;
             }
+        }
+
+        // Log an error for every conflicted order so operators can investigate.
+        // Affected orders are intentionally excluded from the result (see below),
+        // which means they will not be captured until the duplicate rows are resolved.
+        if (!empty($conflicted)) {
+            $details = [];
+            foreach ($conflicted as $orderId => $_) {
+                $details[] = sprintf('%s (%d rows)', $orderId, $countPerOrder[$orderId]);
+            }
+            $this->logger?->error(
+                sprintf(
+                    'Duplicate PaymentMapping rows detected for %d commercial order(s) — those orders are excluded from the capture queue until the duplicates are resolved. Affected: %s',
+                    count($conflicted),
+                    implode(', ', $details)
+                ),
+                ['conflicted_order_ids' => array_keys($conflicted)]
+            );
         }
 
         // Build the result map, excluding any commercial order that has duplicate rows in
