@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 4.3.1
+- Hardened payment-mapping webhook processing by rejecting duplicate commercial-order mappings and preventing Stripe charge reassignment between commercial orders.
+- Prevented ambiguous payment processing by excluding conflicting legacy payment mappings from payment validation, capture, and transfer workflows.
+- Strengthened connected-account authorization for multi-seller and hybrid orders by validating every associated Mirakl shop, rather than only the first returned shop.
+
 ## Version 4.3
 - Added new flag PA01_AFTER_CAPTURE to allow PA01 workflow to be executed after capture instead of before capture to validate the order after the capture has been made.
 - Fixed payment split processing so tax transfers from one order are not incorrectly reused for subsequent existing orders.

@@ -25,7 +25,7 @@ class PaymentMapping
     private int $id;
 
     #[Column(type: 'string', nullable: true)]
-    private ?string $miraklCommercialOrderId;
+    private ?string $miraklCommercialOrderId = null;
 
     #[Column(type: 'string', unique: true)]
     private string $stripeChargeId;

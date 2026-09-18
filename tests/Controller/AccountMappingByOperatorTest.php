@@ -107,6 +107,38 @@ class AccountMappingByOperatorTest extends WebTestCase
         $this->assertNull($accountMapping->getDisabledReason());
     }
 
+    public function testCreateMappingForCustomAccount()
+    {
+        $shopId = MiraklMock::SHOP_NEW;
+        $accountId = StripeMock::ACCOUNT_CUSTOM;
+        $response = $this->executeRequest(<<<PAYLOAD
+        {
+            "miraklShopId": $shopId,
+            "stripeUserId": "$accountId"
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Mirakl - Stripe mapping created', $response->getContent());
+        $this->assertEquals(Response::HTTP_CREATED, $response->getStatusCode());
+        $this->assertNotNull($this->accountMappingRepository->findOneByStripeAccountId($accountId));
+    }
+
+    public function testRejectsStandardAccount()
+    {
+        $shopId = MiraklMock::SHOP_NEW;
+        $accountId = StripeMock::ACCOUNT_STANDARD;
+        $response = $this->executeRequest(<<<PAYLOAD
+        {
+            "miraklShopId": $shopId,
+            "stripeUserId": "$accountId"
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Unsupported Stripe account type', $response->getContent());
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $this->assertNull($this->accountMappingRepository->findOneByStripeAccountId($accountId));
+    }
+
     public function testShopIdAlreadyMapped()
     {
         $shopId = MiraklMock::SHOP_BASIC;

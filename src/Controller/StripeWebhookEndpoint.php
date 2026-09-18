@@ -276,24 +276,57 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         if (!empty($stripeAccount)) {
-            $orderList = $this->miraklClient->listProductOrdersByCommercialId([$miraklCommercialOrderId]);
-            if (empty($orderList)) {
-                $orderList = $this->miraklClient->listServiceOrdersByCommercialId([$miraklCommercialOrderId]);
-            }
-            if (empty($orderList)) {
+            // Fetch both product and service orders unconditionally so that hybrid
+            // commercial orders (containing sub-orders of both types) include every
+            // seller's shop in the authorization check. The previous if-empty fallback
+            // silently dropped service shop IDs whenever product orders also existed.
+            $productOrderList = $this->miraklClient->listProductOrdersByCommercialId([$miraklCommercialOrderId]);
+            $serviceOrderList = $this->miraklClient->listServiceOrdersByCommercialId([$miraklCommercialOrderId]);
+
+            if (empty($productOrderList) && empty($serviceOrderList)) {
                 $this->logger->info(sprintf('Ignoring event with no Mirakl Order for Stripe charge: %s', $charge->id));
                 return 'Ignoring event with no Mirakl Order.';
             }
-            $shopId = current(current($orderList))->getShopId();
 
-            $accountMapping = $this->accountMappingRepository->findByMiraklShopIds([$shopId]);
-            if (empty($accountMapping)) {
+            // Each list is keyed [commercialId => [orderId => Order]]; iterate the inner
+            // maps to collect all unique shop IDs from product and service orders alike.
+            $shopIds = [];
+            foreach ($productOrderList as $orders) {
+                foreach ($orders as $order) {
+                    $shopId = $order->getShopId();
+                    if ($shopId !== null) {
+                        $shopIds[$shopId] = $shopId;
+                    }
+                }
+            }
+            foreach ($serviceOrderList as $orders) {
+                foreach ($orders as $order) {
+                    $shopId = $order->getShopId();
+                    if ($shopId !== null) {
+                        $shopIds[$shopId] = $shopId;
+                    }
+                }
+            }
+            $shopIds = array_values($shopIds);
+
+            // findByMiraklShopIds returns an array keyed by miraklShopId (int).
+            $accountMappings = $this->accountMappingRepository->findByMiraklShopIds($shopIds);
+
+            // Every shop in the commercial order must have an account mapping.
+            if (count($accountMappings) !== count($shopIds)) {
                 $this->logger->info(sprintf('Ignoring event for unknown Mirakl shop for Stripe charge: %s', $charge->id));
                 return 'Ignoring event for unknown Mirakl shop.';
             }
-            $accountMapping = current($accountMapping);
 
-            if ($stripeAccount !== $accountMapping->getStripeAccountId()) {
+            // All shops must map to the SAME Stripe account, and that account must be the
+            // event sender. For the aggregate-payment model a connected-account event is only
+            // valid for a commercial order that belongs entirely to one seller. If the order
+            // spans sellers with different accounts, no connected-account event can claim it.
+            $mappedAccountIds = [];
+            foreach ($shopIds as $shopId) {
+                $mappedAccountIds[$accountMappings[$shopId]->getStripeAccountId()] = true;
+            }
+            if (count($mappedAccountIds) !== 1 || !isset($mappedAccountIds[$stripeAccount])) {
                 $this->logger->info(sprintf('Ignoring event for unknown Stripe account for Stripe charge: %s', $charge->id));
                 return 'Ignoring event for unknown Stripe account.';
             }
@@ -313,18 +346,41 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             $paymentMapping->setStripeAmount($charge->amount);
             $paymentMapping->setStatus($status);
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
-            $this->paymentMappingRepository->persist($paymentMapping);
+
+            $existingForOrder = $this->paymentMappingRepository->persistIfCommercialOrderIsUnmapped($paymentMapping);
+            if (null !== $existingForOrder) {
+                $this->logger->info(sprintf(
+                    'Ignoring event: payment mapping already exists for commercial order %s (existing charge: %s, event charge: %s)',
+                    $miraklCommercialOrderId,
+                    $existingForOrder->getStripeChargeId(),
+                    $charge->id
+                ));
+                return 'Ignoring event: payment mapping already exists for this commercial order.';
+            }
+
             $message = 'Payment mapping created.';
         } else {
+            // Reject if the event metadata tries to move this charge to a different commercial
+            // order than the one already recorded. An attacker who controls a known charge can
+            // otherwise shift a legitimate mapping to a victim order via a charge.updated event.
+            $existingCommercialOrderId = $paymentMapping->getMiraklCommercialOrderId();
+            if ($existingCommercialOrderId !== null && $existingCommercialOrderId !== $miraklCommercialOrderId) {
+                $this->logger->info(sprintf(
+                    'Ignoring event: charge %s is already mapped to commercial order %s, refusing reassignment to %s',
+                    $charge->id,
+                    $existingCommercialOrderId,
+                    $miraklCommercialOrderId
+                ));
+                return 'Ignoring event: charge is already mapped to a different commercial order.';
+            }
             $paymentMapping->setStatus($status);
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
             if ($status === PaymentMapping::CAPTURED) {
                 $paymentMapping->setStatusReason(null);
             }
+            $this->paymentMappingRepository->flush();
             $message = 'Payment mapping updated.';
         }
-
-        $this->paymentMappingRepository->flush();
 
         return $message;
     }

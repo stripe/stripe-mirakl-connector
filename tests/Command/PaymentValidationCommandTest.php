@@ -119,6 +119,28 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertCount(0, $this->cancelReceiver->getSent());
     }
 
+    public function testPendingValidationSkipsConflictedCommercialOrder(): void
+    {
+        // Two mappings for the same commercial order must not cause PA01 validation
+        // with an arbitrarily selected transaction number.
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_NONE_VALIDATED,
+            'ch_conflict_one',
+            12345
+        );
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_NONE_VALIDATED,
+            'ch_conflict_two',
+            12345
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(0, $this->validateReceiver->getSent());
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
     public function testCaptureForNonExistingOrder()
     {
         // 1 payment mapped to an order not created yet
@@ -145,6 +167,28 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(1, $messages = $this->captureReceiver->getSent());
         $this->assertEquals(16944, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureSkipsConflictedCommercialOrder(): void
+    {
+        // A duplicate mapping must not allow the capture pipeline to choose one
+        // charge based on database row order.
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
+            'ch_capture_conflict_one',
+            16944
+        );
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED,
+            'ch_capture_conflict_two',
+            1
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(0, $this->validateReceiver->getSent());
+        $this->assertCount(0, $this->captureReceiver->getSent());
         $this->assertCount(0, $this->cancelReceiver->getSent());
     }
 

@@ -58,6 +58,10 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const ORDER_COMMERCIAL_CANCELED = 'order_commercial_canceled';
 	public const ORDER_COMMERCIAL_NOT_FOUND = 'order_commercial_not_found';
 	public const ORDER_COMMERCIAL_INVALID_SHOP = 'order_commercial_invalid_shop';
+    // Multi-seller: two sub-orders from non-fixture shops (SHOP_NOT_READY=99, SHOP_NEW=299).
+    public const ORDER_COMMERCIAL_TWO_SHOPS = 'order_commercial_two_shops';
+    // Hybrid: product sub-order from SHOP_NOT_READY=99, service sub-order from SHOP_NEW=299.
+    public const ORDER_COMMERCIAL_HYBRID_SERVICE_DIFF_SHOP = 'order_commercial_hybrid_service_diff_shop';
 
 	public const PRODUCT_ORDER_PENDING_REFUND = 'product_order_pending_refund';
 	public const SERVICE_ORDER_PENDING_REFUND = 'service_order_pending_refund';
@@ -389,6 +393,9 @@ class MiraklMockedHttpClient extends MockHttpClient
 		foreach ($commercialIds as $commercialId) {
 			switch ($commercialId) {
 				case self::ORDER_COMMERCIAL_ALL_VALIDATED:
+					// Product-only order: return empty for service-order requests to avoid
+					// MiraklServiceOrder trying to parse product-shaped array data.
+					if ($isService) { break; }
 					$newOrders = $this->mockOrdersById($isService, [
 						self::ORDER_STATUS_SHIPPED,
 						self::ORDER_STATUS_RECEIVED,
@@ -401,33 +408,77 @@ class MiraklMockedHttpClient extends MockHttpClient
 					$orders = array_merge($orders, $newOrders);
 					break;
 				case self::ORDER_COMMERCIAL_NONE_VALIDATED:
+					if ($isService) { break; }
 					$orders = array_merge($orders, $this->mockOrdersById($isService, [
 						self::ORDER_STATUS_WAITING_ACCEPTANCE,
 						self::ORDER_STATUS_WAITING_DEBIT
 					]));
 					break;
 				case self::ORDER_COMMERCIAL_PARTIALLY_VALIDATED:
+					if ($isService) { break; }
 					$orders = array_merge($orders, $this->mockOrdersById($isService, [
 						self::ORDER_STATUS_WAITING_DEBIT_PAYMENT,
 						self::ORDER_STATUS_SHIPPING
 					]));
 					break;
 				case self::ORDER_COMMERCIAL_PARTIALLY_REFUSED:
+					if ($isService) { break; }
 					$orders = array_merge($orders, $this->mockOrdersById($isService, [
 						self::ORDER_STATUS_CLOSED,
 						self::ORDER_STATUS_REFUSED
 					]));
 					break;
 				case self::ORDER_COMMERCIAL_CANCELED:
+					if ($isService) { break; }
 					$orders = array_merge($orders, $this->mockOrdersById($isService, [
 						self::ORDER_STATUS_CANCELED
 					]));
 					break;
 				case self::ORDER_COMMERCIAL_INVALID_SHOP:
+					if ($isService) { break; }
 					$orders = array_merge($orders, $this->mockOrdersById($isService, [
 						self::ORDER_INVALID_SHOP
 					]));
 					break;
+                case self::ORDER_COMMERCIAL_TWO_SHOPS:
+                    // Two sub-orders from non-fixture shops: SHOP_NOT_READY (99) and SHOP_NEW (299).
+                    // Neither is pre-seeded, so tests can freely add/omit account mappings
+                    // without hitting the unique constraints on mirakl_shop_id / stripe_account_id.
+                    $date = new \DateTime();
+                    if ($isService) {
+                        $o1 = $this->getServiceOrder('order_two_shops_s1', $date, 'ORDER_ACCEPTED');
+                        $o1['commercial_order_id'] = self::ORDER_COMMERCIAL_TWO_SHOPS;
+                        $o1['shop']['id'] = self::SHOP_NOT_READY;
+                        $o2 = $this->getServiceOrder('order_two_shops_s2', $date, 'ORDER_ACCEPTED');
+                        $o2['commercial_order_id'] = self::ORDER_COMMERCIAL_TWO_SHOPS;
+                        $o2['shop']['id'] = self::SHOP_NEW;
+                    } else {
+                        $o1 = $this->getProductOrder('order_two_shops_p1', $date, 'SHIPPED');
+                        $o1['commercial_id'] = self::ORDER_COMMERCIAL_TWO_SHOPS;
+                        $o1['shop_id'] = self::SHOP_NOT_READY;
+                        $o2 = $this->getProductOrder('order_two_shops_p2', $date, 'SHIPPED');
+                        $o2['commercial_id'] = self::ORDER_COMMERCIAL_TWO_SHOPS;
+                        $o2['shop_id'] = self::SHOP_NEW;
+                    }
+                    $orders[] = $o1;
+                    $orders[] = $o2;
+                    break;
+                case self::ORDER_COMMERCIAL_HYBRID_SERVICE_DIFF_SHOP:
+                    // Hybrid commercial order using non-fixture shops:
+                    // product sub-order → SHOP_NOT_READY (99), service sub-order → SHOP_NEW (299).
+                    // Both are absent from fixtures so tests control mappings freely.
+                    $date = new \DateTime();
+                    if ($isService) {
+                        $o = $this->getServiceOrder('order_hybrid_service', $date, 'ORDER_ACCEPTED');
+                        $o['commercial_order_id'] = self::ORDER_COMMERCIAL_HYBRID_SERVICE_DIFF_SHOP;
+                        $o['shop']['id'] = self::SHOP_NEW;
+                    } else {
+                        $o = $this->getProductOrder('order_hybrid_product', $date, 'SHIPPED');
+                        $o['commercial_id'] = self::ORDER_COMMERCIAL_HYBRID_SERVICE_DIFF_SHOP;
+                        $o['shop_id'] = self::SHOP_NOT_READY;
+                    }
+                    $orders[] = $o;
+                    break;
 				case self::ORDER_COMMERCIAL_NOT_FOUND:
 				default:
 					// No order

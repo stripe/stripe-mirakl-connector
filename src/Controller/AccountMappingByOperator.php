@@ -73,6 +73,13 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
         $stripeUserId = $dto->getStripeUserId();
         $stripeAccount = $this->stripeClient->retrieveAccount($stripeUserId);
 
+        // Stripe/Mirakl supports Express and Custom accounts. Standard accounts are
+        // not supported by the connector and must not be accepted through the manual
+        // mapping endpoint.
+        if (!in_array($stripeAccount->type ?? null, ['express', 'custom'], true)) {
+            return new Response('Unsupported Stripe account type', Response::HTTP_BAD_REQUEST);
+        }
+
         $mapping = new AccountMapping();
         $mapping->setMiraklShopId($miraklShopId);
         $mapping->setStripeAccountId($stripeUserId);
