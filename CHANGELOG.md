@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.3.2
+- Use fixed versions of dependencies for build workflow
+
 ## Version 4.3.1
 - Hardened payment-mapping webhook processing by rejecting duplicate commercial-order mappings and preventing Stripe charge reassignment between commercial orders.
 - Prevented ambiguous payment processing by excluding conflicting legacy payment mappings from payment validation, capture, and transfer workflows.
