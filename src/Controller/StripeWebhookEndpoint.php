@@ -8,7 +8,6 @@ use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripePayoutRepository;
-use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
@@ -79,24 +78,17 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private $metadataCommercialOrderId;
 
-    /**
-     * @var MiraklClient
-     */
-    private $miraklClient;
-
     public function __construct(
         MessageBusInterface $bus,
         StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
         StripePayoutRepository $stripePayoutRepository,
-        MiraklClient $miraklClient,
         string $webhookSellerSecret,
         string $webhookOperatorSecret,
         string $metadataCommercialOrderId
     ) {
         $this->bus = $bus;
-        $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
