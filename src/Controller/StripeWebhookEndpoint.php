@@ -8,7 +8,6 @@ use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripePayoutRepository;
-use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
@@ -28,6 +27,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         'account.updated',
         'charge.succeeded',
         'charge.updated',
+        'charge.refunded',
         'payout.failed',
         'charge.captured'
     ];
@@ -78,24 +78,17 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
      */
     private $metadataCommercialOrderId;
 
-    /**
-     * @var MiraklClient
-     */
-    private $miraklClient;
-
     public function __construct(
         MessageBusInterface $bus,
         StripeClient $stripeClient,
         AccountMappingRepository $accountMappingRepository,
         PaymentMappingRepository $paymentMappingRepository,
         StripePayoutRepository $stripePayoutRepository,
-        MiraklClient $miraklClient,
         string $webhookSellerSecret,
         string $webhookOperatorSecret,
         string $metadataCommercialOrderId
     ) {
         $this->bus = $bus;
-        $this->miraklClient = $miraklClient;
         $this->stripeClient = $stripeClient;
         $this->accountMappingRepository = $accountMappingRepository;
         $this->paymentMappingRepository = $paymentMappingRepository;
@@ -212,6 +205,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 case 'charge.succeeded':
                 case 'charge.updated':
                 case 'charge.captured':
+                case 'charge.refunded':
                     $message = $this->handleChargeEvent($event);
                     break;
                 case 'payout.failed':
@@ -267,7 +261,14 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         $charge = $event->data->object;
         assert($charge instanceof \Stripe\Charge);
 
-        $stripeAccount = $event->account ?? null;
+        if (!empty($event->account)) {
+            // Source: https://docs.stripe.com/use-stripe-apps/mirakl/payments
+            // When implementing payments, don’t use any of the Connect charge types (direct charges, destination charges, or separate charges and transfers).
+            // Instead, use the aggregate payment model. In this model, the platform account receives the full payment from the buyer and then pays out to sellers after deducting any fees.
+            // This means that all charge events will be sent to the platform account, not the connected accounts.
+            $this->logger->info(sprintf('Ignoring event because it is coming from connected account - not platform account'));
+            return 'Ignoring event - not from platform account';
+        }
 
         $miraklCommercialOrderId = $this->findMiraklCommercialOrderId($charge);
         if (!$miraklCommercialOrderId) {
@@ -275,67 +276,12 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             return 'Ignoring event with no Mirakl Commercial Order ID.';
         }
 
-        if (!empty($stripeAccount)) {
-            // Fetch both product and service orders unconditionally so that hybrid
-            // commercial orders (containing sub-orders of both types) include every
-            // seller's shop in the authorization check. The previous if-empty fallback
-            // silently dropped service shop IDs whenever product orders also existed.
-            $productOrderList = $this->miraklClient->listProductOrdersByCommercialId([$miraklCommercialOrderId]);
-            $serviceOrderList = $this->miraklClient->listServiceOrdersByCommercialId([$miraklCommercialOrderId]);
-
-            if (empty($productOrderList) && empty($serviceOrderList)) {
-                $this->logger->info(sprintf('Ignoring event with no Mirakl Order for Stripe charge: %s', $charge->id));
-                return 'Ignoring event with no Mirakl Order.';
-            }
-
-            // Each list is keyed [commercialId => [orderId => Order]]; iterate the inner
-            // maps to collect all unique shop IDs from product and service orders alike.
-            $shopIds = [];
-            foreach ($productOrderList as $orders) {
-                foreach ($orders as $order) {
-                    $shopId = $order->getShopId();
-                    if ($shopId !== null) {
-                        $shopIds[$shopId] = $shopId;
-                    }
-                }
-            }
-            foreach ($serviceOrderList as $orders) {
-                foreach ($orders as $order) {
-                    $shopId = $order->getShopId();
-                    if ($shopId !== null) {
-                        $shopIds[$shopId] = $shopId;
-                    }
-                }
-            }
-            $shopIds = array_values($shopIds);
-
-            // findByMiraklShopIds returns an array keyed by miraklShopId (int).
-            $accountMappings = $this->accountMappingRepository->findByMiraklShopIds($shopIds);
-
-            // Every shop in the commercial order must have an account mapping.
-            if (count($accountMappings) !== count($shopIds)) {
-                $this->logger->info(sprintf('Ignoring event for unknown Mirakl shop for Stripe charge: %s', $charge->id));
-                return 'Ignoring event for unknown Mirakl shop.';
-            }
-
-            // All shops must map to the SAME Stripe account, and that account must be the
-            // event sender. For the aggregate-payment model a connected-account event is only
-            // valid for a commercial order that belongs entirely to one seller. If the order
-            // spans sellers with different accounts, no connected-account event can claim it.
-            $mappedAccountIds = [];
-            foreach ($shopIds as $shopId) {
-                $mappedAccountIds[$accountMappings[$shopId]->getStripeAccountId()] = true;
-            }
-            if (count($mappedAccountIds) !== 1 || !isset($mappedAccountIds[$stripeAccount])) {
-                $this->logger->info(sprintf('Ignoring event for unknown Stripe account for Stripe charge: %s', $charge->id));
-                return 'Ignoring event for unknown Stripe account.';
-            }
-        }
-
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($charge->id);
 
         if ('failed' === $charge->status) {
             $status = $charge->status;
+        } elseif (isset($charge->amount_refunded) && $charge->amount_refunded >= $charge->amount) {
+            $status = PaymentMapping::CANCELED;
         } else {
             $status = isset($charge->captured) && $charge->captured ? PaymentMapping::CAPTURED : PaymentMapping::TO_CAPTURE;
         }
@@ -344,6 +290,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             $paymentMapping = new PaymentMapping();
             $paymentMapping->setStripeChargeId($charge->id);
             $paymentMapping->setStripeAmount($charge->amount);
+            $paymentMapping->setStripeCurrency($charge->currency ?? null);
             $paymentMapping->setStatus($status);
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
 
@@ -373,7 +320,14 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 ));
                 return 'Ignoring event: charge is already mapped to a different commercial order.';
             }
+            $paymentMapping->setStripeAmount($charge->amount);
+            $paymentMapping->setStripeCurrency($charge->currency ?? $paymentMapping->getStripeCurrency());
             $paymentMapping->setStatus($status);
+            if (PaymentMapping::CANCELED === $status) {
+                $paymentMapping->setStatusReason('Stripe Charge fully refunded.');
+            } elseif (PaymentMapping::CAPTURED === $status) {
+                $paymentMapping->setStatusReason(null);
+            }
             $paymentMapping->setMiraklCommercialOrderId($miraklCommercialOrderId);
             if ($status === PaymentMapping::CAPTURED) {
                 $paymentMapping->setStatusReason(null);

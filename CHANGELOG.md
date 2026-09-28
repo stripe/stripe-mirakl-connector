@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 4.3.3
+- Do not crate payment mapping entries from webhook events from connected accounts
+- Ensure charge is correct before validating the Mirakl order
+
 ## Version 4.3.2
 - Use fixed versions of dependencies for build workflow
 
