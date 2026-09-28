@@ -39,6 +39,9 @@ class PaymentMapping
     #[Column(type: 'integer', nullable: true)]
     private ?int $stripeAmount;
 
+    #[Column(type: 'string', length: 3, nullable: true)]
+    private ?string $stripeCurrency = null;
+
     #[Column(type: 'datetime', options: ['default' => new CurrentTimestamp()])]
     #[Timestampable(on: 'create')]
     private \DateTimeInterface $creationDatetime;
@@ -153,6 +156,18 @@ class PaymentMapping
     public function setStripeAmount(int $stripeAmount): self
     {
         $this->stripeAmount = $stripeAmount;
+
+        return $this;
+    }
+
+    public function getStripeCurrency(): ?string
+    {
+        return $this->stripeCurrency;
+    }
+
+    public function setStripeCurrency(?string $stripeCurrency): self
+    {
+        $this->stripeCurrency = null === $stripeCurrency ? null : strtolower($stripeCurrency);
 
         return $this;
     }

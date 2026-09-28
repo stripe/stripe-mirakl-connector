@@ -684,7 +684,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertEquals('unknown_code: Unknown failure reason', $updatedPayout->getStatusReason());
     }
 
-    public function testChargeUpdatedWithStripeAccountMatchingOrder()
+    public function testChargeUpdatedFromConnectedAccountIsIgnored()
     {
         $chargeId = StripeMock::CHARGE_BASIC;
         $orderId = MiraklMock::ORDER_COMMERCIAL_ALL_VALIDATED;
@@ -706,13 +706,11 @@ class StripeWebhookEndpointTest extends WebTestCase
             }
         }
         PAYLOAD);
-        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
-        $this->assertNotNull($paymentMapping);
-        $this->assertEquals($orderId, $paymentMapping->getMiraklCommercialOrderId());
-        $this->assertEquals(PaymentMapping::TO_CAPTURE, $paymentMapping->getStatus());
+        $this->assertNull($paymentMapping);
     }
 
     public function testChargeUpdatedWithStripeAccountMismatch()
@@ -737,7 +735,7 @@ class StripeWebhookEndpointTest extends WebTestCase
             }
         }
         PAYLOAD);
-        $this->assertEquals('Ignoring event for unknown Stripe account.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
@@ -766,7 +764,7 @@ class StripeWebhookEndpointTest extends WebTestCase
             }
         }
         PAYLOAD);
-        $this->assertEquals('Ignoring event with no Mirakl Order.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
@@ -795,7 +793,7 @@ class StripeWebhookEndpointTest extends WebTestCase
             }
         }
         PAYLOAD);
-        $this->assertEquals('Ignoring event for unknown Mirakl shop.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($chargeId);
@@ -1009,13 +1007,8 @@ class StripeWebhookEndpointTest extends WebTestCase
     }
 
     // -------------------------------------------------------------------------
-    // Security fix: multi-seller authorization
-    //
-    // AccountMapping enforces stripe_account_id UNIQUE, so two Mirakl shops can
-    // never share a Stripe connected account. A connected-account event for a
-    // multi-shop commercial order therefore ALWAYS maps shops to different accounts
-    // and is always rejected. The positive case (single seller, matching account)
-    // is already covered by testChargeUpdatedWithStripeAccountMatchingOrder.
+    // Connected-account events are rejected: aggregate payments are created by the
+    // platform account and must not be mapped from seller-account webhooks.
     // -------------------------------------------------------------------------
 
     /**
@@ -1051,7 +1044,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         }
         PAYLOAD);
 
-        $this->assertEquals('Ignoring event for unknown Stripe account.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
 
         // No mapping should have been created.
@@ -1091,7 +1084,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         }
         PAYLOAD);
 
-        $this->assertEquals('Ignoring event for unknown Stripe account.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
     }
@@ -1127,7 +1120,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         }
         PAYLOAD);
 
-        $this->assertEquals('Ignoring event for unknown Mirakl shop.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
     }
@@ -1173,7 +1166,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         PAYLOAD);
 
         // Service shop not in account mappings → count mismatch → rejected.
-        $this->assertEquals('Ignoring event for unknown Mirakl shop.', $response->getContent());
+        $this->assertEquals('Ignoring event - not from platform account', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
         $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
     }
