@@ -96,12 +96,15 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
         // Retrieve Stripe Account
         $stripeAccount = $this->stripeClient->retrieveAccount($accountMapping->getStripeAccountId());
 
-        // Add AccountLink or LoginLink depending on submission status
-        if (!$stripeAccount['details_submitted']) {
-            $url = $this->sellerOnboardingService->addOnboardingLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
-        } else {
-            $url = $this->sellerOnboardingService->addLoginLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
+        // This public endpoint only refreshes onboarding links. It must not grant dashboard access.
+        if ($stripeAccount['details_submitted']) {
+            $accountMapping->setOnboardingToken(null);
+            $this->accountMappingRepository->flush();
+
+            return new Response('Onboarding already completed.', Response::HTTP_BAD_REQUEST);
         }
+
+        $url = $this->sellerOnboardingService->addOnboardingLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
 
         return new RedirectResponse($url);
     }
