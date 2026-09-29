@@ -73,9 +73,10 @@ class SellerOnboardingRefreshUrlTest extends WebTestCase
 
     public function testValidTokenSubmittedAccount()
     {
-        $this->mockAccountMapping(MiraklMock::SHOP_NEW, StripeMock::ACCOUNT_NEW, 'SubmittedAccount');
+        $accountMapping = $this->mockAccountMapping(MiraklMock::SHOP_NEW, StripeMock::ACCOUNT_NEW, 'SubmittedAccount');
         $response = $this->executeRequest('SubmittedAccount');
-        $this->assertTrue($response->isRedirect());
-        $this->assertEquals('https://connect.stripe.com/express/SgETLzuPbZVg', $response->headers->get('Location'));
+        $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        $this->assertEquals('Onboarding already completed.', $response->getContent());
+        $this->assertNull($this->accountMappingRepository->findOneByStripeAccountId($accountMapping->getStripeAccountId())->getOnboardingToken());
     }
 }
