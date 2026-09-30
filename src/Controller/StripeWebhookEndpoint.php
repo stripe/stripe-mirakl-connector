@@ -278,6 +278,23 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         $paymentMapping = $this->paymentMappingRepository->findOneByStripeChargeId($charge->id);
 
+        if (
+            null !== $paymentMapping
+            && PaymentMapping::CANCELED === $paymentMapping->getStatus()
+            && str_starts_with(
+                $paymentMapping->getStatusReason() ?? '',
+                PaymentMapping::INVALID_PAYMENT_REASON_PREFIX
+            )
+        ) {
+            $this->logger->info(sprintf(
+                'Ignoring event for rejected Stripe charge %s mapped to commercial order %s.',
+                $charge->id,
+                $miraklCommercialOrderId
+            ));
+
+            return 'Ignoring event for rejected Stripe charge.';
+        }
+
         if ('failed' === $charge->status) {
             $status = $charge->status;
         } elseif (isset($charge->amount_refunded) && $charge->amount_refunded >= $charge->amount) {
@@ -287,6 +304,18 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
         }
 
         if (!$paymentMapping) {
+            // Failed or fully refunded charges cannot be candidates for a new order mapping.
+            // They may still update an existing mapping below.
+            if (in_array($status, ['failed', PaymentMapping::CANCELED], true)) {
+                $this->logger->info(sprintf(
+                    'Ignoring unusable Stripe charge %s for commercial order %s.',
+                    $charge->id,
+                    $miraklCommercialOrderId
+                ));
+
+                return 'Ignoring unusable Stripe charge.';
+            }
+
             $paymentMapping = new PaymentMapping();
             $paymentMapping->setStripeChargeId($charge->id);
             $paymentMapping->setStripeAmount($charge->amount);

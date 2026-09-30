@@ -102,6 +102,8 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                 'mirakl_currency' => $miraklCurrency,
             ]);
 
+            $this->markPaymentRejected($paymentMapping, 'Stripe and Mirakl currencies differ.');
+
             return false;
         }
 
@@ -109,6 +111,7 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         foreach ($orders as $order) {
             $orderCurrency = strtolower((string) $order->getCurrency());
             if ($orderCurrency !== $miraklCurrency) {
+                $this->markPaymentRejected($paymentMapping, 'Mirakl pending debits have mixed currencies.');
                 return false;
             }
             $expectedAmount += $this->toMinorUnits($order->getAmountDue(), $miraklCurrency);
@@ -129,11 +132,7 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                 'disputed' => $disputed,
             ]);
 
-            if ($usableAmount <= 0 || in_array($chargeStatus, ['failed', 'canceled'], true)) {
-                $paymentMapping->setStatus(PaymentMapping::CANCELED);
-                $paymentMapping->setStatusReason('Stripe payment is no longer usable.');
-                $this->paymentMappingRepository->flush();
-            }
+            $this->markPaymentRejected($paymentMapping, 'Stripe payment is not sufficient or usable.');
 
             return false;
         }
@@ -143,6 +142,13 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         $this->paymentMappingRepository->flush();
 
         return true;
+    }
+
+    private function markPaymentRejected(PaymentMapping $paymentMapping, string $reason): void
+    {
+        $paymentMapping->setStatus(PaymentMapping::CANCELED);
+        $paymentMapping->setStatusReason(PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' '.$reason);
+        $this->paymentMappingRepository->flush();
     }
 
     private function retrieveCurrentCharge(PaymentMapping $paymentMapping): \Stripe\Charge

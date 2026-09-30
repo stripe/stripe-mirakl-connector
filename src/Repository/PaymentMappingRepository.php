@@ -64,6 +64,27 @@ class PaymentMappingRepository extends ServiceEntityRepository implements Logger
 
             $existingMapping = $this->findOneByMiraklCommercialOrderId($commercialOrderId);
             if (null !== $existingMapping) {
+                $reason = $existingMapping->getStatusReason() ?? '';
+                if (
+                    PaymentMapping::CANCELED === $existingMapping->getStatus()
+                    && str_starts_with($reason, PaymentMapping::INVALID_PAYMENT_REASON_PREFIX)
+                ) {
+                    $rejectedChargeId = $existingMapping->getStripeChargeId();
+                    $existingMapping->setStripeChargeId($paymentMapping->getStripeChargeId());
+                    $existingMapping->setStripeAmount($paymentMapping->getStripeAmount());
+                    $existingMapping->setStripeCurrency($paymentMapping->getStripeCurrency());
+                    $existingMapping->setStatus($paymentMapping->getStatus());
+                    $existingMapping->setStatusReason(sprintf(
+                        'Replaced rejected payment %s (%s). New payment awaits Mirakl validation.',
+                        $rejectedChargeId,
+                        $reason
+                    ));
+                    $this->getEntityManager()->flush();
+                    $connection->commit();
+
+                    return null;
+                }
+
                 $connection->rollBack();
 
                 return $existingMapping;
