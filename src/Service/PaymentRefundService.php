@@ -96,36 +96,43 @@ class PaymentRefundService
      */
     public function getTransfersFromOrderRefunds(array $orderRefunds): array
     {
-        // Retrieve existing StripeTransfers with provided refund IDs
+        $refundIds = array_keys($orderRefunds);
+        $transferIds = $refundIds;
+        if ($this->enablePaymentTaxSplit) {
+            foreach ($refundIds as $refundId) {
+                $transferIds[] = $refundId.$this->taxOrderPostfix;
+            }
+        }
+
+        // Retrieve both seller and tax reversals when tax split is enabled.
         $existingTransfers = $this->stripeTransferRepository->findTransfersByRefundIds(
-            array_keys($orderRefunds)
+            $transferIds
         );
 
         $transfers = [];
         foreach ($orderRefunds as $refundId => $orderRefund) {
-            if (is_array($existingTransfers) && isset($existingTransfers[$refundId])) {
-                $transfer = $existingTransfers[$refundId];
-                if (!$transfer->isRetriable()) {
-                    continue;
-                }
-
-                $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
-                if ($this->enablePaymentTaxSplit) {
-                    $transfer_tax = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
-                    $transfers[] = $transfer_tax;
-                }
-            } else {
-                // Create new transfer
-                $transfer = $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
-                $this->stripeTransferRepository->persist($transfer);
-                if ($this->enablePaymentTaxSplit) {
-                    $transfer_tax = $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund);
-                    $this->stripeTransferRepository->persist($transfer_tax);
-                    $transfers[] = $transfer_tax;
-                }
+            $components = [[$refundId, false]];
+            if ($this->enablePaymentTaxSplit) {
+                $components[] = [$refundId.$this->taxOrderPostfix, true];
             }
 
-            $transfers[] = $transfer;
+            foreach ($components as [$transferId, $isForTax]) {
+                if (isset($existingTransfers[$transferId])) {
+                    $transfer = $existingTransfers[$transferId];
+                    if (!$transfer->isRetriable()) {
+                        continue;
+                    }
+
+                    $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, $isForTax);
+                } else {
+                    $transfer = $isForTax
+                        ? $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund)
+                        : $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
+                    $this->stripeTransferRepository->persist($transfer);
+                }
+
+                $transfers[] = $transfer;
+            }
         }
 
         // Save

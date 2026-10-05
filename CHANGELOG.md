@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.3.4
+- Fix tax-split refund reversal retries
+
 ## Version 4.3.3
 - Do not crate payment mapping entries from webhook events from connected accounts
 - Ensure charge is correct before validating the Mirakl order
