@@ -242,9 +242,13 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         ];
         $detached = (new PaymentMapping())
             ->setStripeChargeId('ch_detached')
+            ->setStripeAmount(5000)
+            ->setStripeCurrency('eur')
             ->setMiraklCommercialOrderId('Order_DET');
         $managed = (new PaymentMapping())
             ->setStripeChargeId('ch_detached')
+            ->setStripeAmount(5000)
+            ->setStripeCurrency('eur')
             ->setMiraklCommercialOrderId('Order_DET');
 
         $this->paymentMappingRepository
