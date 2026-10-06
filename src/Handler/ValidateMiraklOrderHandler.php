@@ -148,7 +148,7 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
 
         $paymentMapping->setStripeAmount($chargeAmount);
         $paymentMapping->setStripeCurrency($stripeCurrency);
-        $this->paymentMappingRepository->flush();
+        $this->persistChanges($paymentMapping);
 
         return true;
     }
@@ -157,6 +157,23 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
     {
         $paymentMapping->setStatus(PaymentMapping::CANCELED);
         $paymentMapping->setStatusReason(PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' '.$reason);
+        $this->persistChanges($paymentMapping);
+    }
+
+    /**
+     * The mapping comes from a queued message, so it is detached from the entity manager
+     * and a plain flush would not write anything. Apply the changes to the managed entity.
+     */
+    private function persistChanges(PaymentMapping $paymentMapping): void
+    {
+        $managed = $this->paymentMappingRepository->findOneByStripeChargeId($paymentMapping->getStripeChargeId());
+        if (null !== $managed && $managed !== $paymentMapping) {
+            $managed->setStatus($paymentMapping->getStatus());
+            $managed->setStatusReason($paymentMapping->getStatusReason());
+            $managed->setStripeAmount($paymentMapping->getStripeAmount());
+            $managed->setStripeCurrency($paymentMapping->getStripeCurrency());
+        }
+
         $this->paymentMappingRepository->flush();
     }
 
