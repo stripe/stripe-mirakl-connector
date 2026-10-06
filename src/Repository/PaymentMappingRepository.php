@@ -66,8 +66,11 @@ class PaymentMappingRepository extends ServiceEntityRepository implements Logger
             if (null !== $existingMapping) {
                 $reason = $existingMapping->getStatusReason() ?? '';
                 if (
-                    PaymentMapping::CANCELED === $existingMapping->getStatus()
-                    && str_starts_with($reason, PaymentMapping::INVALID_PAYMENT_REASON_PREFIX)
+                    PaymentMapping::FAILED === $existingMapping->getStatus()
+                    || (
+                        PaymentMapping::CANCELED === $existingMapping->getStatus()
+                        && str_starts_with($reason, PaymentMapping::INVALID_PAYMENT_REASON_PREFIX)
+                    )
                 ) {
                     $rejectedChargeId = $existingMapping->getStripeChargeId();
                     $existingMapping->setStripeChargeId($paymentMapping->getStripeChargeId());
@@ -77,7 +80,7 @@ class PaymentMappingRepository extends ServiceEntityRepository implements Logger
                     $existingMapping->setStatusReason(sprintf(
                         'Replaced rejected payment %s (%s). New payment awaits Mirakl validation.',
                         $rejectedChargeId,
-                        $reason
+                        '' !== $reason ? $reason : 'status: '.$existingMapping->getStatus()
                     ));
                     $this->getEntityManager()->flush();
                     $connection->commit();

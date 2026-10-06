@@ -331,7 +331,15 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                     $existingForOrder->getStripeChargeId(),
                     $charge->id
                 ));
-                return 'Ignoring event: payment mapping already exists for this commercial order.';
+                // Settled mappings cannot be displaced, so redelivery is pointless (and failing
+                // responses would count against the endpoint's health).
+                if (PaymentMapping::TO_CAPTURE !== $existingForOrder->getStatus()) {
+                    return 'Ignoring event: payment mapping already exists for this commercial order.';
+                }
+
+                // Non-2xx so Stripe redelivers: the existing mapping may still be rejected during
+                // Mirakl validation, after which this charge must be able to replace it.
+                throw new \Exception('Ignoring event: payment mapping already exists for this commercial order.', Response::HTTP_CONFLICT);
             }
 
             $message = 'Payment mapping created.';

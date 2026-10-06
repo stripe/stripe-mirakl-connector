@@ -122,6 +122,15 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         $usableAmount = $chargeAmount - $amountRefunded;
         $chargeStatus = (string) ($charge->status ?? '');
         $disputed = (bool) ($charge->disputed ?? false);
+        if ('pending' === $chargeStatus && $usableAmount >= $expectedAmount && !$disputed) {
+            $this->logger->info('Postponing Mirakl validation because Stripe payment is still pending.', [
+                'commercial_id' => $commercialId,
+                'charge_id' => $paymentMapping->getStripeChargeId(),
+            ]);
+
+            return false;
+        }
+
         if ($usableAmount < $expectedAmount || 'succeeded' !== $chargeStatus || $disputed) {
             $this->logger->error('Rejecting Mirakl validation because Stripe payment is not sufficient or usable.', [
                 'commercial_id' => $commercialId,
