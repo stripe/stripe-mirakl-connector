@@ -256,6 +256,58 @@ class PaymentRefundServiceTest extends KernelTestCase
         ];
     }
 
+    public function testTaxSplitRetryKeepsSellerAndTaxReversalsSeparate()
+    {
+        $this->mockConfiguration(true);
+
+        $refundId = MiraklMock::PRODUCT_ORDER_REFUND_BASIC;
+        $orders = $this->miraklClient->listProductPendingRefunds();
+        $orderRefunds = [$refundId => $orders[$refundId]];
+
+        $sellerOrderTransfer = $this->mockOrderTransfer($orders[$refundId], StripeMock::CHARGE_BASIC);
+        $sellerOrderTransfer->setTransferId('tr_seller');
+
+        $taxOrderTransfer = new StripeTransfer();
+        $taxOrderTransfer->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $taxOrderTransfer->setMiraklId($orders[$refundId]->getOrderId().'_TAX');
+        $taxOrderTransfer->setAmount(123);
+        $taxOrderTransfer->setCurrency('eur');
+        $taxOrderTransfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $taxOrderTransfer->setTransferId('tr_tax');
+        $this->stripeTransferRepository->persistAndFlush($taxOrderTransfer);
+
+        $this->paymentRefundService->getRefundsFromOrderRefunds($orderRefunds);
+        $initialTransfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orderRefunds);
+        $this->assertCount(2, $initialTransfers);
+        $this->assertSame(StripeTransfer::TRANSFER_ON_HOLD, $initialTransfers[0]->getStatus());
+        $this->assertSame(StripeTransfer::TRANSFER_ON_HOLD, $initialTransfers[1]->getStatus());
+
+        // The refund worker completes before the command prepares the reversals again.
+        $this->mockRefundCreated($this->getBasicProductRefundFromRepository());
+        $transfers = $this->paymentRefundService->getTransfersFromOrderRefunds($orderRefunds);
+
+        $this->assertCount(2, $transfers);
+        $this->assertNotSame($transfers[0]->getId(), $transfers[1]->getId());
+        $this->assertSame((string) $refundId, $transfers[0]->getMiraklId());
+        $this->assertSame($refundId.'_TAX', $transfers[1]->getMiraklId());
+        $this->assertSame('tr_seller', $transfers[0]->getTransactionId());
+        $this->assertSame('tr_tax', $transfers[1]->getTransactionId());
+        $this->assertSame(1111, $transfers[0]->getAmount());
+        $this->assertSame(0, $transfers[1]->getAmount());
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfers[0]->getStatus());
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfers[1]->getStatus());
+
+        $transfers[0]->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $transfers[1]->setStatus(StripeTransfer::TRANSFER_ON_HOLD);
+        $this->stripeTransferRepository->flush();
+
+        $retry = $this->paymentRefundService->getTransfersFromOrderRefunds($orderRefunds);
+        $this->assertCount(1, $retry);
+        $this->assertSame($transfers[1]->getId(), $retry[0]->getId());
+        $this->assertSame('tr_tax', $retry[0]->getTransactionId());
+        $this->assertSame(1111, $transfers[0]->getAmount());
+    }
+
     public function testGetRefundsFromProductOrders()
     {
         $orders = $this->miraklClient->listProductPendingRefunds();
