@@ -348,8 +348,33 @@ class StripeWebhookEndpointTest extends WebTestCase
             }
         }
         PAYLOAD);
-        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertEquals('Ignoring unusable Stripe charge.', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($id));
+    }
+
+    public function testChargeUpdatedFailedStatusUpdatesExistingMapping()
+    {
+        $id = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+        $this->mockPaymentMapping($orderId, $id, false);
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$id",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "failed",
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Payment mapping updated.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals(PaymentMapping::FAILED, $this->paymentMappingRepository->findOneByStripeChargeId($id)->getStatus());
     }
 
     public function testChargeSucceededToCapture()
