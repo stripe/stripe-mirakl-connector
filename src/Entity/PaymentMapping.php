@@ -18,6 +18,7 @@ class PaymentMapping
     public const FAILED = 'failed';
     public const CAPTURE_FAILED = 'capture_failed';
     public const CANCEL_FAILED = 'cancel_failed';
+    public const INVALID_PAYMENT_REASON_PREFIX = 'Rejected during Mirakl payment validation:';
 
     #[Id]
     #[GeneratedValue]

@@ -348,8 +348,33 @@ class StripeWebhookEndpointTest extends WebTestCase
             }
         }
         PAYLOAD);
-        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertEquals('Ignoring unusable Stripe charge.', $response->getContent());
         $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($id));
+    }
+
+    public function testChargeUpdatedFailedStatusUpdatesExistingMapping()
+    {
+        $id = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+        $this->mockPaymentMapping($orderId, $id, false);
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$id",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "failed",
+                    "amount": 100
+                }
+            }
+        }
+        PAYLOAD);
+        $this->assertEquals('Payment mapping updated.', $response->getContent());
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals(PaymentMapping::FAILED, $this->paymentMappingRepository->findOneByStripeChargeId($id)->getStatus());
     }
 
     public function testChargeSucceededToCapture()
@@ -869,7 +894,7 @@ class StripeWebhookEndpointTest extends WebTestCase
             'Ignoring event: payment mapping already exists for this commercial order.',
             $response->getContent()
         );
-        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals(Response::HTTP_CONFLICT, $response->getStatusCode());
 
         // The original mapping must be untouched.
         $originalMapping = $this->paymentMappingRepository->findOneByStripeChargeId($existingChargeId);
@@ -879,6 +904,97 @@ class StripeWebhookEndpointTest extends WebTestCase
         // No new mapping must have been created for the second charge.
         $newMapping = $this->paymentMappingRepository->findOneByStripeChargeId($newChargeId);
         $this->assertNull($newMapping);
+    }
+
+    private function chargeUpdatedPayload(string $chargeId, string $orderId): string
+    {
+        return <<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 200
+                }
+            }
+        }
+        PAYLOAD;
+    }
+
+    public function testConflictWithSettledMappingIsNotRetried(): void
+    {
+        $orderId = MiraklMock::ORDER_BASIC;
+        $this->mockPaymentMapping($orderId, 'ch_already_captured', true);
+
+        $response = $this->executeOperatorRequest($this->chargeUpdatedPayload(StripeMock::CHARGE_BASIC, $orderId));
+
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals(
+            'Ignoring event: payment mapping already exists for this commercial order.',
+            $response->getContent()
+        );
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId(StripeMock::CHARGE_BASIC));
+    }
+
+    public function testFailedMappingIsReplacedByNewCharge(): void
+    {
+        $orderId = MiraklMock::ORDER_BASIC;
+        $failed = $this->mockPaymentMapping($orderId, 'ch_failed', false);
+        $failed->setStatus(PaymentMapping::FAILED);
+        $this->paymentMappingRepository->flush();
+
+        $response = $this->executeOperatorRequest($this->chargeUpdatedPayload(StripeMock::CHARGE_BASIC, $orderId));
+
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId('ch_failed'));
+        $mapping = $this->paymentMappingRepository->findOneByStripeChargeId(StripeMock::CHARGE_BASIC);
+        $this->assertNotNull($mapping);
+        $this->assertEquals($orderId, $mapping->getMiraklCommercialOrderId());
+        $this->assertStringContainsString('ch_failed', (string) $mapping->getStatusReason());
+    }
+
+    /**
+     * Once the existing mapping has been rejected during Mirakl validation, a
+     * redelivered event for the legitimate charge replaces it.
+     */
+    public function testRedeliveredChargeReplacesRejectedMapping(): void
+    {
+        $existingChargeId = 'ch_rejected';
+        $newChargeId = StripeMock::CHARGE_BASIC;
+        $orderId = MiraklMock::ORDER_BASIC;
+
+        $rejected = $this->mockPaymentMapping($orderId, $existingChargeId, false);
+        $rejected->setStatus(PaymentMapping::CANCELED);
+        $rejected->setStatusReason(PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' Stripe payment is not sufficient or usable.');
+        $this->paymentMappingRepository->flush();
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$newChargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 200
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertEquals('Payment mapping created.', $response->getContent());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($existingChargeId));
+        $replacement = $this->paymentMappingRepository->findOneByStripeChargeId($newChargeId);
+        $this->assertNotNull($replacement);
+        $this->assertStringContainsString("Replaced rejected payment $existingChargeId", (string) $replacement->getStatusReason());
     }
 
     /**

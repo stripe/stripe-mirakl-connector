@@ -173,6 +173,97 @@ class ValidateMiraklOrderHandlerTest extends TestCase
             ->method('validateProductPendingDebits');
 
         $this->executeHandler($orders, ['Order_PENDING' => $paymentMapping]);
+
+        $this->assertSame(PaymentMapping::TO_CAPTURE, $paymentMapping->getStatus());
+        $this->assertStringStartsNotWith(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX,
+            (string) $paymentMapping->getStatusReason()
+        );
+    }
+
+    public function testRejectsPendingChargeWithInsufficientAmount()
+    {
+        $this->charge = Charge::constructFrom([
+            'id' => 'ch_pending_low',
+            'amount' => 5000,
+            'amount_refunded' => 0,
+            'currency' => 'eur',
+            'status' => 'pending',
+            'captured' => false,
+            'disputed' => false,
+        ]);
+        $orders = [
+            'Order_LOW' => [
+                'Order_LOW-A' => new MiraklProductPendingDebit([
+                    'amount' => '100.00',
+                    'currency_iso_code' => 'EUR',
+                    'order_id' => 'Order_LOW-A',
+                    'customer_id' => 'Customer_id_001',
+                ]),
+            ],
+        ];
+        $paymentMapping = (new PaymentMapping())
+            ->setStripeChargeId('ch_pending_low')
+            ->setMiraklCommercialOrderId('Order_LOW');
+
+        $this->miraklClient
+            ->expects($this->never())
+            ->method('validateProductPendingDebits');
+
+        $this->executeHandler($orders, ['Order_LOW' => $paymentMapping]);
+
+        $this->assertSame(PaymentMapping::CANCELED, $paymentMapping->getStatus());
+        $this->assertStringStartsWith(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX,
+            (string) $paymentMapping->getStatusReason()
+        );
+    }
+
+    public function testRejectionIsAppliedToManagedMappingAndFlushed()
+    {
+        $this->charge = Charge::constructFrom([
+            'id' => 'ch_detached',
+            'amount' => 5000,
+            'amount_refunded' => 0,
+            'currency' => 'eur',
+            'status' => 'succeeded',
+            'captured' => false,
+            'disputed' => false,
+        ]);
+        $orders = [
+            'Order_DET' => [
+                'Order_DET-A' => new MiraklProductPendingDebit([
+                    'amount' => '100.00',
+                    'currency_iso_code' => 'EUR',
+                    'order_id' => 'Order_DET-A',
+                    'customer_id' => 'Customer_id_001',
+                ]),
+            ],
+        ];
+        $detached = (new PaymentMapping())
+            ->setStripeChargeId('ch_detached')
+            ->setStripeAmount(5000)
+            ->setStripeCurrency('eur')
+            ->setMiraklCommercialOrderId('Order_DET');
+        $managed = (new PaymentMapping())
+            ->setStripeChargeId('ch_detached')
+            ->setStripeAmount(5000)
+            ->setStripeCurrency('eur')
+            ->setMiraklCommercialOrderId('Order_DET');
+
+        $this->paymentMappingRepository
+            ->method('findOneByStripeChargeId')
+            ->with('ch_detached')
+            ->willReturn($managed);
+        $this->paymentMappingRepository->expects($this->once())->method('flush');
+
+        $this->executeHandler($orders, ['Order_DET' => $detached]);
+
+        $this->assertSame(PaymentMapping::CANCELED, $managed->getStatus());
+        $this->assertStringStartsWith(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX,
+            (string) $managed->getStatusReason()
+        );
     }
 
     public function testWithNoOrders()

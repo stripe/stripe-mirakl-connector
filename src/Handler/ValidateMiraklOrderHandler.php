@@ -102,6 +102,8 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                 'mirakl_currency' => $miraklCurrency,
             ]);
 
+            $this->markPaymentRejected($paymentMapping, 'Stripe and Mirakl currencies differ.');
+
             return false;
         }
 
@@ -109,6 +111,7 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         foreach ($orders as $order) {
             $orderCurrency = strtolower((string) $order->getCurrency());
             if ($orderCurrency !== $miraklCurrency) {
+                $this->markPaymentRejected($paymentMapping, 'Mirakl pending debits have mixed currencies.');
                 return false;
             }
             $expectedAmount += $this->toMinorUnits($order->getAmountDue(), $miraklCurrency);
@@ -119,6 +122,15 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         $usableAmount = $chargeAmount - $amountRefunded;
         $chargeStatus = (string) ($charge->status ?? '');
         $disputed = (bool) ($charge->disputed ?? false);
+        if ('pending' === $chargeStatus && $usableAmount >= $expectedAmount && !$disputed) {
+            $this->logger->info('Postponing Mirakl validation because Stripe payment is still pending.', [
+                'commercial_id' => $commercialId,
+                'charge_id' => $paymentMapping->getStripeChargeId(),
+            ]);
+
+            return false;
+        }
+
         if ($usableAmount < $expectedAmount || 'succeeded' !== $chargeStatus || $disputed) {
             $this->logger->error('Rejecting Mirakl validation because Stripe payment is not sufficient or usable.', [
                 'commercial_id' => $commercialId,
@@ -129,20 +141,40 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                 'disputed' => $disputed,
             ]);
 
-            if ($usableAmount <= 0 || in_array($chargeStatus, ['failed', 'canceled'], true)) {
-                $paymentMapping->setStatus(PaymentMapping::CANCELED);
-                $paymentMapping->setStatusReason('Stripe payment is no longer usable.');
-                $this->paymentMappingRepository->flush();
-            }
+            $this->markPaymentRejected($paymentMapping, 'Stripe payment is not sufficient or usable.');
 
             return false;
         }
 
         $paymentMapping->setStripeAmount($chargeAmount);
         $paymentMapping->setStripeCurrency($stripeCurrency);
-        $this->paymentMappingRepository->flush();
+        $this->persistChanges($paymentMapping);
 
         return true;
+    }
+
+    private function markPaymentRejected(PaymentMapping $paymentMapping, string $reason): void
+    {
+        $paymentMapping->setStatus(PaymentMapping::CANCELED);
+        $paymentMapping->setStatusReason(PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' '.$reason);
+        $this->persistChanges($paymentMapping);
+    }
+
+    /**
+     * The mapping comes from a queued message, so it is detached from the entity manager
+     * and a plain flush would not write anything. Apply the changes to the managed entity.
+     */
+    private function persistChanges(PaymentMapping $paymentMapping): void
+    {
+        $managed = $this->paymentMappingRepository->findOneByStripeChargeId($paymentMapping->getStripeChargeId());
+        if (null !== $managed && $managed !== $paymentMapping) {
+            $managed->setStatus($paymentMapping->getStatus());
+            $managed->setStatusReason($paymentMapping->getStatusReason());
+            $managed->setStripeAmount($paymentMapping->getStripeAmount());
+            $managed->setStripeCurrency($paymentMapping->getStripeCurrency());
+        }
+
+        $this->paymentMappingRepository->flush();
     }
 
     private function retrieveCurrentCharge(PaymentMapping $paymentMapping): \Stripe\Charge

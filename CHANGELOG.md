@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.3.5
+- Let Stripe redeliver events for unsettled mapped orders, allow failed mappings to be replaced, and keep pending charges retryable instead of permanently rejecting them
+
 ## Version 4.3.4
 - Fix tax-split refund reversal retries
 
