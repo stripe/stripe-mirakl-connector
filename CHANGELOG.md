@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.3.6
+- Fix service-order capture blocking and batch SOR11 requests by commercial ID
+
 ## Version 4.3.5
 - Let Stripe redeliver events for unsettled mapped orders, allow failed mappings to be replaced, and keep pending charges retryable instead of permanently rejecting them
 

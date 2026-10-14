@@ -62,6 +62,10 @@ class MiraklMockedHttpClient extends MockHttpClient
     public const ORDER_COMMERCIAL_TWO_SHOPS = 'order_commercial_two_shops';
     // Hybrid: product sub-order from SHOP_NOT_READY=99, service sub-order from SHOP_NEW=299.
     public const ORDER_COMMERCIAL_HYBRID_SERVICE_DIFF_SHOP = 'order_commercial_hybrid_service_diff_shop';
+    public const ORDER_COMMERCIAL_HYBRID_REFUSED_SERVICE = 'order_commercial_hybrid_refused_service';
+    public const ORDER_COMMERCIAL_HYBRID_WAITING_DEBIT_SERVICE = 'order_commercial_hybrid_waiting_debit_service';
+    public const ORDER_COMMERCIAL_HYBRID_WAITING_ACCEPTANCE_SERVICE = 'order_commercial_hybrid_waiting_acceptance_service';
+    public const ORDER_COMMERCIAL_SERVICE_ONLY = 'order_commercial_service_only';
 
 	public const PRODUCT_ORDER_PENDING_REFUND = 'product_order_pending_refund';
 	public const SERVICE_ORDER_PENDING_REFUND = 'service_order_pending_refund';
@@ -392,6 +396,42 @@ class MiraklMockedHttpClient extends MockHttpClient
 		$orders = [];
 		foreach ($commercialIds as $commercialId) {
 			switch ($commercialId) {
+				case self::ORDER_COMMERCIAL_HYBRID_WAITING_DEBIT_SERVICE:
+				case self::ORDER_COMMERCIAL_HYBRID_WAITING_ACCEPTANCE_SERVICE:
+					$date = new \DateTime();
+					if ($isService) {
+						$state = self::ORDER_COMMERCIAL_HYBRID_WAITING_DEBIT_SERVICE === $commercialId
+							? 'WAITING_DEBIT'
+							: 'WAITING_ACCEPTANCE';
+						$order = $this->getServiceOrder('order_hybrid_waiting_service', $date, $state);
+						$order['commercial_order_id'] = $commercialId;
+					} else {
+						$order = $this->getProductOrder('order_hybrid_accepted_product', $date, 'SHIPPED');
+						$order['commercial_id'] = $commercialId;
+					}
+					$orders[] = $order;
+					break;
+				case self::ORDER_COMMERCIAL_HYBRID_REFUSED_SERVICE:
+					if ($isService) {
+						$date = new \DateTime();
+						$order = $this->getServiceOrder('order_hybrid_refused_service', $date, 'ORDER_REFUSED');
+						$order['commercial_order_id'] = self::ORDER_COMMERCIAL_HYBRID_REFUSED_SERVICE;
+						$orders[] = $order;
+					} else {
+						$date = new \DateTime();
+						$order = $this->getProductOrder('order_hybrid_accepted_product', $date, 'SHIPPED');
+						$order['commercial_id'] = self::ORDER_COMMERCIAL_HYBRID_REFUSED_SERVICE;
+						$orders[] = $order;
+					}
+					break;
+				case self::ORDER_COMMERCIAL_SERVICE_ONLY:
+					if ($isService) {
+						$date = new \DateTime();
+						$order = $this->getServiceOrder('order_service_only', $date, 'ORDER_ACCEPTED');
+						$order['commercial_order_id'] = self::ORDER_COMMERCIAL_SERVICE_ONLY;
+						$orders[] = $order;
+					}
+					break;
 				case self::ORDER_COMMERCIAL_ALL_VALIDATED:
 					// Product-only order: return empty for service-order requests to avoid
 					// MiraklServiceOrder trying to parse product-shaped array data.

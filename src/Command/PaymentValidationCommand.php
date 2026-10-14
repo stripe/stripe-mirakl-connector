@@ -3,6 +3,8 @@
 namespace App\Command;
 
 use App\Entity\MiraklOrder;
+use App\Entity\MiraklProductOrder;
+use App\Entity\MiraklServiceOrder;
 use App\Entity\PaymentMapping;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
@@ -89,9 +91,19 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
     protected function capturePayments(array $paymentMappings): void
     {
         // List all orders using the provided commercial IDs
-        $ordersByCommercialId = $this->miraklClient->listProductOrdersByCommercialId(
-            array_keys($paymentMappings)
-        );
+        $commercialIds = array_keys($paymentMappings);
+        $productOrdersByCommercialId = $this->miraklClient->listProductOrdersByCommercialId($commercialIds);
+        $serviceOrdersByCommercialId = $this->miraklClient->listServiceOrdersByCommercialId($commercialIds);
+        $ordersByCommercialId = [];
+        foreach ($commercialIds as $commercialId) {
+            $orders = array_merge(
+                array_values($productOrdersByCommercialId[$commercialId] ?? []),
+                array_values($serviceOrdersByCommercialId[$commercialId] ?? [])
+            );
+            if (!empty($orders)) {
+                $ordersByCommercialId[$commercialId] = $orders;
+            }
+        }
 
         // Calculate the right amount to be captured for each commercial order
         foreach ($paymentMappings as $commercialId => $paymentMapping) {
@@ -104,7 +116,8 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
             }
 
             $captureAmount = $paymentMapping->getStripeAmount();
-            foreach ($ordersByCommercialId[$commercialId] as $orderId => $order) {
+            foreach ($ordersByCommercialId[$commercialId] as $order) {
+                $orderId = $order->getId();
                 if (!$this->pa01AfterCapture) {
                     $success  = $this->captureValidatedOrder($order, $commercialId, $orderId);
                 } else {
@@ -131,6 +144,10 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
 
     private function captureValidatedOrder(MiraklOrder $order, string $commercialId, string $orderId): bool
     {
+        if ($order instanceof MiraklServiceOrder) {
+            return $this->captureWaitingOrder($order, $commercialId, $orderId);
+        }
+
         // Order must be validated (accepted/refused)
         if (!$order->isValidated()) {
             $this->logger->info(
@@ -141,7 +158,7 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         }
 
         // Payment must be validated (via PA01) if the order wasn't aborted
-        if (!$order->isAborted() && !$order->isPaid()) {
+        if (!$order->isAborted() && $order instanceof MiraklProductOrder && !$order->isPaid()) {
             $this->logger->info(
                 'Skipping payment capture for non-validated logistical order payment.',
                 ['commercial_id' => $commercialId, 'order_id' => $orderId]

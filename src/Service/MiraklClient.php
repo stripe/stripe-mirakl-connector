@@ -284,7 +284,10 @@ class MiraklClient
     // SOR11 by commercial_id
     public function listServiceOrdersByCommercialId(array $commercialIds): array
     {
-        $res = $this->paginateByPage('/api/mms/orders', ['commercial_order_id' => $commercialIds], 'data');
+        $res = [];
+        foreach (array_chunk($commercialIds, 100) as $chunk) {
+            $res = array_merge($res, $this->paginateByPage('/api/mms/orders', ['commercial_order_id' => $chunk], 'data'));
+        }
         $res = $this->arraysToObjects($res, MiraklServiceOrder::class);
 
         return $this->objectsToMap($res, 'getCommercialId', 'getId');

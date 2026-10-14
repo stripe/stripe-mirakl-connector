@@ -170,6 +170,82 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertCount(0, $this->cancelReceiver->getSent());
     }
 
+    public function testCaptureDeductsRefusedServiceOrderFromHybridCommercialOrder(): void
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_HYBRID_REFUSED_SERVICE,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            20000
+        );
+
+        $this->executeCommand();
+
+        // The refused service is 12.34 + 1.12 + 1.34 + 1.56 + 1.78 = 18.14.
+        $this->assertCount(1, $messages = $this->captureReceiver->getSent());
+        $this->assertEquals(18186, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureDoesNotWaitForServiceDebitValidation(): void
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_HYBRID_WAITING_DEBIT_SERVICE,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            20000
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(1, $messages = $this->captureReceiver->getSent());
+        $this->assertEquals(20000, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureWaitsForServiceAcceptance(): void
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_HYBRID_WAITING_ACCEPTANCE_SERVICE,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            20000
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureChunksMoreThanOneHundredCommercialOrders(): void
+    {
+        for ($i = 0; $i < 101; ++$i) {
+            $this->mockPaymentMapping(
+                sprintf('bulk_commercial_order_%03d', $i),
+                sprintf('ch_bulk_%03d', $i),
+                100
+            );
+        }
+
+        $this->executeCommand();
+
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureAcceptedServiceOnlyCommercialOrder(): void
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_SERVICE_ONLY,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            5000
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(1, $messages = $this->captureReceiver->getSent());
+        $this->assertEquals(5000, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
     public function testCaptureSkipsConflictedCommercialOrder(): void
     {
         // A duplicate mapping must not allow the capture pipeline to choose one
