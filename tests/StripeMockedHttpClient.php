@@ -21,6 +21,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const ACCOUNT_NOT_SUBMITTED = 'account_not_submitted';
 
     public const CHARGE_BASIC = 'ch_basic';
+    public const CHARGE_JPY = 'ch_jpy';
     public const CHARGE_PAYMENT = 'py_basic';
     public const CHARGE_STATUS_AUTHORIZED = 'ch_status_authorized';
     public const CHARGE_STATUS_CAPTURED = 'ch_status_captured';
@@ -53,6 +54,18 @@ class StripeMockedHttpClient implements ClientInterface
 
     protected $errorMessage;
     protected $metadataCommercialOrderId;
+    private ?array $lastRefundRequest = null;
+    private ?string $lastCanceledPaymentIntentId = null;
+
+    public function getLastRefundRequest(): ?array
+    {
+        return $this->lastRefundRequest;
+    }
+
+    public function getLastCanceledPaymentIntentId(): ?string
+    {
+        return $this->lastCanceledPaymentIntentId;
+    }
 
     public function __construct(string $metadataCommercialOrderId)
     {
@@ -197,8 +210,10 @@ class StripeMockedHttpClient implements ClientInterface
     {
         $charge = $this->getBasicObject($id, 'charge');
         $charge['refunded'] = false;
+        $charge['currency'] = 'eur';
         switch ($id) {
             case self::CHARGE_BASIC:
+            case self::CHARGE_JPY:
             case self::CHARGE_PAYMENT:
             case self::CHARGE_STATUS_CAPTURED:
                 $charge['status'] = 'succeeded';
@@ -226,6 +241,11 @@ class StripeMockedHttpClient implements ClientInterface
                 throw new InvalidRequestException("$id not found", 404);
         }
 
+        if (self::CHARGE_JPY === $id) {
+            $charge['currency'] = 'jpy';
+            $charge['amount'] = 100;
+        }
+
         if ('capture' === $action) {
             if ('succeeded' !== $charge['status']) {
                 throw new ApiConnectionException(
@@ -249,6 +269,7 @@ class StripeMockedHttpClient implements ClientInterface
     private function mockPaymentIntents($id, $action)
     {
         $pi = $this->getBasicObject($id, 'payment_intent');
+        $pi['currency'] = 'eur';
         switch ($id) {
             case self::PAYMENT_INTENT_BASIC:
                 $pi['status'] = 'succeeded';
@@ -294,6 +315,9 @@ class StripeMockedHttpClient implements ClientInterface
         }
 
         if ('capture' === $action || 'cancel' === $action) {
+            if ('cancel' === $action) {
+                $this->lastCanceledPaymentIntentId = $id;
+            }
             if ('requires_capture' !== $pi['status'] && 
                 'requires_action' !== $pi['status'] &&
                 'requires_confirmation' !== $pi['status'] &&
@@ -324,9 +348,11 @@ class StripeMockedHttpClient implements ClientInterface
 
     private function mockRefunds($params)
     {
+        $this->lastRefundRequest = $params;
         $id = $params['charge'];
         switch ($id) {
             case self::CHARGE_BASIC:
+            case self::CHARGE_JPY:
             case self::CHARGE_STATUS_AUTHORIZED:
                 return $this->getBasicObject(self::REFUND_BASIC, 'refund');
             case self::CHARGE_REFUNDED:

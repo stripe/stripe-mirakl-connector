@@ -55,6 +55,10 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const ORDER_COMMERCIAL_NONE_VALIDATED = 'order_commercial_none_validated';
 	public const ORDER_COMMERCIAL_PARTIALLY_VALIDATED = 'order_commercial_partially_validated';
 	public const ORDER_COMMERCIAL_PARTIALLY_REFUSED = 'order_commercial_partially_refused';
+	public const ORDER_COMMERCIAL_JPY_PARTIALLY_REFUSED = 'order_commercial_jpy_partially_refused';
+	public const ORDER_COMMERCIAL_JPY_FRACTIONAL_REFUSED = 'order_commercial_jpy_fractional_refused';
+	public const ORDER_COMMERCIAL_JPY_NEGATIVE_ACCEPTED = 'order_commercial_jpy_negative_accepted';
+	public const ORDER_COMMERCIAL_JPY_ZERO_ACCEPTED = 'order_commercial_jpy_zero_accepted';
 	public const ORDER_COMMERCIAL_CANCELED = 'order_commercial_canceled';
 	public const ORDER_COMMERCIAL_NOT_FOUND = 'order_commercial_not_found';
 	public const ORDER_COMMERCIAL_INVALID_SHOP = 'order_commercial_invalid_shop';
@@ -72,6 +76,10 @@ class MiraklMockedHttpClient extends MockHttpClient
 	public const PRODUCT_ORDER_REFUND_BASIC = 1000;
 	public const PRODUCT_ORDER_REFUND_VALIDATED = 1001;
 	public const PRODUCT_ORDER_REFUND_TIMEOUT = 1002;
+	public const PRODUCT_ORDER_REFUND_JPY_FRACTIONAL_COMMISSION = 1020;
+	public const PRODUCT_ORDER_REFUND_JPY_BASIC = 1021;
+	public const PRODUCT_ORDER_REFUND_JPY_ZERO_REVERSAL = 1022;
+	public const PRODUCT_ORDER_REFUND_JPY_NEGATIVE_REVERSAL = 1023;
 	public const SERVICE_ORDER_REFUND_BASIC = 2000;
 	public const SERVICE_ORDER_REFUND_VALIDATED = 2001;
 
@@ -127,6 +135,12 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 	private $customFieldCode;
     private $ignoredShopFieldCode;
+    private ?array $lastRefundValidation = null;
+
+    public function getLastRefundValidation(): ?array
+    {
+        return $this->lastRefundValidation;
+    }
 
 	public function __construct(string $customFieldCode, string $ignoredShopFieldCode)
 	{
@@ -441,10 +455,6 @@ class MiraklMockedHttpClient extends MockHttpClient
 						self::ORDER_STATUS_RECEIVED,
 					]);
 
-					foreach ($newOrders as $i => $newOrder) {
-						$newOrders[$i]['total_price'] *= 2;
-					}
-
 					$orders = array_merge($orders, $newOrders);
 					break;
 				case self::ORDER_COMMERCIAL_NONE_VALIDATED:
@@ -467,6 +477,43 @@ class MiraklMockedHttpClient extends MockHttpClient
 						self::ORDER_STATUS_CLOSED,
 						self::ORDER_STATUS_REFUSED
 					]));
+					break;
+				case self::ORDER_COMMERCIAL_JPY_PARTIALLY_REFUSED:
+				case self::ORDER_COMMERCIAL_JPY_FRACTIONAL_REFUSED:
+					if ($isService) { break; }
+					$date = new \DateTime();
+					$accepted = $this->getProductOrder('order_jpy_accepted', $date, 'CLOSED');
+					$accepted['commercial_id'] = $commercialId;
+					$accepted['currency_iso_code'] = 'JPY';
+					$accepted['total_price'] = 60;
+					$accepted['order_lines'] = [];
+					$refused = $this->getProductOrder('order_jpy_refused', $date, 'REFUSED');
+					$refused['commercial_id'] = $commercialId;
+					$refused['currency_iso_code'] = 'JPY';
+					$refused['customer_debited_date'] = null;
+					$refused['total_price'] = 0;
+					$refused['order_lines'] = [[
+						'order_line_id' => 'order_jpy_refused-1',
+						'order_line_state' => 'REFUSED',
+						'total_price' => $commercialId === self::ORDER_COMMERCIAL_JPY_FRACTIONAL_REFUSED ? 40.5 : 40,
+						'shipping_taxes' => [],
+						'taxes' => [],
+					]];
+					$orders[] = $accepted;
+					$orders[] = $refused;
+					break;
+				case self::ORDER_COMMERCIAL_JPY_NEGATIVE_ACCEPTED:
+				case self::ORDER_COMMERCIAL_JPY_ZERO_ACCEPTED:
+					if ($isService) { break; }
+					$date = new \DateTime();
+					foreach ([60, $commercialId === self::ORDER_COMMERCIAL_JPY_NEGATIVE_ACCEPTED ? -50 : 0] as $index => $amount) {
+						$order = $this->getProductOrder('order_jpy_accepted_'.$index, $date, 'CLOSED');
+						$order['commercial_id'] = $commercialId;
+						$order['currency_iso_code'] = 'JPY';
+						$order['total_price'] = $amount;
+						$order['order_lines'] = [];
+						$orders[] = $order;
+					}
 					break;
 				case self::ORDER_COMMERCIAL_CANCELED:
 					if ($isService) { break; }
@@ -714,15 +761,55 @@ class MiraklMockedHttpClient extends MockHttpClient
 				}
 			}
 
+			if (in_array($orderId, [
+				self::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, self::PRODUCT_ORDER_REFUND_JPY_FRACTIONAL_COMMISSION),
+				self::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, self::PRODUCT_ORDER_REFUND_JPY_BASIC),
+				self::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, self::PRODUCT_ORDER_REFUND_JPY_ZERO_REVERSAL),
+				self::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, self::PRODUCT_ORDER_REFUND_JPY_NEGATIVE_REVERSAL),
+			], true)) {
+				$order['currency_iso_code'] = 'JPY';
+				$order['total_price'] = 100;
+				$order['total_commission'] = 2;
+				$order['order_lines'][0]['total_price'] = 60;
+				$order['order_lines'][1]['total_price'] = 40;
+				foreach ($order['order_lines'] as &$line) {
+					$line['shipping_taxes'] = [];
+					$line['taxes'] = [];
+				}
+				unset($line);
+			}
+
 			if (0 === strpos($orderId, self::PRODUCT_ORDER_PENDING_REFUND)) {
 				$orderId = substr($orderId, 0, strrpos($orderId, '-'));
 				$refundIds = str_replace(self::PRODUCT_ORDER_PENDING_REFUND . '_', '', $orderId);
 				$order['order_lines'][0]['refunds'] = [];
 				foreach (explode('_', $refundIds) as $refundId) {
+					$refundAmount = 12.34;
+					$commissionAmount = 1.23;
+					if (in_array((int) $refundId, [
+						self::PRODUCT_ORDER_REFUND_JPY_FRACTIONAL_COMMISSION,
+						self::PRODUCT_ORDER_REFUND_JPY_BASIC,
+					], true)) {
+						$refundAmount = 60;
+					}
+					if (in_array((int) $refundId, [
+						self::PRODUCT_ORDER_REFUND_JPY_ZERO_REVERSAL,
+						self::PRODUCT_ORDER_REFUND_JPY_NEGATIVE_REVERSAL,
+					], true)) {
+						$refundAmount = 1;
+					}
+					if (in_array((int) $refundId, [
+						self::PRODUCT_ORDER_REFUND_JPY_BASIC,
+						self::PRODUCT_ORDER_REFUND_JPY_ZERO_REVERSAL,
+					], true)) {
+						$commissionAmount = 1;
+					} elseif ((int) $refundId === self::PRODUCT_ORDER_REFUND_JPY_NEGATIVE_REVERSAL) {
+						$commissionAmount = 2;
+					}
 					$order['order_lines'][0]['refunds'][] = [
 						'id' => $refundId,
-						'amount' => 12.34,
-						'commission_total_amount' => 1.23
+						'amount' => $refundAmount,
+						'commission_total_amount' => $commissionAmount
 					];
 				}
 			}
@@ -916,6 +1003,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 	private function mockRefundValidation($body)
 	{
+		$this->lastRefundValidation = $body;
 		$id = $body['refunds'][0]['refund_id'] ?? $body[0]['id'];
 		switch ($id) {
 			case self::PRODUCT_ORDER_REFUND_BASIC:

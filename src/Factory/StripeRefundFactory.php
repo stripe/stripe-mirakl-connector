@@ -9,6 +9,7 @@ use App\Exception\InvalidArgumentException;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripeTransferRepository;
 use App\Service\StripeClient;
+use App\Service\StripeAmount;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Charge;
@@ -56,9 +57,19 @@ class StripeRefundFactory implements LoggerAwareInterface
         $refund->setMiraklCommercialOrderId($pendingRefund->getCommercialId());
         $refund->setMiraklOrderId($pendingRefund->getOrderId());
         $refund->setMiraklOrderLineId($pendingRefund->getOrderLineId());
-        $refund->setAmount(gmp_intval((string) ($pendingRefund->getAmount() * 100)));
         $refund->setCurrency(strtolower($pendingRefund->getCurrency()));
         $refund->setMiraklRefundId($pendingRefund->getId());
+        try {
+            $amount = StripeAmount::toMinorUnits($pendingRefund->getAmount(), $pendingRefund->getCurrency());
+            if ($amount <= 0) {
+                throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_INVALID_AMOUNT, $amount));
+            }
+            $refund->setAmount($amount);
+        } catch (InvalidArgumentException $e) {
+            $refund->setAmount(0);
+
+            return $this->abortRefund($refund, $e->getMessage());
+        }
 
         return $this->updateRefund($refund);
     }
@@ -81,7 +92,7 @@ class StripeRefundFactory implements LoggerAwareInterface
 
         // Check charge status
         try {
-            $this->checkTransactionStatus($transactionId);
+            $this->checkTransactionStatus($transactionId, $refund->getCurrency());
         } catch (InvalidRequestException $e) {
             return $this->abortRefund(
                 $refund,
@@ -128,17 +139,20 @@ class StripeRefundFactory implements LoggerAwareInterface
         throw new InvalidArgumentException(StripeRefund::REFUND_STATUS_REASON_NO_CHARGE_ID);
     }
 
-    private function checkTransactionStatus(string $trid): void
+    private function checkTransactionStatus(string $trid, string $currency): void
     {
         // Transaction number is a PaymentIntent
         if (0 === strpos($trid, 'pi_')) {
             $pi = $this->stripeClient->paymentIntentRetrieve($trid);
+            if (strtolower((string) ($pi->currency ?? '')) !== strtolower($currency)) {
+                throw new InvalidArgumentException('Refund currency differs from Stripe PaymentIntent currency.', 10);
+            }
             switch ($pi->status) {
                 case 'succeeded':
                     // Still have to check if it has been refunded
                     $ch = $pi->charges->data[0] ?? null;
                     assert($ch instanceof Charge);
-                    $this->checkChargeStatus($ch);
+                    $this->checkChargeStatus($ch, $currency);
 
                     return;
                 case 'canceled':
@@ -160,14 +174,18 @@ class StripeRefundFactory implements LoggerAwareInterface
         // Transaction number is a Charge
         if (0 === strpos($trid, 'ch_') || 0 === strpos($trid, 'py_')) {
             $ch = $this->stripeClient->chargeRetrieve($trid);
-            $this->checkChargeStatus($ch);
+            $this->checkChargeStatus($ch, $currency);
 
             return;
         }
     }
 
-    private function checkChargeStatus(Charge $ch): void
+    private function checkChargeStatus(Charge $ch, string $currency): void
     {
+        if (strtolower((string) ($ch->currency ?? '')) !== strtolower($currency)) {
+            throw new InvalidArgumentException('Refund currency differs from Stripe Charge currency.', 10);
+        }
+
         /**
          * if charge has a payment intent of status in the below condition, then cancel the payment intent -start
          */

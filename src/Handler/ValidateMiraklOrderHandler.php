@@ -3,9 +3,11 @@
 namespace App\Handler;
 
 use App\Entity\PaymentMapping;
+use App\Exception\InvalidArgumentException;
 use App\Message\ValidateMiraklOrderMessage;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
+use App\Service\StripeAmount;
 use App\Repository\PaymentMappingRepository;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -114,7 +116,21 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                 $this->markPaymentRejected($paymentMapping, 'Mirakl pending debits have mixed currencies.');
                 return false;
             }
-            $expectedAmount += $this->toMinorUnits($order->getAmountDue(), $miraklCurrency);
+            try {
+                $orderAmount = StripeAmount::toMinorUnits($order->getAmountDue(), $miraklCurrency);
+                if ($orderAmount <= 0) {
+                    throw new InvalidArgumentException('Mirakl pending debit amount must be positive.');
+                }
+                $expectedAmount += $orderAmount;
+            } catch (InvalidArgumentException $e) {
+                $this->logger->error('Rejecting Mirakl validation because the order amount is invalid.', [
+                    'commercial_id' => $commercialId,
+                    'error' => $e->getMessage(),
+                ]);
+                $this->markPaymentRejected($paymentMapping, $e->getMessage());
+
+                return false;
+            }
         }
 
         $chargeAmount = (int) ($charge->amount ?? 0);
@@ -170,8 +186,12 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         if (null !== $managed && $managed !== $paymentMapping) {
             $managed->setStatus($paymentMapping->getStatus());
             $managed->setStatusReason($paymentMapping->getStatusReason());
-            $managed->setStripeAmount($paymentMapping->getStripeAmount());
-            $managed->setStripeCurrency($paymentMapping->getStripeCurrency());
+            if (null !== $paymentMapping->getStripeAmount()) {
+                $managed->setStripeAmount($paymentMapping->getStripeAmount());
+            }
+            if (null !== $paymentMapping->getStripeCurrency()) {
+                $managed->setStripeCurrency($paymentMapping->getStripeCurrency());
+            }
         }
 
         $this->paymentMappingRepository->flush();
@@ -197,14 +217,4 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         throw new \RuntimeException(sprintf('PaymentIntent %s has no latest Charge.', $paymentId));
     }
 
-    private function toMinorUnits(float $amount, string $currency): int
-    {
-        // Stripe represents supported presentment currencies in two decimal places unless
-        // they are in this zero-decimal list. UGX is intentionally absent: Stripe requires
-        // charge amounts in two-decimal representation for backwards compatibility.
-        $zeroDecimalCurrencies = ['bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga', 'pyg', 'rwf', 'vnd', 'vuv', 'xaf', 'xof', 'xpf'];
-        $multiplier = in_array($currency, $zeroDecimalCurrencies, true) ? 1 : 100;
-
-        return (int) round($amount * $multiplier);
-    }
 }

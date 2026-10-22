@@ -156,6 +156,29 @@ class PaymentRefundServiceTest extends KernelTestCase
         ]);
     }
 
+    public function testInvalidZeroDecimalRefundDoesNotStopOtherRefunds(): void
+    {
+        $valid = $this->miraklClient->listProductPendingRefunds()[MiraklMock::PRODUCT_ORDER_REFUND_BASIC];
+        $invalidData = $valid->getOrder();
+        $invalidData['id'] = 'invalid_jpy_refund';
+        $invalidData['order_id'] = 'invalid_jpy_order';
+        $invalidData['order_commercial_id'] = 'invalid_jpy_commercial_order';
+        $invalidData['order_line_id'] = 'invalid_jpy_order-1';
+        $invalidData['currency_iso_code'] = 'JPY';
+        $invalidData['amount'] = 60.5;
+        $invalid = new MiraklProductPendingRefund($invalidData);
+
+        $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds([
+            $invalid->getId() => $invalid,
+            $valid->getId() => $valid,
+        ]);
+
+        $this->assertCount(2, $refunds);
+        $this->assertSame(StripeRefund::REFUND_ABORTED, $refunds[0]->getStatus());
+        $this->assertSame(StripeRefund::REFUND_ON_HOLD, $refunds[1]->getStatus());
+        $this->assertNotNull($this->stripeRefundRepository->findOneBy(['miraklRefundId' => $valid->getId()]));
+    }
+
     private function getBasicServiceRefundFromRepository()
     {
         return $this->stripeRefundRepository->findOneBy([

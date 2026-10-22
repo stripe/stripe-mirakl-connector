@@ -38,7 +38,7 @@ class PaymentMapping
     private ?string $statusReason = null;
 
     #[Column(type: 'integer', nullable: true)]
-    private ?int $stripeAmount;
+    private ?int $stripeAmount = null;
 
     #[Column(type: 'string', length: 3, nullable: true)]
     private ?string $stripeCurrency = null;

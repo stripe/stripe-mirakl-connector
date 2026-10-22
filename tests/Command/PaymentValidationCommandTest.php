@@ -76,12 +76,13 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertEquals(0, $commandTester->getStatusCode());
     }
 
-    private function mockPaymentMapping($commercialId, $paymentId, $amount, $status = PaymentMapping::TO_CAPTURE)
+    private function mockPaymentMapping($commercialId, $paymentId, $amount, $status = PaymentMapping::TO_CAPTURE, string $currency = 'eur')
     {
         $mapping = new PaymentMapping();
         $mapping->setMiraklCommercialOrderId($commercialId);
         $mapping->setStripeChargeId($paymentId);
         $mapping->setStripeAmount($amount);
+        $mapping->setStripeCurrency($currency);
         $mapping->setStatus($status);
 
         $this->paymentMappingRepository->persist($mapping);
@@ -310,6 +311,88 @@ class PaymentValidationCommandTest extends KernelTestCase
         $this->assertCount(0, $this->validateReceiver->getSent());
         $this->assertCount(1, $messages = $this->captureReceiver->getSent());
         $this->assertEquals(8472, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureZeroDecimalCurrencyDeductsRefusedOrderInWholeUnits(): void
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_JPY_PARTIALLY_REFUSED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            100,
+            PaymentMapping::TO_CAPTURE,
+            'jpy'
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(1, $messages = $this->captureReceiver->getSent());
+        $this->assertSame(60, $messages[0]->getMessage()->getAmount());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public function testCaptureSkipsPositiveAmountBelowAcceptedOrders(): void
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_JPY_PARTIALLY_REFUSED,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            80,
+            PaymentMapping::TO_CAPTURE,
+            'jpy'
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    /** @dataProvider nonPositiveAcceptedOrders */
+    public function testCaptureSkipsNonPositiveAcceptedOrder(string $commercialId, int $chargeAmount): void
+    {
+        $this->mockPaymentMapping(
+            $commercialId,
+            StripeMock::CHARGE_STATUS_AUTHORIZED,
+            $chargeAmount,
+            PaymentMapping::TO_CAPTURE,
+            'jpy'
+        );
+
+        $this->executeCommand(true);
+
+        $this->assertCount(0, $this->captureReceiver->getSent());
+        $this->assertCount(0, $this->cancelReceiver->getSent());
+    }
+
+    public static function nonPositiveAcceptedOrders(): array
+    {
+        return [
+            'negative order offsets a positive order' => [MiraklMock::ORDER_COMMERCIAL_JPY_NEGATIVE_ACCEPTED, 10],
+            'zero order accompanies a positive order' => [MiraklMock::ORDER_COMMERCIAL_JPY_ZERO_ACCEPTED, 60],
+        ];
+    }
+
+    public function testInvalidZeroDecimalAbortedAmountDoesNotStopOtherCaptures(): void
+    {
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_JPY_FRACTIONAL_REFUSED,
+            'ch_jpy_invalid',
+            100,
+            PaymentMapping::TO_CAPTURE,
+            'jpy'
+        );
+        $this->mockPaymentMapping(
+            MiraklMock::ORDER_COMMERCIAL_JPY_PARTIALLY_REFUSED,
+            'ch_jpy_valid',
+            100,
+            PaymentMapping::TO_CAPTURE,
+            'jpy'
+        );
+
+        $this->executeCommand();
+
+        $this->assertCount(1, $messages = $this->captureReceiver->getSent());
+        $this->assertSame(60, $messages[0]->getMessage()->getAmount());
         $this->assertCount(0, $this->cancelReceiver->getSent());
     }
 
