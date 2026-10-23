@@ -7,6 +7,7 @@ use App\Message\ProcessRefundMessage;
 use App\Repository\StripeRefundRepository;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
+use App\Service\StripeAmount;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
@@ -67,7 +68,7 @@ class ProcessRefundHandler implements LoggerAwareInterface
                 $this->miraklClient->validateServicePendingRefunds([[
                     'id' => $refund->getMiraklRefundId(),
                     'order_id' => $refund->getMiraklOrderId(),
-                    'amount' => $refund->getAmount() / 100,
+                    'amount' => StripeAmount::fromMinorUnits($refund->getAmount(), $refund->getCurrency()),
                     'currency_code' => strtoupper($refund->getCurrency()),
                     'state' => 'OK',
                     'transaction_number' => $refund->getStripeRefundId(),
@@ -75,7 +76,7 @@ class ProcessRefundHandler implements LoggerAwareInterface
             } else {
                 $this->miraklClient->validateProductPendingRefunds([[
                     'refund_id' => $refund->getMiraklRefundId(),
-                    'amount' => $refund->getAmount() / 100,
+                    'amount' => StripeAmount::fromMinorUnits($refund->getAmount(), $refund->getCurrency()),
                     'currency_iso_code' => strtoupper($refund->getCurrency()),
                     'payment_status' => 'OK',
                     'transaction_number' => $refund->getStripeRefundId(),

@@ -7,6 +7,7 @@ use App\Entity\StripePayout;
 use App\Exception\InvalidArgumentException;
 use App\Repository\AccountMappingRepository;
 use App\Service\MiraklClient;
+use App\Service\StripeAmount;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 
@@ -100,7 +101,7 @@ class StripePayoutFactory implements LoggerAwareInterface
     {
         $amount = $invoice['summary']['amount_transferred'] ?? 0;
 
-        $amount = gmp_intval((string) ($amount * 100));
+        $amount = StripeAmount::toPayoutMinorUnits($amount, $invoice['currency_iso_code']);
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(StripePayout::PAYOUT_STATUS_REASON_INVALID_AMOUNT, $amount));
         }

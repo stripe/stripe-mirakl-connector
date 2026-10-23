@@ -156,6 +156,29 @@ class PaymentRefundServiceTest extends KernelTestCase
         ]);
     }
 
+    public function testInvalidZeroDecimalRefundDoesNotStopOtherRefunds(): void
+    {
+        $valid = $this->miraklClient->listProductPendingRefunds()[MiraklMock::PRODUCT_ORDER_REFUND_BASIC];
+        $invalidData = $valid->getOrder();
+        $invalidData['id'] = 'invalid_jpy_refund';
+        $invalidData['order_id'] = 'invalid_jpy_order';
+        $invalidData['order_commercial_id'] = 'invalid_jpy_commercial_order';
+        $invalidData['order_line_id'] = 'invalid_jpy_order-1';
+        $invalidData['currency_iso_code'] = 'JPY';
+        $invalidData['amount'] = 60.5;
+        $invalid = new MiraklProductPendingRefund($invalidData);
+
+        $refunds = $this->paymentRefundService->getRefundsFromOrderRefunds([
+            $invalid->getId() => $invalid,
+            $valid->getId() => $valid,
+        ]);
+
+        $this->assertCount(2, $refunds);
+        $this->assertSame(StripeRefund::REFUND_ABORTED, $refunds[0]->getStatus());
+        $this->assertSame(StripeRefund::REFUND_ON_HOLD, $refunds[1]->getStatus());
+        $this->assertNotNull($this->stripeRefundRepository->findOneBy(['miraklRefundId' => $valid->getId()]));
+    }
+
     private function getBasicServiceRefundFromRepository()
     {
         return $this->stripeRefundRepository->findOneBy([
@@ -256,7 +279,7 @@ class PaymentRefundServiceTest extends KernelTestCase
         ];
     }
 
-    public function testTaxSplitRetryKeepsSellerAndTaxReversalsSeparate()
+    public function testTaxSplitRetrySkipsAbortedZeroTaxReversal()
     {
         $this->mockConfiguration(true);
 
@@ -293,18 +316,20 @@ class PaymentRefundServiceTest extends KernelTestCase
         $this->assertSame('tr_seller', $transfers[0]->getTransactionId());
         $this->assertSame('tr_tax', $transfers[1]->getTransactionId());
         $this->assertSame(1111, $transfers[0]->getAmount());
-        $this->assertSame(0, $transfers[1]->getAmount());
+        $this->assertNull($transfers[1]->getAmount());
         $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfers[0]->getStatus());
-        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfers[1]->getStatus());
+        $this->assertSame(StripeTransfer::TRANSFER_ABORTED, $transfers[1]->getStatus());
+        $this->assertSame('Amount must be positive, input was: 0', $transfers[1]->getStatusReason());
 
-        $transfers[0]->setStatus(StripeTransfer::TRANSFER_CREATED);
-        $transfers[1]->setStatus(StripeTransfer::TRANSFER_ON_HOLD);
+        $transfers[0]->setStatus(StripeTransfer::TRANSFER_ON_HOLD);
         $this->stripeTransferRepository->flush();
 
         $retry = $this->paymentRefundService->getTransfersFromOrderRefunds($orderRefunds);
         $this->assertCount(1, $retry);
-        $this->assertSame($transfers[1]->getId(), $retry[0]->getId());
-        $this->assertSame('tr_tax', $retry[0]->getTransactionId());
+        $this->assertSame($transfers[0]->getId(), $retry[0]->getId());
+        $this->assertSame('tr_seller', $retry[0]->getTransactionId());
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $retry[0]->getStatus());
+        $this->assertSame(StripeTransfer::TRANSFER_ABORTED, $transfers[1]->getStatus());
         $this->assertSame(1111, $transfers[0]->getAmount());
     }
 

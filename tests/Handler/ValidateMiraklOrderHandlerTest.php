@@ -143,6 +143,110 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $this->executeHandler($orders, ['Order_UGX' => $paymentMapping]);
     }
 
+    /** @dataProvider invalidZeroDecimalAmounts */
+    public function testInvalidZeroDecimalOrderDoesNotStopOtherValidations(float|string $invalidAmount): void
+    {
+        $this->charge = Charge::constructFrom([
+            'id' => 'ch_jpy',
+            'amount' => 60,
+            'amount_refunded' => 0,
+            'currency' => 'jpy',
+            'status' => 'succeeded',
+            'captured' => true,
+            'disputed' => false,
+        ]);
+        $orders = [
+            'invalid' => [new MiraklProductPendingDebit([
+                'amount' => $invalidAmount,
+                'currency_iso_code' => 'JPY',
+                'order_id' => 'invalid-1',
+                'customer_id' => 'customer-1',
+            ])],
+            'valid' => [new MiraklProductPendingDebit([
+                'amount' => '60',
+                'currency_iso_code' => 'JPY',
+                'order_id' => 'valid-1',
+                'customer_id' => 'customer-2',
+            ])],
+        ];
+        $invalidMapping = (new PaymentMapping())->setStripeChargeId('ch_invalid');
+        $validMapping = (new PaymentMapping())->setStripeChargeId('ch_valid');
+        $managedInvalid = (new PaymentMapping())
+            ->setStripeChargeId('ch_invalid')
+            ->setStripeAmount(60)
+            ->setStripeCurrency('jpy');
+        $this->paymentMappingRepository->method('findOneByStripeChargeId')
+            ->willReturnCallback(fn (string $chargeId) => $chargeId === 'ch_invalid' ? $managedInvalid : null);
+
+        $this->miraklClient->expects($this->once())
+            ->method('validateProductPendingDebits')
+            ->with($this->callback(fn (array $debits) => count($debits) === 1 && $debits[0]['order_id'] === 'valid-1'));
+
+        $this->executeHandler($orders, ['invalid' => $invalidMapping, 'valid' => $validMapping]);
+
+        $this->assertSame(PaymentMapping::CANCELED, $invalidMapping->getStatus());
+        $this->assertSame(PaymentMapping::CANCELED, $managedInvalid->getStatus());
+        $this->assertSame(60, $managedInvalid->getStripeAmount());
+        $this->assertSame('jpy', $managedInvalid->getStripeCurrency());
+        $this->assertSame(PaymentMapping::TO_CAPTURE, $validMapping->getStatus());
+    }
+
+    public static function invalidZeroDecimalAmounts(): array
+    {
+        return [
+            'fractional yen' => ['60.5'],
+            'tiny fractional yen' => [1e-11],
+        ];
+    }
+
+    /** @dataProvider nonPositivePendingDebits */
+    public function testRejectsNonPositiveDebitBeforeItCanOffsetAnotherOrder(string $invalidAmount, int $chargeAmount): void
+    {
+        $this->charge = Charge::constructFrom([
+            'id' => 'ch_jpy',
+            'amount' => $chargeAmount,
+            'amount_refunded' => 0,
+            'currency' => 'jpy',
+            'status' => 'succeeded',
+            'captured' => true,
+            'disputed' => false,
+        ]);
+        $orders = [
+            'Order_JPY' => [
+                new MiraklProductPendingDebit([
+                    'amount' => '60',
+                    'currency_iso_code' => 'JPY',
+                    'order_id' => 'Order_JPY-A',
+                    'customer_id' => 'Customer_id_001',
+                ]),
+                new MiraklProductPendingDebit([
+                    'amount' => $invalidAmount,
+                    'currency_iso_code' => 'JPY',
+                    'order_id' => 'Order_JPY-B',
+                    'customer_id' => 'Customer_id_001',
+                ]),
+            ],
+        ];
+        $paymentMapping = (new PaymentMapping())
+            ->setStripeChargeId('ch_jpy')
+            ->setMiraklCommercialOrderId('Order_JPY');
+
+        $this->miraklClient->expects($this->never())->method('validateProductPendingDebits');
+
+        $this->executeHandler($orders, ['Order_JPY' => $paymentMapping]);
+
+        $this->assertSame(PaymentMapping::CANCELED, $paymentMapping->getStatus());
+        $this->assertStringContainsString('pending debit amount must be positive', $paymentMapping->getStatusReason());
+    }
+
+    public static function nonPositivePendingDebits(): array
+    {
+        return [
+            'negative debit offsets the positive order' => ['-50', 10],
+            'zero debit accompanies the positive order' => ['0', 60],
+        ];
+    }
+
     public function testRejectsPendingCharge()
     {
         $this->charge = Charge::constructFrom([

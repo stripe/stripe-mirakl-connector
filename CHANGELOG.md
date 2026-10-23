@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.3.7
+- Improve zero decimal currency related calculations
+
 ## Version 4.3.6
 - Fix service-order capture blocking and batch SOR11 requests by commercial ID
 

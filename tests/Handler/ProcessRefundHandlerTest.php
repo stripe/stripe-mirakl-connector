@@ -105,6 +105,28 @@ class ProcessRefundHandlerTest extends KernelTestCase
         $this->assertNotNull($refund->getMiraklValidationTime());
     }
 
+    public function testZeroDecimalRefundUsesWholeUnitsForStripeAndMirakl(): void
+    {
+        $refund = $this->mockRefund(
+            StripeRefund::REFUND_PRODUCT_ORDER,
+            MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
+            StripeMock::CHARGE_JPY
+        );
+        $refund->setAmount(60);
+        $refund->setCurrency('jpy');
+        $this->stripeRefundRepository->flush();
+
+        $this->executeHandler($refund->getId());
+
+        $stripeRequest = static::getContainer()->get(StripeMock::class)->getLastRefundRequest();
+        $miraklRequest = static::getContainer()->get(MiraklMock::class)->getLastRefundValidation();
+        $this->assertSame(60, $stripeRequest['amount']);
+        $this->assertSame(StripeMock::CHARGE_JPY, $stripeRequest['charge']);
+        $this->assertSame(60, $miraklRequest['refunds'][0]['amount']);
+        $this->assertSame('JPY', $miraklRequest['refunds'][0]['currency_iso_code']);
+        $this->assertSame(StripeRefund::REFUND_CREATED, $refund->getStatus());
+    }
+
     public function testProductRefundWithStripeError()
     {
         $refund = $this->mockRefund(

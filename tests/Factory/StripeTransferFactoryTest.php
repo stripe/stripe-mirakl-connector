@@ -4,6 +4,7 @@ namespace App\Tests\Factory;
 
 use App\Entity\AccountMapping;
 use App\Entity\MiraklProductOrder;
+use App\Entity\MiraklProductPendingRefund;
 use App\Entity\MiraklServiceOrder;
 use App\Entity\MiraklPendingRefund;
 use App\Entity\MiraklServicePendingRefund;
@@ -13,6 +14,7 @@ use App\Entity\StripeTransfer;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeTransferRepository;
 use App\Service\MiraklClient;
+use App\Service\StripeAmount;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
@@ -104,7 +106,7 @@ class StripeTransferFactoryTest extends KernelTestCase
         $transfer = new StripeTransfer();
         $transfer->setType($type);
         $transfer->setMiraklId($order->getOrderId());
-        $transfer->setAmount(gmp_intval((string) ($order->getAmount() * 100)));
+        $transfer->setAmount(StripeAmount::toMinorUnits($order->getAmount(), $order->getCurrency()));
         $transfer->setCurrency(strtolower($order->getCurrency()));
         $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
 
@@ -136,9 +138,11 @@ class StripeTransferFactoryTest extends KernelTestCase
         $refund->setType($type);
         $refund->setMiraklOrderId($order->getOrderId());
         $refund->setMiraklOrderLineId($order->getOrderLineId());
-        $refund->setAmount(gmp_intval((string) ($order->getAmount() * 100)));
+        $refund->setAmount(StripeAmount::toMinorUnits($order->getAmount(), $order->getCurrency()));
         $refund->setCurrency(strtolower($order->getCurrency()));
-        $refund->setTransactionId(StripeMock::CHARGE_BASIC);
+        $refund->setTransactionId(
+            strtolower($order->getCurrency()) === 'jpy' ? StripeMock::CHARGE_JPY : StripeMock::CHARGE_BASIC
+        );
         $refund->setMiraklRefundId($order->getId());
         $refund->setStatus(StripeRefund::REFUND_PENDING);
 
@@ -194,6 +198,38 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertEquals($expectedAmount, $transfer->getAmount());
         $this->assertEquals('eur', $transfer->getCurrency());
         $this->assertNotNull($transfer->getMiraklCreatedDate());
+    }
+
+    public function testFractionalZeroDecimalOrderAmountAbortsTransfer(): void
+    {
+        $order = current($this->miraklClient->listProductOrdersById([MiraklMock::ORDER_BASIC]));
+        $data = $order->getOrder();
+        $data['currency_iso_code'] = 'JPY';
+        $data['total_price'] = 100;
+        $data['total_commission'] = 0.5;
+        $data['order_lines'] = [];
+
+        $transfer = $this->stripeTransferFactory->createFromOrder(new MiraklProductOrder($data));
+
+        $this->assertSame(StripeTransfer::TRANSFER_ABORTED, $transfer->getStatus());
+        $this->assertNull($transfer->getAmount());
+        $this->assertStringContainsString('JPY amounts must be whole currency units', $transfer->getStatusReason());
+    }
+
+    public function testFractionalZeroDecimalOrderAndCommissionCannotCancelOut(): void
+    {
+        $order = current($this->miraklClient->listProductOrdersById([MiraklMock::ORDER_BASIC]));
+        $data = $order->getOrder();
+        $data['currency_iso_code'] = 'JPY';
+        $data['total_price'] = 100.5;
+        $data['total_commission'] = 0.5;
+        $data['order_lines'] = [];
+
+        $transfer = $this->stripeTransferFactory->createFromOrder(new MiraklProductOrder($data));
+
+        $this->assertSame(StripeTransfer::TRANSFER_ABORTED, $transfer->getStatus());
+        $this->assertNull($transfer->getAmount());
+        $this->assertStringContainsString('JPY amounts must be whole currency units', $transfer->getStatusReason());
     }
 
     public function provideCreateFromProductOrder()
@@ -641,6 +677,110 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->assertNull($transfer->getMiraklCreatedDate());
     }
 
+    public function testFractionalZeroDecimalRefundCommissionAbortsReversal(): void
+    {
+        $refundId = MiraklMock::PRODUCT_ORDER_REFUND_JPY_FRACTIONAL_COMMISSION;
+        $orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId);
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) $refundId,
+            'order_id' => $orderId,
+            'order_commercial_id' => $orderId,
+            'order_line_id' => $orderId.'-1',
+            'amount' => 60.0,
+            'currency_iso_code' => 'JPY',
+        ]);
+        $this->mockOrderTransferCreated(
+            $this->mockOrderTransfer($pendingRefund),
+            StripeMock::TRANSFER_BASIC
+        );
+        $this->mockRefundCreated($this->mockStripeRefund($pendingRefund));
+
+        $transfer = $this->stripeTransferFactory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(StripeTransfer::TRANSFER_ABORTED, $transfer->getStatus());
+        $this->assertNull($transfer->getAmount());
+        $this->assertStringContainsString('JPY amounts must be whole currency units', $transfer->getStatusReason());
+    }
+
+    public function testZeroDecimalRefundReversalUsesMatchingOrderCurrency(): void
+    {
+        $refundId = MiraklMock::PRODUCT_ORDER_REFUND_JPY_BASIC;
+        $orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId);
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) $refundId,
+            'order_id' => $orderId,
+            'order_commercial_id' => MiraklMock::getCommercialIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId),
+            'order_line_id' => $orderId.'-1',
+            'amount' => 60.0,
+            'currency_iso_code' => 'JPY',
+        ]);
+        $this->mockOrderTransferCreated(
+            $this->mockOrderTransfer($pendingRefund),
+            StripeMock::TRANSFER_BASIC
+        );
+        $this->mockRefundCreated($this->mockStripeRefund($pendingRefund));
+
+        $transfer = $this->stripeTransferFactory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertSame(59, $transfer->getAmount());
+        $this->assertSame('jpy', $transfer->getCurrency());
+    }
+
+    /**
+     * @dataProvider provideNonPositiveZeroDecimalRefundReversals
+     */
+    public function testNonPositiveZeroDecimalRefundReversalIsAborted(int $refundId, int $amount): void
+    {
+        $orderId = MiraklMock::getOrderIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId);
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) $refundId,
+            'order_id' => $orderId,
+            'order_commercial_id' => MiraklMock::getCommercialIdFromRefundId(MiraklClient::ORDER_TYPE_PRODUCT, $refundId),
+            'order_line_id' => $orderId.'-1',
+            'amount' => 1.0,
+            'currency_iso_code' => 'JPY',
+        ]);
+        $this->mockOrderTransferCreated(
+            $this->mockOrderTransfer($pendingRefund),
+            StripeMock::TRANSFER_BASIC
+        );
+        $this->mockRefundCreated($this->mockStripeRefund($pendingRefund));
+
+        $transfer = $this->stripeTransferFactory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(StripeTransfer::TRANSFER_ABORTED, $transfer->getStatus());
+        $this->assertNull($transfer->getAmount());
+        $this->assertSame(sprintf(StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT, $amount), $transfer->getStatusReason());
+    }
+
+    public function provideNonPositiveZeroDecimalRefundReversals(): array
+    {
+        return [
+            [MiraklMock::PRODUCT_ORDER_REFUND_JPY_ZERO_REVERSAL, 0],
+            [MiraklMock::PRODUCT_ORDER_REFUND_JPY_NEGATIVE_REVERSAL, -1],
+        ];
+    }
+
+    public function testRefundReversalRejectsCurrencyMismatch(): void
+    {
+        $pendingRefund = $this->miraklClient->listProductPendingRefunds()[MiraklMock::PRODUCT_ORDER_REFUND_BASIC];
+        $data = $pendingRefund->getOrder();
+        $data['currency_iso_code'] = 'JPY';
+        $data['amount'] = 60.0;
+        $pendingRefund = new MiraklProductPendingRefund($data);
+        $this->mockOrderTransferCreated(
+            $this->mockOrderTransfer($pendingRefund),
+            StripeMock::TRANSFER_BASIC
+        );
+        $this->mockRefundCreated($this->mockStripeRefund($pendingRefund));
+
+        $transfer = $this->stripeTransferFactory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(StripeTransfer::TRANSFER_ABORTED, $transfer->getStatus());
+        $this->assertSame('Refund, order, and original transfer currencies differ.', $transfer->getStatusReason());
+    }
+
     public function testUpdateProductOrderRefundTransfer()
     {
         $pendingRefunds = $this->miraklClient->listProductPendingRefunds();
@@ -720,6 +860,24 @@ class StripeTransferFactoryTest extends KernelTestCase
             $this->assertEquals('eur', $transfer->getCurrency());
             $this->assertNotNull($transfer->getMiraklCreatedDate());
         }
+    }
+
+    public function testCreateFromZeroDecimalInvoice(): void
+    {
+        $invoice = current($this->miraklClient->listInvoicesByDate(
+            MiraklMock::INVOICE_DATE_1_VALID
+        ));
+        $invoice['currency_iso_code'] = 'JPY';
+        $invoice['summary']['total_other_credits_incl_tax'] = 60;
+
+        $transfer = $this->stripeTransferFactory->createFromInvoice(
+            $invoice,
+            StripeTransfer::TRANSFER_EXTRA_CREDITS
+        );
+
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertSame(60, $transfer->getAmount());
+        $this->assertSame('jpy', $transfer->getCurrency());
     }
 
     public function testUpdateFromInvoice()

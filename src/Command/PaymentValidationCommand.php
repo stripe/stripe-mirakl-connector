@@ -6,11 +6,13 @@ use App\Entity\MiraklOrder;
 use App\Entity\MiraklProductOrder;
 use App\Entity\MiraklServiceOrder;
 use App\Entity\PaymentMapping;
+use App\Exception\InvalidArgumentException;
 use App\Message\CancelPendingPaymentMessage;
 use App\Message\CapturePendingPaymentMessage;
 use App\Message\ValidateMiraklOrderMessage;
 use App\Repository\PaymentMappingRepository;
 use App\Service\MiraklClient;
+use App\Service\StripeAmount;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Symfony\Component\Console\Command\Command;
@@ -116,8 +118,25 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
             }
 
             $captureAmount = $paymentMapping->getStripeAmount();
+            $currency = $paymentMapping->getStripeCurrency();
+            if (null === $captureAmount || null === $currency) {
+                $this->logger->error('Skipping payment capture because the validated Stripe amount or currency is missing.', [
+                    'commercial_id' => $commercialId,
+                ]);
+                continue;
+            }
+
+            $hasAcceptedOrder = false;
+            $acceptedAmount = 0;
             foreach ($ordersByCommercialId[$commercialId] as $order) {
                 $orderId = $order->getId();
+                if (strtolower($order->getCurrency()) !== $currency) {
+                    $this->logger->error('Skipping payment capture because Mirakl and Stripe currencies differ.', [
+                        'commercial_id' => $commercialId,
+                        'order_id' => $orderId,
+                    ]);
+                    continue 2;
+                }
                 if (!$this->pa01AfterCapture) {
                     $success  = $this->captureValidatedOrder($order, $commercialId, $orderId);
                 } else {
@@ -127,6 +146,24 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
                     continue 2;
                 }
 
+                if (!$order->isAborted()) {
+                    $hasAcceptedOrder = true;
+                    try {
+                        $orderAmount = StripeAmount::toMinorUnits($order->getAmountDue(), $currency);
+                        if ($orderAmount <= 0) {
+                            throw new InvalidArgumentException('Mirakl accepted order amount must be positive.');
+                        }
+                        $acceptedAmount += $orderAmount;
+                    } catch (InvalidArgumentException $e) {
+                        $this->logger->error('Skipping payment capture because an accepted order amount is invalid.', [
+                            'commercial_id' => $commercialId,
+                            'order_id' => $orderId,
+                            'error' => $e->getMessage(),
+                        ]);
+                        continue 2;
+                    }
+                }
+
                 // Deduct refused or canceled orders from the aggregate capture amount.
                 $abortedAmount = $order->getAbortedAmount();
                 if ($abortedAmount > 0) {
@@ -134,8 +171,26 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
                         "Deducting order aborted amount {$abortedAmount} from capture amount.",
                         ['commercial_id' => $commercialId, 'order_id' => $orderId]
                     );
-                    $captureAmount -= gmp_intval((string) ($abortedAmount * 100));
+                    try {
+                        $captureAmount -= StripeAmount::toMinorUnits($abortedAmount, $currency);
+                    } catch (InvalidArgumentException $e) {
+                        $this->logger->error('Skipping payment capture because the aborted amount is invalid.', [
+                            'commercial_id' => $commercialId,
+                            'order_id' => $orderId,
+                            'error' => $e->getMessage(),
+                        ]);
+                        continue 2;
+                    }
                 }
+            }
+
+            if ($hasAcceptedOrder && ($captureAmount <= 0 || $captureAmount < $acceptedAmount)) {
+                $this->logger->error('Skipping payment capture because the amount does not cover accepted orders.', [
+                    'commercial_id' => $commercialId,
+                    'capture_amount' => $captureAmount,
+                    'accepted_amount' => $acceptedAmount,
+                ]);
+                continue;
             }
 
             $this->dispatchCaptureMessage($paymentMapping, $captureAmount);

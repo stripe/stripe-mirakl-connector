@@ -64,6 +64,21 @@ class StripePayoutFactoryTest extends KernelTestCase
         $this->assertNotNull($payout->getMiraklCreatedDate());
     }
 
+    public function testCreateFromZeroDecimalInvoice(): void
+    {
+        $invoice = current($this->miraklClient->listInvoicesByDate(
+            MiraklMockedHttpClient::INVOICE_DATE_1_VALID
+        ));
+        $invoice['currency_iso_code'] = 'JPY';
+        $invoice['summary']['amount_transferred'] = 60;
+
+        $payout = $this->stripePayoutFactory->createFromInvoice($invoice, $this->miraklClient);
+
+        $this->assertSame(StripePayout::PAYOUT_PENDING, $payout->getStatus());
+        $this->assertSame(60, $payout->getAmount());
+        $this->assertSame('jpy', $payout->getCurrency());
+    }
+
     public function testUpdateFromInvoice()
     {
         $invoice = current($this->miraklClient->listInvoicesByDate(

@@ -17,6 +17,7 @@ use App\Repository\StripeRefundRepository;
 use App\Repository\StripeTransferRepository;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
+use App\Service\StripeAmount;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Charge;
@@ -222,16 +223,17 @@ class StripeTransferFactory implements LoggerAwareInterface
         }
 
         // Amount and currency
-        $amount = $order->getAmountDue();
-        $commission = $order->getOperatorCommission();
-        $transferAmount = $amount - $commission;
-        if ($this->enablePaymentTaxSplit) {
-            $orderTaxTotal = $order->getOrderTaxTotal();
-            if ($isForTax) {
-                $transferAmount = $orderTaxTotal;
-            } else {
-                $transferAmount = $transferAmount - $orderTaxTotal;
+        try {
+            $currency = $order->getCurrency();
+            $amount = StripeAmount::toMinorUnits($order->getAmountDue(), $currency);
+            $commission = StripeAmount::toMinorUnits($order->getOperatorCommission(), $currency);
+            $transferAmount = $amount - $commission;
+            if ($this->enablePaymentTaxSplit) {
+                $orderTaxTotal = StripeAmount::toMinorUnits($order->getOrderTaxTotal(), $currency);
+                $transferAmount = $isForTax ? $orderTaxTotal : $transferAmount - $orderTaxTotal;
             }
+        } catch (InvalidArgumentException $e) {
+            return $this->abortTransfer($transfer, $e->getMessage());
         }
         if ($transferAmount <= 0) {
             return $this->abortTransfer($transfer, sprintf(
@@ -240,7 +242,7 @@ class StripeTransferFactory implements LoggerAwareInterface
             ));
         }
 
-        $transfer->setAmount(gmp_intval((string) ($transferAmount * 100)));
+        $transfer->setAmount($transferAmount);
         $transfer->setCurrency(strtolower($order->getCurrency()));
 
         // All good
@@ -307,17 +309,27 @@ class StripeTransferFactory implements LoggerAwareInterface
             }
 
             // Amount and currency
+            $orderCurrency = strtolower($order->getCurrency());
+            if ($orderCurrency !== strtolower($refund->getCurrency()) || $orderCurrency !== $orderTransfer->getCurrency()) {
+                throw new InvalidArgumentException('Refund, order, and original transfer currencies differ.', 10);
+            }
             $commission = $order->getRefundedOperatorCommission($refund);
-            $commission = gmp_intval((string) ($commission * 100));
+            $commission = StripeAmount::toMinorUnits($commission, $order->getCurrency());
             $transferAmount = $refund->getAmount() - $commission;
             if ($this->enablePaymentTaxSplit) {
                 $refundedTax = $order->getRefundedTax($refund);
-                $refundedTax = gmp_intval((string) ($refundedTax * 100));
+                $refundedTax = StripeAmount::toMinorUnits($refundedTax, $order->getCurrency());
                 if ($isForTax) {
                     $transferAmount = $refundedTax;
                 } else {
                     $transferAmount = $transferAmount - $refundedTax;
                 }
+            }
+            if ($transferAmount <= 0) {
+                return $this->abortTransfer($transfer, sprintf(
+                    StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT,
+                    $transferAmount
+                ));
             }
             $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
@@ -330,6 +342,8 @@ class StripeTransferFactory implements LoggerAwareInterface
                 case 20:
                     return $this->putTransferOnHold($transfer, $e->getMessage());
             }
+
+            return $this->abortTransfer($transfer, $e->getMessage());
         }
 
         // All good
@@ -482,7 +496,7 @@ class StripeTransferFactory implements LoggerAwareInterface
         ];
 
         $amount = $invoice['summary'][$typeToKey[$type]] ?? 0;
-        $amount = abs(gmp_intval((string) ($amount * 100)));
+        $amount = abs(StripeAmount::toMinorUnits($amount, $invoice['currency_iso_code']));
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(StripeTransfer::TRANSFER_STATUS_REASON_INVALID_AMOUNT, $amount));
         }

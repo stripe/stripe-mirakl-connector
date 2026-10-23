@@ -38,6 +38,7 @@ class StripeRefund
     public const REFUND_STATUS_REASON_PAYMENT_FAILED = 'Payment %s failed';
     public const REFUND_STATUS_REASON_PAYMENT_CANCELED = 'Payment %s has been canceled';
     public const REFUND_STATUS_REASON_PAYMENT_REFUNDED = 'Payment %s has been fully refunded';
+    public const REFUND_STATUS_REASON_INVALID_AMOUNT = 'Refund amount must be positive, input was: %d';
 
     // Refund types
     public const REFUND_PRODUCT_ORDER = 'REFUND_PRODUCT_ORDER';
