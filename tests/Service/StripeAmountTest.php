@@ -39,7 +39,7 @@ class StripeAmountTest extends TestCase
             'euro' => [1234, 'EUR', 12.34],
             'yen' => [60, 'JPY', 60],
             'negative yen' => [-40, 'JPY', -40],
-            'legacy isk' => [6000, 'ISK', 60.0],
+            'legacy isk' => [6000, 'ISK', 60],
         ];
     }
 

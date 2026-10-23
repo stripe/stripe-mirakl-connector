@@ -87,7 +87,7 @@ class StripeTransfer
     private ?string $transactionId = null;
 
     #[Column(type: 'integer', nullable: true)]
-    private ?int $amount;
+    private ?int $amount = null;
 
     #[Column(type: 'string')]
     private string $status;
@@ -96,7 +96,7 @@ class StripeTransfer
     private ?string $statusReason = null;
 
     #[Column(type: 'string', nullable: true)]
-    private ?string $currency;
+    private ?string $currency = null;
 
     #[Column(type: 'datetime', nullable: true)]
     private ?\DateTimeInterface $miraklCreatedDate = null;
