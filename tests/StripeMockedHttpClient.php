@@ -24,6 +24,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const CHARGE_JPY = 'ch_jpy';
     public const CHARGE_PAYMENT = 'py_basic';
     public const CHARGE_STATUS_AUTHORIZED = 'ch_status_authorized';
+    public const CHARGE_STATUS_AUTHORIZED_WITH_PI = 'ch_status_authorized_with_pi';
     public const CHARGE_STATUS_CAPTURED = 'ch_status_captured';
     public const CHARGE_STATUS_FAILED = 'ch_status_failed';
     public const CHARGE_STATUS_PENDING = 'ch_status_pending';
@@ -222,6 +223,11 @@ class StripeMockedHttpClient implements ClientInterface
             case self::CHARGE_STATUS_AUTHORIZED:
                 $charge['status'] = 'succeeded';
                 $charge['captured'] = false;
+                break;
+            case self::CHARGE_STATUS_AUTHORIZED_WITH_PI:
+                $charge['status'] = 'succeeded';
+                $charge['captured'] = false;
+                $charge['payment_intent'] = self::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE;
                 break;
             case self::CHARGE_STATUS_FAILED:
                 $charge['status'] = 'failed';

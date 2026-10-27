@@ -217,6 +217,33 @@ class StripeRefundFactoryTest extends KernelTestCase
         );
     }
 
+    public function testPreCaptureRefundDoesNotCancelPaymentIntent(): void
+    {
+        // testPaymentStatuses covers the hold status; this asserts the refund check has no cancel side effect.
+        $pendingRefund = $this->miraklClient->listProductPendingRefunds()[MiraklMock::PRODUCT_ORDER_REFUND_BASIC];
+        $this->mockOrderTransfer($pendingRefund, StripeMock::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE);
+
+        $refund = $this->stripeRefundFactory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
+        $this->assertNull(
+            self::$kernel->getContainer()->get(StripeMock::class)->getLastCanceledPaymentIntentId()
+        );
+    }
+
+    public function testPreCaptureRefundDoesNotCancelChargePaymentIntent(): void
+    {
+        $pendingRefund = $this->miraklClient->listProductPendingRefunds()[MiraklMock::PRODUCT_ORDER_REFUND_BASIC];
+        $this->mockOrderTransfer($pendingRefund, StripeMock::CHARGE_STATUS_AUTHORIZED_WITH_PI);
+
+        $refund = $this->stripeRefundFactory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
+        $this->assertNull(
+            self::$kernel->getContainer()->get(StripeMock::class)->getLastCanceledPaymentIntentId()
+        );
+    }
+
     public function testUpdateProductRefund()
     {
         $pendingRefunds = $this->miraklClient->listProductPendingRefunds();

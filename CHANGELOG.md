@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.3.8
+- Prevent a refund on one order line from canceling the shared PaymentIntent for a multi-seller cart; pre-capture refunds remain on hold for retry after capture.
+
 ## Version 4.3.7
 - Improve zero decimal currency related calculations
 
