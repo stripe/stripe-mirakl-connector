@@ -52,6 +52,36 @@ class AccountMappingRepository extends ServiceEntityRepository
         ]);
     }
 
+    /**
+     * Atomically consume a valid token, including when another request already loaded it.
+     */
+    public function consumeOnboardingToken(AccountMapping $accountMapping, string $token): bool
+    {
+        $entityManager = $this->getEntityManager();
+        $updated = $entityManager->createQueryBuilder()
+            ->update(AccountMapping::class, 'mapping')
+            ->set('mapping.onboardingToken', ':empty')
+            ->set('mapping.onboardingTokenExpiresAt', ':empty')
+            ->where('mapping.id = :id')
+            ->andWhere('mapping.onboardingToken = :token')
+            ->andWhere('mapping.onboardingTokenExpiresAt > :now')
+            ->setParameter('empty', null)
+            ->setParameter('id', $accountMapping->getId())
+            ->setParameter('token', $token)
+            ->setParameter('now', new \DateTimeImmutable(), \Doctrine\DBAL\Types\Types::DATETIME_IMMUTABLE)
+            ->getQuery()
+            ->execute();
+
+        if (1 !== $updated) {
+            return false;
+        }
+
+        // Bulk updates bypass the ORM identity map. Synchronize its tracked state.
+        $entityManager->refresh($accountMapping);
+
+        return true;
+    }
+
     private function mapByMiraklShopId(array $accountMappings): array
     {
         $map = [];

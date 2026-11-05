@@ -116,8 +116,11 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                 }
 
                 // Add new AccountLink to custom field
-                $url = $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $accountMapping);
-                $this->logger->info("Updated URL for Mirakl Shop $shopId to: $url.");
+                $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $accountMapping);
+                $this->logger->info('Updated onboarding link for Mirakl shop.', [
+                    'miraklShopId' => $shopId,
+                    'stripeAccountId' => $accountMapping->getStripeAccountId(),
+                ]);
             } catch (ClientException $e) {
                 $message = $e->getResponse()->getContent(false);
                 $this->logger->error(sprintf('Could not add AccountLink to Mirakl Shop: %s.', $message), [

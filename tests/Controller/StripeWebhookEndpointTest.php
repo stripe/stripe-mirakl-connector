@@ -89,6 +89,7 @@ class StripeWebhookEndpointTest extends WebTestCase
         $accountMapping->setMiraklShopId($shopId);
         $accountMapping->setStripeAccountId($accountId);
         $accountMapping->setOnboardingToken('token');
+        $accountMapping->setOnboardingTokenExpiresAt(new \DateTimeImmutable('+24 hours'));
         $accountMapping->setPayinEnabled($payinsEnabled);
         $accountMapping->setPayoutEnabled($payoutsEnabled);
         $accountMapping->setDisabledReason($disableReason);
@@ -235,6 +236,7 @@ class StripeWebhookEndpointTest extends WebTestCase
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($id);
         $this->assertNull($accountMapping->getOnboardingToken());
+        $this->assertNull($accountMapping->getOnboardingTokenExpiresAt());
         $this->assertEquals(true, $accountMapping->getPayinEnabled());
         $this->assertEquals(true, $accountMapping->getPayoutEnabled());
         $this->assertNull($accountMapping->getDisabledReason());
@@ -265,6 +267,7 @@ class StripeWebhookEndpointTest extends WebTestCase
 
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($id);
         $this->assertNull($accountMapping->getOnboardingToken());
+        $this->assertNull($accountMapping->getOnboardingTokenExpiresAt());
         $this->assertEquals(false, $accountMapping->getPayinEnabled());
         $this->assertEquals(false, $accountMapping->getPayoutEnabled());
         $this->assertEquals("Prohibited business", $accountMapping->getDisabledReason());
