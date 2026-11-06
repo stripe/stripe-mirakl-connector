@@ -117,7 +117,7 @@ class SellerOnboardingRefreshUrlTest extends WebTestCase
         $this->accountMappingRepository->restoreOnboardingToken($mapping, 'Retry', $expiresAt);
 
         $this->assertEquals('Retry', $mapping->getOnboardingToken());
-        $this->assertEquals($expiresAt, $mapping->getOnboardingTokenExpiresAt());
+        $this->assertEquals($expiresAt->getTimestamp(), $mapping->getOnboardingTokenExpiresAt()->getTimestamp());
         $this->assertTrue($this->executeRequest('Retry')->isRedirect());
     }
 
