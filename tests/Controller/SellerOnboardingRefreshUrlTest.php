@@ -28,6 +28,9 @@ class SellerOnboardingRefreshUrlTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client =  self::createClient();
+        // Preserve the in-memory SQLite database across replay requests in one test.
+        $this->client->disableReboot();
+        $this->client->catchExceptions(false);
         $this->accountMappingRepository = static::getContainer()->get('doctrine')->getRepository(AccountMapping::class);
     }
 
