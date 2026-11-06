@@ -178,8 +178,7 @@ class SellerOnboardingService
     public function addOnboardingLinkToShop(int $shopId, AccountMapping $accountMapping): string
     {
         // Generate unique token
-        $hasToken = null !== $accountMapping->getOnboardingToken();
-        $token = $accountMapping->getOnboardingToken() ?? bin2hex(random_bytes(16));
+        $token = bin2hex(random_bytes(16));
 
         // Create new AccountLink
         $url = $this->createAccountLink($accountMapping->getStripeAccountId(), $token);
@@ -188,10 +187,9 @@ class SellerOnboardingService
         $this->miraklClient->updateShopCustomField($shopId, $this->customFieldCode, $url);
 
         // Persist token
-        if (!$hasToken) {
-            $accountMapping->setOnboardingToken($token);
-            $this->accountMappingRepository->persistAndFlush($accountMapping);
-        }
+        $accountMapping->setOnboardingToken($token);
+        $accountMapping->setOnboardingTokenExpiresAt(new \DateTimeImmutable('+24 hours'));
+        $this->accountMappingRepository->persistAndFlush($accountMapping);
 
         return $url;
     }

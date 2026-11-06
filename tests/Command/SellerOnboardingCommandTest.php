@@ -130,6 +130,21 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->assertNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
     }
 
+    public function testExpiredOnboardingLinkIsRenewedWithoutShopUpdate()
+    {
+        $this->deleteAllAccountMappingsFromRepository();
+        $mapping = $this->mockAccountMapping(MiraklMock::SHOP_WITH_URL);
+        $mapping->setOnboardingToken('expired-token');
+        $mapping->setOnboardingTokenExpiresAt(new \DateTimeImmutable('-1 hour'));
+        $this->accountMappingRepository->persistAndFlush($mapping);
+        $this->configService->setSellerOnboardingCheckpoint('2099-01-01T00:00:00+0100');
+
+        $this->executeCommand();
+
+        $this->assertNotEquals('expired-token', $mapping->getOnboardingToken());
+        $this->assertGreaterThan(new \DateTimeImmutable(), $mapping->getOnboardingTokenExpiresAt());
+    }
+
     public function testExistingShopWithOauthUrl()
     {
         $this->deleteAllAccountMappingsFromRepository();

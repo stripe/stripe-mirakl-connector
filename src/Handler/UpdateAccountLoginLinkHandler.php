@@ -35,8 +35,11 @@ class UpdateAccountLoginLinkHandler implements LoggerAwareInterface
         $messagePayload = $message->getContent()['payload'];
         $accountMapping = $this->accountMappingRepository->findOneByStripeAccountId($messagePayload['stripeUserId']);
         assert(null !== $accountMapping);
-        $url = $this->sellerOnboardingService->addLoginLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
-        $this->logger->info("Received Stripe `account.updated` event, updated custom field to $url.");
+        $this->sellerOnboardingService->addLoginLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
+        $this->logger->info('Received Stripe `account.updated` event, updated login link.', [
+            'miraklShopId' => $accountMapping->getMiraklShopId(),
+            'stripeAccountId' => $accountMapping->getStripeAccountId(),
+        ]);
     }
 
     public static function getHandledMessages(): iterable

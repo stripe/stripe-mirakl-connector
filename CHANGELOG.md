@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 4.3.9
+- Remove sensitive Stripe links from logs and make onboarding refresh tokens single-use with a 24-hour expiry.
+- Update Stripe PHP SDK to fix compromised CA certificates
+
 ## Version 4.3.8
 - Prevent a refund on one order line from canceling the shared PaymentIntent for a multi-seller cart; pre-capture refunds remain on hold for retry after capture.
 

@@ -28,7 +28,20 @@ class OverrideDefaultHost implements EventSubscriberInterface
     public function onKernelRequest(RequestEvent $event): void
     {
         if ($event->isMainRequest() && '' !== $this->baseHostOverride) {
-            $this->router->getContext()->setHost($this->baseHostOverride);
+            $context = $this->router->getContext();
+            $host = parse_url($context->getScheme().'://'.$this->baseHostOverride);
+            if (false === $host || !isset($host['host'])) {
+                throw new \InvalidArgumentException('BASE_HOST must be a hostname with an optional port.');
+            }
+
+            $context->setHost($host['host']);
+            if (isset($host['port'])) {
+                if ('https' === $context->getScheme()) {
+                    $context->setHttpsPort($host['port']);
+                } else {
+                    $context->setHttpPort($host['port']);
+                }
+            }
         }
     }
 

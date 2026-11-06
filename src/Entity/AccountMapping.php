@@ -37,6 +37,9 @@ class AccountMapping
     #[Column(type: 'string', length: 255, nullable: true)]
     private ?string $onboardingToken = null;
 
+    #[Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $onboardingTokenExpiresAt = null;
+
     #[Column(type: 'boolean', options: ['default' => false])]
     private bool $payoutEnabled = false;
 
@@ -94,6 +97,18 @@ class AccountMapping
     public function setOnboardingToken(?string $onboardingToken): self
     {
         $this->onboardingToken = $onboardingToken;
+
+        return $this;
+    }
+
+    public function getOnboardingTokenExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->onboardingTokenExpiresAt;
+    }
+
+    public function setOnboardingTokenExpiresAt(?\DateTimeImmutable $expiresAt): self
+    {
+        $this->onboardingTokenExpiresAt = $expiresAt;
 
         return $this;
     }
