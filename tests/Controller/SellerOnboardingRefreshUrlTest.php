@@ -85,7 +85,7 @@ class SellerOnboardingRefreshUrlTest extends WebTestCase
 
         $this->assertTrue($this->accountMappingRepository->consumeOnboardingToken($mapping, 'Concurrent'));
         $this->assertNull($mapping->getOnboardingToken());
-        $this->assertNull($mapping->getOnboardingTokenExpiresAt());
+        $this->assertNotNull($mapping->getOnboardingTokenExpiresAt());
         $this->assertFalse($this->accountMappingRepository->consumeOnboardingToken($secondRequestMapping, 'Concurrent'));
 
         // A stale request must not consume the replacement credential either.
@@ -106,6 +106,19 @@ class SellerOnboardingRefreshUrlTest extends WebTestCase
             $this->assertEquals(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
             $this->assertEquals('Incorrect token', $response->getContent());
         }
+    }
+
+    public function testConsumedTokenCanBeRestoredAfterRefreshFailure()
+    {
+        $mapping = $this->mockAccountMapping(MiraklMock::SHOP_NEW, StripeMock::ACCOUNT_NOT_SUBMITTED, 'Retry');
+        $expiresAt = $mapping->getOnboardingTokenExpiresAt();
+
+        $this->assertTrue($this->accountMappingRepository->consumeOnboardingToken($mapping, 'Retry'));
+        $this->accountMappingRepository->restoreOnboardingToken($mapping, 'Retry', $expiresAt);
+
+        $this->assertEquals('Retry', $mapping->getOnboardingToken());
+        $this->assertEquals($expiresAt, $mapping->getOnboardingTokenExpiresAt());
+        $this->assertTrue($this->executeRequest('Retry')->isRedirect());
     }
 
     public function testValidTokenSubmittedAccount()

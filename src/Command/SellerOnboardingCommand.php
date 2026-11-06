@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Repository\AccountMappingRepository;
 use App\Service\ConfigService;
 use App\Service\MiraklClient;
 use App\Service\SellerOnboardingService;
@@ -40,15 +41,19 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
      */
     private $sellerOnboardingService;
 
+    private AccountMappingRepository $accountMappingRepository;
+
     public function __construct(
         ConfigService $configService,
         MiraklClient $miraklClient,
         SellerOnboardingService $sellerOnboardingService,
+        AccountMappingRepository $accountMappingRepository,
         bool $enableSellerOnboarding
     ) {
         $this->configService = $configService;
         $this->miraklClient = $miraklClient;
         $this->sellerOnboardingService = $sellerOnboardingService;
+        $this->accountMappingRepository = $accountMappingRepository;
         $this->enableSellerOnboarding = $enableSellerOnboarding;
         parent::__construct();
     }
@@ -63,11 +68,45 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
         $this->logger->info('starting');
         if ($this->enableSellerOnboarding) {
             $this->processUpdatedShops();
+            $this->renewExpiredOnboardingLinks();
         }
 
         $this->logger->info('job succeeded');
 
         return 0;
+    }
+
+    private function renewExpiredOnboardingLinks(): void
+    {
+        $mappings = $this->accountMappingRepository->findOnboardingLinksDueForRenewal();
+        foreach (array_chunk($mappings, 100) as $batch) {
+            $byShopId = [];
+            foreach ($batch as $mapping) {
+                if (!$mapping->getIgnored()) {
+                    $byShopId[$mapping->getMiraklShopId()] = $mapping;
+                }
+            }
+            if (!$byShopId) {
+                continue;
+            }
+
+            foreach ($this->miraklClient->listShopsByIds(array_keys($byShopId)) as $shopId => $shop) {
+                $mapping = $byShopId[$shopId];
+                try {
+                    $this->sellerOnboardingService->addOnboardingLinkToShop($shop->getId(), $mapping);
+                    $this->logger->info('Renewed onboarding link for Mirakl shop.', [
+                        'miraklShopId' => $shopId,
+                        'stripeAccountId' => $mapping->getStripeAccountId(),
+                    ]);
+                } catch (ClientException|ApiErrorException $e) {
+                    $this->logger->error('Could not renew onboarding link.', [
+                        'miraklShopId' => $shopId,
+                        'stripeAccountId' => $mapping->getStripeAccountId(),
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
     }
 
     private function processUpdatedShops(): void

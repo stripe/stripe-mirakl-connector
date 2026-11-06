@@ -52,6 +52,17 @@ class AccountMappingRepository extends ServiceEntityRepository
         ]);
     }
 
+    /** @return AccountMapping[] */
+    public function findOnboardingLinksDueForRenewal(): array
+    {
+        return $this->createQueryBuilder('mapping')
+            ->where('mapping.onboardingTokenExpiresAt IS NOT NULL')
+            ->andWhere('mapping.onboardingTokenExpiresAt <= :now')
+            ->setParameter('now', new \DateTimeImmutable(), \Doctrine\DBAL\Types\Types::DATETIME_IMMUTABLE)
+            ->getQuery()
+            ->getResult();
+    }
+
     /**
      * Atomically consume a valid token, including when another request already loaded it.
      */
@@ -61,7 +72,7 @@ class AccountMappingRepository extends ServiceEntityRepository
         $updated = $entityManager->createQueryBuilder()
             ->update(AccountMapping::class, 'mapping')
             ->set('mapping.onboardingToken', ':empty')
-            ->set('mapping.onboardingTokenExpiresAt', ':empty')
+            ->set('mapping.onboardingTokenExpiresAt', ':recoveryAt')
             ->where('mapping.id = :id')
             ->andWhere('mapping.onboardingToken = :token')
             ->andWhere('mapping.onboardingTokenExpiresAt > :now')
@@ -69,6 +80,7 @@ class AccountMappingRepository extends ServiceEntityRepository
             ->setParameter('id', $accountMapping->getId())
             ->setParameter('token', $token)
             ->setParameter('now', new \DateTimeImmutable(), \Doctrine\DBAL\Types\Types::DATETIME_IMMUTABLE)
+            ->setParameter('recoveryAt', new \DateTimeImmutable('+5 minutes'), \Doctrine\DBAL\Types\Types::DATETIME_IMMUTABLE)
             ->getQuery()
             ->execute();
 
@@ -80,6 +92,24 @@ class AccountMappingRepository extends ServiceEntityRepository
         $entityManager->refresh($accountMapping);
 
         return true;
+    }
+
+    public function restoreOnboardingToken(AccountMapping $accountMapping, string $token, \DateTimeImmutable $expiresAt): void
+    {
+        $this->getEntityManager()->createQueryBuilder()
+            ->update(AccountMapping::class, 'mapping')
+            ->set('mapping.onboardingToken', ':token')
+            ->set('mapping.onboardingTokenExpiresAt', ':expiresAt')
+            ->where('mapping.id = :id')
+            ->andWhere('mapping.onboardingToken IS NULL')
+            ->andWhere('mapping.onboardingTokenExpiresAt IS NOT NULL')
+            ->setParameter('token', $token)
+            ->setParameter('expiresAt', $expiresAt, \Doctrine\DBAL\Types\Types::DATETIME_IMMUTABLE)
+            ->setParameter('id', $accountMapping->getId())
+            ->getQuery()
+            ->execute();
+
+        $this->getEntityManager()->refresh($accountMapping);
     }
 
     private function mapByMiraklShopId(array $accountMappings): array

@@ -89,19 +89,28 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
 
         // Retrieve AccountMapping
         $accountMapping = $this->accountMappingRepository->findOneByOnboardingToken($token);
+        $expiresAt = $accountMapping?->getOnboardingTokenExpiresAt();
         if (!$accountMapping || !$this->accountMappingRepository->consumeOnboardingToken($accountMapping, $token)) {
             return new Response('Incorrect token', Response::HTTP_BAD_REQUEST);
         }
 
         // Retrieve Stripe Account
-        $stripeAccount = $this->stripeClient->retrieveAccount($accountMapping->getStripeAccountId());
+        try {
+            $stripeAccount = $this->stripeClient->retrieveAccount($accountMapping->getStripeAccountId());
 
-        // This public endpoint only refreshes onboarding links. It must not grant dashboard access.
-        if ($stripeAccount['details_submitted']) {
-            return new Response('Onboarding already completed.', Response::HTTP_BAD_REQUEST);
+            // This public endpoint only refreshes onboarding links. It must not grant dashboard access.
+            if ($stripeAccount['details_submitted']) {
+                $accountMapping->setOnboardingTokenExpiresAt(null);
+                $this->accountMappingRepository->flush();
+
+                return new Response('Onboarding already completed.', Response::HTTP_BAD_REQUEST);
+            }
+
+            $url = $this->sellerOnboardingService->addOnboardingLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
+        } catch (\Throwable $e) {
+            $this->accountMappingRepository->restoreOnboardingToken($accountMapping, $token, $expiresAt);
+            throw $e;
         }
-
-        $url = $this->sellerOnboardingService->addOnboardingLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
 
         return new RedirectResponse($url);
     }
