@@ -296,6 +296,13 @@ class StripeTransferFactory implements LoggerAwareInterface
                 );
             }
 
+            if (null === $orderTransfer->getTransferId() || null === $orderTransfer->getAmount()) {
+                return $this->putTransferOnHold(
+                    $transfer,
+                    StripeTransfer::TRANSFER_STATUS_REASON_TRANSFER_NOT_READY
+                );
+            }
+
             // Save transfer ID as the transaction to be reversed
             if (!$transfer->getTransactionId()) {
                 $transfer->setTransactionId($orderTransfer->getTransferId());
@@ -320,9 +327,32 @@ class StripeTransferFactory implements LoggerAwareInterface
                 $refundedTax = $order->getRefundedTax($refund);
                 $refundedTax = StripeAmount::toMinorUnits($refundedTax, $order->getCurrency());
                 if ($isForTax) {
-                    $transferAmount = $refundedTax;
+                    $reservedTaxAmount = $this->stripeTransferRepository->getReservedRefundAmountForTransaction(
+                        $orderTransfer->getTransferId(),
+                        $transfer->getMiraklId()
+                    );
+                    $remainingTaxAmount = max(0, $orderTransfer->getAmount() - $reservedTaxAmount);
+                    $transferAmount = min($refundedTax, $remainingTaxAmount);
                 } else {
                     $transferAmount = $transferAmount - $refundedTax;
+
+                    // Older forward splits may have left shipping tax in the
+                    // seller transfer. Recover any tax reversal shortfall from
+                    // that transfer rather than retrying an impossible tax reversal.
+                    $taxTransferId = $refund->getMiraklOrderId().$this->taxOrderPostfix;
+                    $taxTransfers = $this->stripeTransferRepository->findTransfersByOrderIds([$taxTransferId]);
+                    $taxOrderTransfer = $taxTransfers[$taxTransferId] ?? null;
+                    if ($taxOrderTransfer
+                        && StripeTransfer::TRANSFER_CREATED === $taxOrderTransfer->getStatus()
+                        && null !== $taxOrderTransfer->getTransferId()
+                        && null !== $taxOrderTransfer->getAmount()) {
+                        $reservedTaxAmount = $this->stripeTransferRepository->getReservedRefundAmountForTransaction(
+                            $taxOrderTransfer->getTransferId(),
+                            $transfer->getMiraklId().$this->taxOrderPostfix
+                        );
+                        $remainingTaxAmount = max(0, $taxOrderTransfer->getAmount() - $reservedTaxAmount);
+                        $transferAmount += max(0, $refundedTax - $remainingTaxAmount);
+                    }
                 }
             }
             if ($transferAmount <= 0) {
@@ -331,6 +361,25 @@ class StripeTransferFactory implements LoggerAwareInterface
                     $transferAmount
                 ));
             }
+
+            $orderTransferId = $orderTransfer->getTransferId();
+            $remainingReversibleAmount = $orderTransfer->getAmount()
+                - $this->stripeTransferRepository->getReservedRefundAmountForTransaction(
+                    $orderTransferId,
+                    $transfer->getMiraklId()
+                );
+            if ($transferAmount > $remainingReversibleAmount) {
+                return $this->abortTransfer(
+                    $transfer,
+                    sprintf(
+                        'Refund reversal amount %d exceeds the remaining reversible amount %d for transfer %s.',
+                        $transferAmount,
+                        $remainingReversibleAmount,
+                        $orderTransferId
+                    )
+                );
+            }
+
             $transfer->setAmount($transferAmount);
             $transfer->setCurrency(strtolower($order->getCurrency()));
         } catch (InvalidArgumentException $e) {
@@ -348,6 +397,157 @@ class StripeTransferFactory implements LoggerAwareInterface
 
         // All good
         return $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+    }
+
+    public function createTaxShortfallReversal(
+        string $refundId,
+        StripeTransfer $sellerReversal
+    ): ?StripeTransfer {
+        if (StripeTransfer::TRANSFER_REFUND !== $sellerReversal->getType()
+            || $refundId !== $sellerReversal->getMiraklId()) {
+            return null;
+        }
+
+        try {
+            $refund = $this->findRefundFromRefundId($refundId);
+        } catch (InvalidArgumentException $e) {
+            return null;
+        }
+        $orderId = $refund->getMiraklOrderId();
+        $orders = StripeRefund::REFUND_PRODUCT_ORDER === $refund->getType()
+            ? $this->miraklClient->listProductOrdersById([$orderId])
+            : $this->miraklClient->listServiceOrdersById([$orderId]);
+        $order = current($orders);
+        if (!$order) {
+            return null;
+        }
+
+        $miraklId = $refundId.$this->taxOrderPostfix.'_SHORTFALL';
+        return $this->stripeTransferRepository->wrapInTransaction(function () use (
+            $orderId,
+            $refundId,
+            $miraklId,
+            $order,
+            $refund
+        ): ?StripeTransfer {
+            // Regular refund reservations lock these same order transfers. Lock
+            // both components before reading capacity so concurrent refunds
+            // cannot reserve the same seller or tax balance.
+            $this->stripeTransferRepository->lockOrderTransfersByMiraklIds([
+                $orderId,
+                $orderId.$this->taxOrderPostfix,
+            ]);
+
+            $sellerReversals = $this->stripeTransferRepository->findTransfersByRefundIds([$refundId]);
+            $sellerReversal = $sellerReversals[$refundId] ?? null;
+            if (!$sellerReversal
+                || StripeTransfer::TRANSFER_CREATED !== $sellerReversal->getStatus()
+                || !$sellerReversal->getTransactionId()
+                || null === $sellerReversal->getAmount()) {
+                return null;
+            }
+
+            $taxTransfers = $this->stripeTransferRepository->findTransfersByOrderIds([
+                $orderId.$this->taxOrderPostfix,
+            ]);
+            $taxOrderTransfer = $taxTransfers[$orderId.$this->taxOrderPostfix] ?? null;
+            if (!$taxOrderTransfer
+                || StripeTransfer::TRANSFER_CREATED !== $taxOrderTransfer->getStatus()
+                || null === $taxOrderTransfer->getTransferId()
+                || null === $taxOrderTransfer->getAmount()) {
+                return null;
+            }
+
+            // Recheck after acquiring the lock so concurrent reconciliations for
+            // the same refund reuse the row created by the first transaction.
+            $shortfallReversal = $this->stripeTransferRepository->findOneBy([
+                'type' => StripeTransfer::TRANSFER_REFUND,
+                'miraklId' => $miraklId,
+            ]);
+            if ($shortfallReversal
+                && StripeTransfer::TRANSFER_PENDING === $shortfallReversal->getStatus()) {
+                return $shortfallReversal;
+            }
+            if ($shortfallReversal && !$shortfallReversal->isRetriable()) {
+                return null;
+            }
+
+            $refundedTax = StripeAmount::toMinorUnits($order->getRefundedTax($refund), $order->getCurrency());
+            $reservedTax = $this->stripeTransferRepository->getReservedRefundAmountForTransaction(
+                $taxOrderTransfer->getTransferId(),
+                $refundId.$this->taxOrderPostfix
+            );
+            $taxShortfall = max(0, $refundedTax - max(0, $taxOrderTransfer->getAmount() - $reservedTax));
+            if (0 === $taxShortfall) {
+                return null;
+            }
+
+            $commission = StripeAmount::toMinorUnits(
+                $order->getRefundedOperatorCommission($refund),
+                $order->getCurrency()
+            );
+            $sellerTarget = max(0, $refund->getAmount() - $commission - $refundedTax + $taxShortfall);
+            $additionalAmount = max(0, $sellerTarget - $sellerReversal->getAmount());
+            if (0 === $additionalAmount) {
+                return null;
+            }
+
+            $sellerOrderTransfers = $this->stripeTransferRepository->findTransfersByOrderIds([$orderId]);
+            $sellerOrderTransfer = $sellerOrderTransfers[$orderId] ?? null;
+            if (!$sellerOrderTransfer || null === $sellerOrderTransfer->getAmount()) {
+                return null;
+            }
+
+            $reservedSellerAmount = $this->stripeTransferRepository->getReservedRefundAmountForTransaction(
+                $sellerReversal->getTransactionId(),
+                $sellerReversal->getMiraklId()
+            );
+            $remainingSellerAmount = max(
+                0,
+                $sellerOrderTransfer->getAmount() - $reservedSellerAmount - $sellerReversal->getAmount()
+            );
+            $reservedAmount = min($additionalAmount, $remainingSellerAmount);
+            if (0 === $reservedAmount) {
+                return null;
+            }
+
+            if (!$shortfallReversal) {
+                $shortfallReversal = new StripeTransfer();
+                $shortfallReversal->setType(StripeTransfer::TRANSFER_REFUND);
+                $shortfallReversal->setMiraklId($miraklId);
+                $this->stripeTransferRepository->persist($shortfallReversal);
+            }
+
+            return $shortfallReversal
+                ->setTransactionId($sellerReversal->getTransactionId())
+                ->setAmount($reservedAmount)
+                ->setCurrency($sellerReversal->getCurrency())
+                ->setStatus(StripeTransfer::TRANSFER_PENDING);
+        });
+    }
+
+    public function createTaxShortfallReversalForCompletedTransfer(StripeTransfer $transfer): ?StripeTransfer
+    {
+        if (!$this->enablePaymentTaxSplit || StripeTransfer::TRANSFER_REFUND !== $transfer->getType()) {
+            return null;
+        }
+
+        $miraklId = $transfer->getMiraklId();
+        $shortfallSuffix = $this->taxOrderPostfix.'_SHORTFALL';
+        if (str_ends_with($miraklId, $shortfallSuffix)) {
+            return null;
+        }
+
+        $refundId = str_ends_with($miraklId, $this->taxOrderPostfix)
+            ? substr($miraklId, 0, -strlen($this->taxOrderPostfix))
+            : $miraklId;
+        $sellerReversals = $this->stripeTransferRepository->findTransfersByRefundIds([$refundId]);
+        $sellerReversal = $sellerReversals[$refundId] ?? null;
+        if (!$sellerReversal) {
+            return null;
+        }
+
+        return $this->createTaxShortfallReversal($refundId, $sellerReversal);
     }
 
     public function createFromInvoice(array $invoice, string $type): StripeTransfer

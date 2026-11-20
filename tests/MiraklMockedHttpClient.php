@@ -73,6 +73,12 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 	public const PRODUCT_ORDER_PENDING_REFUND = 'product_order_pending_refund';
 	public const SERVICE_ORDER_PENDING_REFUND = 'service_order_pending_refund';
+	public const ORDER_TAX_SPLIT_REFUND = 'order_tax_split_refund';
+	public const ORDER_TAX_SPLIT_REFUND_DETAILS_MISSING = 'order_tax_split_refund_details_missing';
+	public const ORDER_TAX_SPLIT_REFUND_ID = 3000;
+	public const ORDER_TAX_SPLIT_REFUND_SECOND_ID = 3002;
+	public const ORDER_TAX_SPLIT_JPY = 'order_tax_split_jpy';
+	public const ORDER_TAX_SPLIT_JPY_REFUND_ID = 3001;
 	public const PRODUCT_ORDER_REFUND_BASIC = 1000;
 	public const PRODUCT_ORDER_REFUND_VALIDATED = 1001;
 	public const PRODUCT_ORDER_REFUND_TIMEOUT = 1002;
@@ -588,6 +594,50 @@ class MiraklMockedHttpClient extends MockHttpClient
 			$method = $isService ? 'getServiceOrder' : 'getProductOrder';
 			$order = $this->$method($orderId, $orderCreationDate);
 			switch ($orderId) {
+				case self::ORDER_TAX_SPLIT_JPY:
+					$order['currency_iso_code'] = 'JPY';
+					$order['transaction_number'] = StripeMock::CHARGE_JPY;
+					$order['total_price'] = 100;
+					$order['total_commission'] = 2;
+					$order['order_lines'][0]['total_price'] = 60;
+					$order['order_lines'][0]['shipping_taxes'] = [['amount' => 1, 'code' => 'SHIPPING_TAX']];
+					$order['order_lines'][0]['taxes'] = [['amount' => 2, 'code' => 'PRODUCT_TAX']];
+					$order['order_lines'][0]['refunds'] = [[
+						'id' => (string) self::ORDER_TAX_SPLIT_JPY_REFUND_ID,
+						'amount' => 60,
+						'commission_total_amount' => 1,
+						'shipping_taxes' => [['amount' => 1, 'code' => 'SHIPPING_TAX']],
+						'taxes' => [['amount' => 2, 'code' => 'PRODUCT_TAX']],
+					]];
+					$order['order_lines'][1]['total_price'] = 40;
+					$order['order_lines'][1]['shipping_taxes'] = [];
+					$order['order_lines'][1]['taxes'] = [];
+					break;
+				case self::ORDER_TAX_SPLIT_REFUND:
+					$order['order_lines'][0]['refunds'] = [[
+						'id' => (string) self::ORDER_TAX_SPLIT_REFUND_ID,
+						'amount' => 12.34,
+						'commission_total_amount' => 1.23,
+						'shipping_taxes' => [
+							['amount' => 1.12, 'code' => 'ECO_TAX'],
+							['amount' => 1.34, 'code' => 'EXP_TAX'],
+						],
+						'taxes' => [
+							['amount' => 1.56, 'code' => 'ECO_TAX'],
+							['amount' => 1.78, 'code' => 'EXP_TAX'],
+						],
+					]];
+					$order['order_lines'][0]['refunds'][] = [
+						'id' => (string) self::ORDER_TAX_SPLIT_REFUND_SECOND_ID,
+						'amount' => 5.00,
+						'commission_total_amount' => 0.20,
+						'shipping_taxes' => [['amount' => 0.50, 'code' => 'SHIPPING_TAX']],
+						'taxes' => [['amount' => 0.50, 'code' => 'PRODUCT_TAX']],
+					];
+					break;
+				case self::ORDER_TAX_SPLIT_REFUND_DETAILS_MISSING:
+					$order['order_lines'][0]['refunds'] = [];
+					break;
 				case self::ORDER_STATUS_WAITING_ACCEPTANCE:
 					$order = $this->$method($orderId, $orderCreationDate, 'WAITING_ACCEPTANCE');
 					$order['commercial_id'] = self::ORDER_COMMERCIAL_NONE_VALIDATED;
@@ -822,7 +872,7 @@ class MiraklMockedHttpClient extends MockHttpClient
 
 	private function getProductOrder($orderId, $creationDate, $status = 'SHIPPING', $partialStatus = null)
 	{
-		return [
+		$order = [
 			'id' => rand(1, 1000),
 			'commercial_id' => $orderId,
 			'created_date' => date_format($creationDate, MiraklClient::DATE_FORMAT),
@@ -865,11 +915,20 @@ class MiraklMockedHttpClient extends MockHttpClient
 				]
 			],
 		];
+		if (preg_match('/_(\d+)-1(?:_|$)/', $orderId, $matches)) {
+			$order['order_lines'][0]['refunds'] = [[
+				'id' => $matches[1],
+				'shipping_taxes' => [],
+				'taxes' => [],
+			]];
+		}
+
+		return $order;
 	}
 
 	private function getServiceOrder($orderId, $creationDate, $status = 'ORDER_PENDING')
 	{
-		return [
+		$order = [
 			'id' => $orderId,
 			'commercial_order_id' => $orderId,
 			'date_created' => date_format($creationDate, \Datetime::RFC3339_EXTENDED),
@@ -889,8 +948,18 @@ class MiraklMockedHttpClient extends MockHttpClient
 					['amount' => 1.56, 'code' => 'ECO_TAX'],
 					['amount' => 1.78, 'code' => 'EXP_TAX']
 				]
-			]
+			],
+			'refunds' => [],
 		];
+		if (preg_match('/_(\d+)-1(?:_|$)/', $orderId, $matches)) {
+			$order['refunds'][] = [
+				'id' => $matches[1],
+				'shipping_taxes' => [],
+				'taxes' => [],
+			];
+		}
+
+		return $order;
 	}
 
 	private function mockPendingDebits($isService, $page)
