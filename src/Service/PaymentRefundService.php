@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\StripeTransfer;
 use App\Factory\StripeRefundFactory;
 use App\Factory\StripeTransferFactory;
 use App\Repository\StripeRefundRepository;
@@ -57,6 +58,62 @@ class PaymentRefundService
     }
 
     /**
+     * Recreate missing shortfall reversals and return pending ones for dispatch.
+     * Repeated calls are safe: each shortfall uses a stable Mirakl ID.
+     *
+     * @return array App\Entity\StripeTransfer[]
+     */
+    public function reconcileTaxShortfallReversals(): array
+    {
+        if (!$this->enablePaymentTaxSplit) {
+            return [];
+        }
+
+        $transfers = $this->stripeTransferRepository->findRefundTransfersForTaxShortfallReconciliation();
+        $transfersByMiraklId = [];
+        foreach ($transfers as $transfer) {
+            $transfersByMiraklId[$transfer->getMiraklId()] = $transfer;
+        }
+
+        $pendingShortfalls = [];
+        $shortfallSuffix = $this->taxOrderPostfix.'_SHORTFALL';
+        foreach ($transfers as $transfer) {
+            $miraklId = $transfer->getMiraklId();
+            if (StripeTransfer::TRANSFER_PENDING === $transfer->getStatus()
+                && str_ends_with($miraklId, $shortfallSuffix)) {
+                $pendingShortfalls[$miraklId] = $transfer;
+                continue;
+            }
+
+            if (StripeTransfer::TRANSFER_CREATED !== $transfer->getStatus()
+                || !str_ends_with($miraklId, $this->taxOrderPostfix)
+                || str_ends_with($miraklId, $shortfallSuffix)) {
+                continue;
+            }
+
+            $refundId = substr($miraklId, 0, -strlen($this->taxOrderPostfix));
+            $sellerReversal = $transfersByMiraklId[$refundId] ?? null;
+            if (!$sellerReversal || StripeTransfer::TRANSFER_CREATED !== $sellerReversal->getStatus()) {
+                continue;
+            }
+
+            $shortfall = $this->stripeTransferFactory->createTaxShortfallReversal(
+                $refundId,
+                $sellerReversal
+            );
+            if ($shortfall && $shortfall->isDispatchable()) {
+                $pendingShortfalls[$shortfall->getMiraklId()] = $shortfall;
+            }
+        }
+
+        if ($pendingShortfalls) {
+            $this->stripeTransferRepository->flush();
+        }
+
+        return array_values($pendingShortfalls);
+    }
+
+    /**
      * @return array App\Entity\StripeRefund[]
      */
     public function getRefundsFromOrderRefunds(array $orderRefunds): array
@@ -74,7 +131,7 @@ class PaymentRefundService
                     continue;
                 }
 
-                $refund = $this->stripeRefundFactory->updateRefund($refund);
+                $refund = $this->stripeRefundFactory->updateRefund($refund, $orderRefund);
             } else {
                 // Create new refund
                 $refund = $this->stripeRefundFactory->createFromOrderRefund($orderRefund);
@@ -96,47 +153,59 @@ class PaymentRefundService
      */
     public function getTransfersFromOrderRefunds(array $orderRefunds): array
     {
-        $refundIds = array_keys($orderRefunds);
-        $transferIds = $refundIds;
-        if ($this->enablePaymentTaxSplit) {
-            foreach ($refundIds as $refundId) {
-                $transferIds[] = $refundId.$this->taxOrderPostfix;
-            }
-        }
-
-        // Retrieve both seller and tax reversals when tax split is enabled.
-        $existingTransfers = $this->stripeTransferRepository->findTransfersByRefundIds(
-            $transferIds
-        );
-
         $transfers = [];
         foreach ($orderRefunds as $refundId => $orderRefund) {
             $components = [[$refundId, false]];
+            $transferIds = [$refundId];
+            $orderIds = [$orderRefund->getOrderId()];
             if ($this->enablePaymentTaxSplit) {
-                $components[] = [$refundId.$this->taxOrderPostfix, true];
+                $taxRefundId = $refundId.$this->taxOrderPostfix;
+                $components[] = [$taxRefundId, true];
+                $transferIds[] = $taxRefundId;
+                $orderIds[] = $orderRefund->getOrderId().$this->taxOrderPostfix;
             }
 
-            foreach ($components as [$transferId, $isForTax]) {
-                if (isset($existingTransfers[$transferId])) {
-                    $transfer = $existingTransfers[$transferId];
-                    if (!$transfer->isRetriable()) {
-                        continue;
+            $refundTransfers = $this->stripeTransferRepository->wrapInTransaction(
+                function () use ($orderRefund, $components, $transferIds, $orderIds): array {
+                    // Serialize capacity checks for reversals against the same
+                    // original transfers, then commit their reservations together.
+                    $this->stripeTransferRepository->lockOrderTransfersByMiraklIds($orderIds);
+                    $existingTransfers = $this->stripeTransferRepository->findTransfersByRefundIds($transferIds);
+
+                    $refundTransfers = [];
+                    foreach ($components as [$transferId, $isForTax]) {
+                        if (isset($existingTransfers[$transferId])) {
+                            $transfer = $existingTransfers[$transferId];
+                            if (!$transfer->isRetriable()) {
+                                continue;
+                            }
+
+                            $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, $isForTax);
+                        } else {
+                            $transfer = $isForTax
+                                ? $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund)
+                                : $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
+                            $this->stripeTransferRepository->persist($transfer);
+                        }
+
+                        $refundTransfers[] = $transfer;
                     }
 
-                    $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, $isForTax);
-                } else {
-                    $transfer = $isForTax
-                        ? $this->stripeTransferFactory->createFromOrderRefundForTax($orderRefund)
-                        : $this->stripeTransferFactory->createFromOrderRefund($orderRefund);
-                    $this->stripeTransferRepository->persist($transfer);
+                    if ($this->enablePaymentTaxSplit && isset($existingTransfers[$orderRefund->getId()])) {
+                        $shortfallReversal = $this->stripeTransferFactory->createTaxShortfallReversal(
+                            $orderRefund->getId(),
+                            $existingTransfers[$orderRefund->getId()]
+                        );
+                        if ($shortfallReversal) {
+                            $refundTransfers[] = $shortfallReversal;
+                        }
+                    }
+
+                    return $refundTransfers;
                 }
-
-                $transfers[] = $transfer;
-            }
+            );
+            $transfers = array_merge($transfers, $refundTransfers);
         }
-
-        // Save
-        $this->stripeTransferRepository->flush();
 
         return $transfers;
     }
@@ -148,8 +217,21 @@ class PaymentRefundService
     {
         $updated = [];
         foreach ($transfers as $refundId => $transfer) {
-            if (false !== strpos($refundId, $this->taxOrderPostfix)) {
+            if (str_ends_with($refundId, $this->taxOrderPostfix.'_SHORTFALL')) {
+                $updated[$refundId] = $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+            } elseif (false !== strpos($refundId, $this->taxOrderPostfix)) {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer, true);
+                $baseRefundId = substr($refundId, 0, -strlen($this->taxOrderPostfix));
+                $sellerReversals = $this->stripeTransferRepository->findTransfersByRefundIds([$baseRefundId]);
+                if (isset($sellerReversals[$baseRefundId])) {
+                    $shortfallReversal = $this->stripeTransferFactory->createTaxShortfallReversal(
+                        $baseRefundId,
+                        $sellerReversals[$baseRefundId]
+                    );
+                    if ($shortfallReversal) {
+                        $updated[$shortfallReversal->getMiraklId()] = $shortfallReversal;
+                    }
+                }
             } else {
                 $updated[$refundId] = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
             }

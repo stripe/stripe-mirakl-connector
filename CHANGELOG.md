@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 4.3.10
+- Include refunded taxes in tax-excluded Stripe refunds and reconcile tax-split reversal shortfalls safely.
+
 ## Version 4.3.9
 - Remove sensitive Stripe links from logs and make onboarding refresh tokens single-use with a 24-hour expiry.
 - Update Stripe PHP SDK to fix compromised CA certificates

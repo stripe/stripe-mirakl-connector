@@ -61,7 +61,8 @@ class StripeRefundFactoryTest extends KernelTestCase
         $this->stripeRefundFactory = new StripeRefundFactory(
             $this->paymentMappingRepository,
             $this->stripeTransferRepository,
-            $container->get('App\Service\StripeClient')
+            $container->get('App\Service\StripeClient'),
+            $container->get('App\Service\MiraklClient')
         );
         $this->stripeRefundFactory->setLogger(new NullLogger());
 
@@ -119,6 +120,51 @@ class StripeRefundFactoryTest extends KernelTestCase
         $this->assertEquals('eur', $refund->getCurrency());
         $this->assertNull($refund->getStripeRefundId());
         $this->assertNull($refund->getMiraklValidationTime());
+    }
+
+    public function testTaxSplitRefundIncludesRefundedTaxesForStripe(): void
+    {
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) MiraklMock::ORDER_TAX_SPLIT_REFUND_ID,
+            'order_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND,
+            'order_commercial_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND,
+            'order_line_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND.'-1',
+            'amount' => 12.34,
+            'currency_iso_code' => 'EUR',
+        ]);
+        $this->mockOrderTransfer($pendingRefund, StripeMock::CHARGE_BASIC);
+
+        $factory = new StripeRefundFactory(
+            $this->paymentMappingRepository,
+            $this->stripeTransferRepository,
+            self::$kernel->getContainer()->get('App\\Service\\StripeClient'),
+            $this->miraklClient
+        );
+        $factory->setLogger(new NullLogger());
+        $refund = $factory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(1814, $refund->getAmount());
+        $this->assertSame(1234, $refund->getMiraklAmount());
+        $this->assertSame(StripeRefund::REFUND_PENDING, $refund->getStatus());
+    }
+
+    public function testRefundIsPutOnHoldWhenMiraklOrderDoesNotYetContainRefundTaxDetails(): void
+    {
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) MiraklMock::ORDER_TAX_SPLIT_REFUND_ID,
+            'order_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND_DETAILS_MISSING,
+            'order_commercial_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND_DETAILS_MISSING,
+            'order_line_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND_DETAILS_MISSING.'-1',
+            'amount' => 12.34,
+            'currency_iso_code' => 'EUR',
+        ]);
+        $this->mockOrderTransfer($pendingRefund, StripeMock::CHARGE_BASIC);
+
+        $refund = $this->stripeRefundFactory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame(StripeRefund::REFUND_ON_HOLD, $refund->getStatus());
+        $this->assertSame(0, $refund->getAmount());
+        $this->assertStringContainsString('Cannot find refund details', $refund->getStatusReason());
     }
 
     public function testCreateFromZeroDecimalProductOrderRefund(): void
@@ -334,6 +380,9 @@ class StripeRefundFactoryTest extends KernelTestCase
 
                     $order = $pendingRefund->getOrder();
                     $order['order_id'] .= "_{$type}_$i";
+                    if (MiraklClient::ORDER_TYPE_PRODUCT === $type) {
+                        $order['order_line_id'] = $order['order_id'].'-1';
+                    }
                     $className = "App\Entity\Mirakl{$type}PendingRefund";
                     $tmpPendingRefund = new $className($order);
 

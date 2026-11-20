@@ -161,6 +161,7 @@ class PaymentRefundCommandTest extends KernelTestCase
                 $transfer->setMiraklId($order->getOrderId());
                 $transfer->setAmount(gmp_intval((string) ($order->getAmount() * 100)));
                 $transfer->setCurrency(strtolower($order->getCurrency()));
+                $transfer->setTransferId(StripeMock::TRANSFER_BASIC);
                 $transfer->setTransactionId($transactionId);
                 $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
 
