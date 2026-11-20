@@ -59,6 +59,7 @@ class ProcessTransferHandler implements LoggerAwareInterface
         $currency = $transfer->getCurrency();
         assert(null !== $amount && null !== $currency);
         $shortfallReversal = null;
+        $transferCreated = false;
 
         try {
             $metadata = ['miraklId' => $transfer->getMiraklId()];
@@ -109,6 +110,7 @@ class ProcessTransferHandler implements LoggerAwareInterface
                 $transfer->setTransferId($response->id);
                 $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
                 $transfer->setStatusReason(null);
+                $transferCreated = true;
             }
         } catch (ApiErrorException $e) {
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
@@ -123,7 +125,7 @@ class ProcessTransferHandler implements LoggerAwareInterface
 
         $this->stripeTransferRepository->flush();
 
-        if (StripeTransfer::TRANSFER_CREATED === $transfer->getStatus()) {
+        if ($transferCreated) {
             try {
                 $shortfallReversal = $this->stripeTransferFactory
                     ->createTaxShortfallReversalForCompletedTransfer($transfer);
@@ -138,7 +140,7 @@ class ProcessTransferHandler implements LoggerAwareInterface
             }
         }
 
-        if ($shortfallReversal && $shortfallReversal->isDispatchable()) {
+        if (null !== $shortfallReversal && $shortfallReversal->isDispatchable()) {
             $this->bus->dispatch(new ProcessTransferMessage($shortfallReversal->getId()));
         }
     }
