@@ -48,9 +48,9 @@ class CancelPendingPaymentHandlerTest extends KernelTestCase
         $this->handler->setLogger(new NullLogger());
     }
 
-    private function executeHandler($paymentMappingId)
+    private function executeHandler($paymentMappingId, ?int $attempt = null)
     {
-        ($this->handler)(new CancelPendingPaymentMessage($paymentMappingId, 100));
+        ($this->handler)(new CancelPendingPaymentMessage($paymentMappingId, $attempt));
     }
 
     private function mockPaymentMapping($orderId, $chargeId)
@@ -105,11 +105,39 @@ class CancelPendingPaymentHandlerTest extends KernelTestCase
             StripeMock::PAYMENT_INTENT_STATUS_SUCCEEDED
         );
 
-        $this->executeHandler($mapping->getId());
+        $this->executeHandler($mapping->getId(), 0);
 
         $mapping = $this->getPaymentMapping($mapping->getId());
         $this->assertEquals(PaymentMapping::CANCEL_FAILED, $mapping->getStatus());
         $this->assertNotNull($mapping->getStatusReason());
+        $this->assertSame(1, $mapping->getStripeRequestAttempt());
+
+        $this->executeHandler($mapping->getId(), 1);
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(
+            'mirakl-payment-cancel-'.$mapping->getId().'-attempt-1',
+            $stripeMock->getLastIdempotencyKey()
+        );
+        $this->assertSame(2, $this->getPaymentMapping($mapping->getId())->getStripeRequestAttempt());
+    }
+
+    public function testCancelConnectionTimeoutReusesAttemptKey(): void
+    {
+        $mapping = $this->mockPaymentMapping(
+            MiraklMock::ORDER_BASIC,
+            StripeMock::PAYMENT_INTENT_STATUS_CONNECTION_ERROR
+        );
+
+        $this->executeHandler($mapping->getId(), 0);
+        $this->executeHandler($mapping->getId(), 0);
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(0, $this->getPaymentMapping($mapping->getId())->getStripeRequestAttempt());
+        $this->assertSame(
+            'mirakl-payment-cancel-'.$mapping->getId().'-attempt-0',
+            $stripeMock->getLastIdempotencyKey()
+        );
     }
 
     public function testCancelChargeWithApiError()
@@ -124,5 +152,22 @@ class CancelPendingPaymentHandlerTest extends KernelTestCase
         $mapping = $this->getPaymentMapping($mapping->getId());
         $this->assertEquals(PaymentMapping::CANCEL_FAILED, $mapping->getStatus());
         $this->assertNotNull($mapping->getStatusReason());
+    }
+
+    public function testStaleCancellationMessageDoesNotChangeCapturedMapping(): void
+    {
+        $mapping = $this->mockPaymentMapping(
+            MiraklMock::ORDER_BASIC,
+            StripeMock::PAYMENT_INTENT_STATUS_SUCCEEDED
+        );
+        $mapping->setStatus(PaymentMapping::CAPTURED);
+        $mapping->setStatusReason('Preserve settled state');
+        $this->paymentMappingRepository->flush();
+
+        $this->executeHandler($mapping->getId());
+
+        $mapping = $this->getPaymentMapping($mapping->getId());
+        $this->assertSame(PaymentMapping::CAPTURED, $mapping->getStatus());
+        $this->assertSame('Preserve settled state', $mapping->getStatusReason());
     }
 }

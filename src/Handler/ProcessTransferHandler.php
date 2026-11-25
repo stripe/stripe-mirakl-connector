@@ -39,8 +39,29 @@ class ProcessTransferHandler implements LoggerAwareInterface
         $transfer = $this->stripeTransferRepository->findOneBy([
             'id' => $message->getStripeTransferId(),
         ]);
-        assert(null !== $transfer);
-        assert(StripeTransfer::TRANSFER_CREATED !== $transfer->getStatus());
+        if (
+            null === $transfer
+            || StripeTransfer::TRANSFER_PENDING !== $transfer->getStatus()
+            || (
+                null !== $message->getAttempt()
+                && $message->getAttempt() !== $transfer->getStripeRequestAttempt()
+            )
+        ) {
+            $this->logger->info('Ignoring stale transfer message.', [
+                'stripe_transfer_id' => $message->getStripeTransferId(),
+                'status' => $transfer?->getStatus(),
+            ]);
+
+            return;
+        }
+
+        if (null !== $transfer->getTransferId()) {
+            $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+            $transfer->setStatusReason(null);
+            $this->stripeTransferRepository->flush();
+
+            return;
+        }
 
         $type = $transfer->getType();
         $amount = $transfer->getAmount();
@@ -63,7 +84,12 @@ class ProcessTransferHandler implements LoggerAwareInterface
                         $amount,
                         $accountMapping->getStripeAccountId(),
                         $transfer->getTransactionId(),
-                        $metadata
+                        $metadata,
+                        sprintf(
+                            'mirakl-transfer-%s-attempt-%d',
+                            $transfer->getId(),
+                            $transfer->getStripeRequestAttempt()
+                        )
                     );
                     break;
                 case StripeTransfer::TRANSFER_SUBSCRIPTION:
@@ -77,7 +103,12 @@ class ProcessTransferHandler implements LoggerAwareInterface
                         $currency,
                         $amount,
                         $accountMapping->getStripeAccountId(),
-                        $metadata
+                        $metadata,
+                        sprintf(
+                            'mirakl-transfer-%s-attempt-%d',
+                            $transfer->getId(),
+                            $transfer->getStripeRequestAttempt()
+                        )
                     );
                     break;
                 case StripeTransfer::TRANSFER_REFUND:
@@ -86,7 +117,12 @@ class ProcessTransferHandler implements LoggerAwareInterface
                     $response = $this->stripeClient->reverseTransfer(
                         $amount,
                         $transfer->getTransactionId(),
-                        $metadata
+                        $metadata,
+                        sprintf(
+                            'mirakl-transfer-%s-attempt-%d',
+                            $transfer->getId(),
+                            $transfer->getStripeRequestAttempt()
+                        )
                     );
                     break;
             }
@@ -105,6 +141,9 @@ class ProcessTransferHandler implements LoggerAwareInterface
 
             $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);
             $transfer->setStatusReason(substr($e->getMessage(), 0, 1024));
+            if (!$this->stripeClient->isAmbiguousStripeFailure($e)) {
+                $transfer->startNewStripeRequestAttempt();
+            }
         }
 
         $this->stripeTransferRepository->flush();

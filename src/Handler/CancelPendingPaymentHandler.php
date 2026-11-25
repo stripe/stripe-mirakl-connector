@@ -39,11 +39,31 @@ class CancelPendingPaymentHandler implements LoggerAwareInterface
         $paymentMapping = $this->paymentMappingRepository->findOneBy([
             'id' => $message->getPaymentMappingId(),
         ]);
-        assert(null !== $paymentMapping);
-        assert(in_array($paymentMapping->getStatus(), [PaymentMapping::TO_CAPTURE, PaymentMapping::CAPTURE_FAILED, PaymentMapping::CANCEL_FAILED], true));
+        if (
+            null === $paymentMapping
+            || !in_array($paymentMapping->getStatus(), [PaymentMapping::TO_CAPTURE, PaymentMapping::CAPTURE_FAILED, PaymentMapping::CANCEL_FAILED], true)
+            || (
+                null !== $message->getAttempt()
+                && $message->getAttempt() !== $paymentMapping->getStripeRequestAttempt()
+            )
+        ) {
+            $this->logger->info('Ignoring stale payment cancellation message.', [
+                'payment_mapping_id' => $message->getPaymentMappingId(),
+                'status' => $paymentMapping?->getStatus(),
+            ]);
+
+            return;
+        }
 
         try {
-            $this->stripeClient->cancelPayment($paymentMapping->getStripeChargeId());
+            $this->stripeClient->cancelPayment(
+                $paymentMapping->getStripeChargeId(),
+                sprintf(
+                    'mirakl-payment-cancel-%s-attempt-%d',
+                    $paymentMapping->getId(),
+                    $paymentMapping->getStripeRequestAttempt()
+                )
+            );
             $paymentMapping->cancel();
         } catch (ApiErrorException $e) {
             $this->logger->error(sprintf('Could not cancel Stripe Charge: %s.', $e->getMessage()), [
@@ -53,6 +73,9 @@ class CancelPendingPaymentHandler implements LoggerAwareInterface
 
             $paymentMapping->setStatus(PaymentMapping::CANCEL_FAILED);
             $paymentMapping->setStatusReason(substr($e->getMessage(), 0, 1024));
+            if (!$this->stripeClient->isAmbiguousStripeFailure($e)) {
+                $paymentMapping->startNewStripeRequestAttempt();
+            }
         }
 
         $this->paymentMappingRepository->flush();

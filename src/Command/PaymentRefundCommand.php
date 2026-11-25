@@ -114,7 +114,8 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         foreach ($refunds as $refund) {
             if ($refund->isDispatchable()) {
                 $this->bus->dispatch(new ProcessRefundMessage(
-                    $refund->getId()
+                    $refund->getId(),
+                    $refund->getStripeRequestAttempt()
                 ));
             }
         }
@@ -125,7 +126,8 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
         foreach ($transfers as $transfer) {
             if ($transfer->isDispatchable()) {
                 $this->bus->dispatch(new ProcessTransferMessage(
-                    $transfer->getId()
+                    $transfer->getId(),
+                    $transfer->getStripeRequestAttempt()
                 ));
             }
         }

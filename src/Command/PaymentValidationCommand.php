@@ -242,9 +242,16 @@ class PaymentValidationCommand extends Command implements LoggerAwareInterface
         // Capture or cancel payment
         $mappingId = $paymentMapping->getId();
         if ($captureAmount > 0) {
-            $message = new CapturePendingPaymentMessage($mappingId, $captureAmount);
+            $message = new CapturePendingPaymentMessage(
+                $mappingId,
+                $captureAmount,
+                $paymentMapping->getStripeRequestAttempt()
+            );
         } else {
-            $message = new CancelPendingPaymentMessage($mappingId);
+            $message = new CancelPendingPaymentMessage(
+                $mappingId,
+                $paymentMapping->getStripeRequestAttempt()
+            );
         }
 
         $this->bus->dispatch($message);

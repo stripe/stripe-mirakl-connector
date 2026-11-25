@@ -40,6 +40,7 @@ class StripeMockedHttpClient implements ClientInterface
     public const PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE = 'pi_status_requires_capture';
     public const PAYMENT_INTENT_STATUS_CANCELED = 'pi_status_canceled';
     public const PAYMENT_INTENT_STATUS_SUCCEEDED = 'pi_status_succeeded';
+    public const PAYMENT_INTENT_STATUS_CONNECTION_ERROR = 'pi_status_connection_error';
     public const PAYMENT_INTENT_REFUNDED = 'pi_refunded';
     public const PAYMENT_INTENT_NOT_FOUND = 'pi_not_found';
     public const PAYMENT_INTENT_WITH_METADATA = 'pi_with_metadata';
@@ -57,6 +58,8 @@ class StripeMockedHttpClient implements ClientInterface
     protected $metadataCommercialOrderId;
     private ?array $lastRefundRequest = null;
     private ?string $lastCanceledPaymentIntentId = null;
+    private ?string $lastIdempotencyKey = null;
+    private array $requestCounts = [];
 
     public function getLastRefundRequest(): ?array
     {
@@ -66,6 +69,16 @@ class StripeMockedHttpClient implements ClientInterface
     public function getLastCanceledPaymentIntentId(): ?string
     {
         return $this->lastCanceledPaymentIntentId;
+    }
+
+    public function getLastIdempotencyKey(): ?string
+    {
+        return $this->lastIdempotencyKey;
+    }
+
+    public function getRequestCount(string $resource): int
+    {
+        return $this->requestCounts[$resource] ?? 0;
     }
 
     public function __construct(string $metadataCommercialOrderId)
@@ -102,7 +115,10 @@ class StripeMockedHttpClient implements ClientInterface
         $resource = $composants[0];
         $id = $composants[1] ?? null;
         $action = $composants[2] ?? null;
-        $stripeAccount = $this->parseHeaders($headers)['stripe-account'] ?? null;
+        $requestHeaders = $this->parseHeaders($headers);
+        $stripeAccount = $requestHeaders['stripe-account'] ?? null;
+        $this->lastIdempotencyKey = $requestHeaders['idempotency-key'] ?? null;
+        $this->requestCounts[$resource] = ($this->requestCounts[$resource] ?? 0) + 1;
 
         $response = null;
         switch ($resource) {
@@ -302,6 +318,9 @@ class StripeMockedHttpClient implements ClientInterface
             case self::PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE:
                 $pi['status'] = 'requires_capture';
                 break;
+            case self::PAYMENT_INTENT_STATUS_CONNECTION_ERROR:
+                $pi['status'] = 'requires_capture';
+                break;
             case self::PAYMENT_INTENT_STATUS_CANCELED:
                 $pi['status'] = 'canceled';
                 break;
@@ -321,14 +340,18 @@ class StripeMockedHttpClient implements ClientInterface
         }
 
         if ('capture' === $action || 'cancel' === $action) {
+            if (self::PAYMENT_INTENT_STATUS_CONNECTION_ERROR === $id) {
+                throw new ApiConnectionException('Connection timed out while processing the request.');
+            }
+
             if ('cancel' === $action) {
                 $this->lastCanceledPaymentIntentId = $id;
             }
-            if ('requires_capture' !== $pi['status'] && 
-                'requires_action' !== $pi['status'] &&
-                'requires_confirmation' !== $pi['status'] &&
-                'requires_payment_method' !== $pi['status']) {
-                throw new ApiConnectionException(
+            $allowedStatuses = 'capture' === $action
+                ? ['requires_capture']
+                : ['requires_capture', 'requires_action', 'requires_confirmation', 'requires_payment_method'];
+            if (!in_array($pi['status'], $allowedStatuses, true)) {
+                throw InvalidRequestException::factory(
                     "Can't $action charge in state {$pi['status']}",
                     400
                 );
@@ -346,7 +369,7 @@ class StripeMockedHttpClient implements ClientInterface
             case self::ACCOUNT_BASIC:
                 return $this->getBasicObject(self::PAYOUT_BASIC, 'payout');
             case self::ACCOUNT_PAYOUT_DISABLED:
-                throw new ApiConnectionException("Payouts disabled", 400);
+                throw new PermissionException("Payouts disabled", 403);
             default:
                 throw new ApiConnectionException("$stripeAccount not found", 404);
         }

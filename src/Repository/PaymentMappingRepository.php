@@ -115,7 +115,7 @@ class PaymentMappingRepository extends ServiceEntityRepository implements Logger
 
         // Collect the commercial order IDs visible in the (possibly status-filtered) input.
         $commercialOrderIds = array_values(array_unique(array_filter(
-            array_map(static fn($pm) => $pm->getMiraklCommercialOrderId(), $paymentMappings)
+            array_map(static fn ($pm) => $pm->getMiraklCommercialOrderId(), $paymentMappings)
         )));
 
         if (empty($commercialOrderIds)) {

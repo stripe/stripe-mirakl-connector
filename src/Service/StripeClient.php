@@ -8,6 +8,13 @@ use Stripe\ApiRequestor;
 use Stripe\Charge;
 use Stripe\Event;
 use Stripe\Exception\ApiErrorException;
+use Stripe\Exception\ApiConnectionException;
+use Stripe\Exception\AuthenticationException;
+use Stripe\Exception\CardException;
+use Stripe\Exception\IdempotencyException;
+use Stripe\Exception\InvalidRequestException;
+use Stripe\Exception\PermissionException;
+use Stripe\Exception\UnknownApiErrorException;
 use Stripe\Exception\UnexpectedValueException;
 use Stripe\HttpClient\ClientInterface;
 use Stripe\LoginLink;
@@ -135,60 +142,120 @@ class StripeClient
         ApiRequestor::setHttpClient($client);
     }
 
-    // Transfer
-    public function createTransfer(string $currency, int $amount, string $accountId, ?string $chargeId, array $metadata = []): Transfer
+    public function isAmbiguousStripeFailure(ApiErrorException $exception): bool
     {
+        $httpStatus = $exception->getHttpStatus();
+
+        if (
+            $exception instanceof ApiConnectionException
+            || $exception instanceof IdempotencyException
+            || $exception instanceof UnknownApiErrorException
+            || null === $httpStatus
+            || $httpStatus >= 500
+            || 409 === $httpStatus
+        ) {
+            return true;
+        }
+
+        return !(
+            $exception instanceof InvalidRequestException
+            || $exception instanceof CardException
+            || $exception instanceof AuthenticationException
+            || $exception instanceof PermissionException
+        );
+    }
+
+    // Transfer
+    public function createTransfer(
+        string $currency,
+        int $amount,
+        string $accountId,
+        ?string $chargeId,
+        array $metadata = [],
+        ?string $idempotencyKey = null
+    ): Transfer {
         return Transfer::create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
             'destination' => $accountId,
             'source_transaction' => $chargeId,
-        ]);
+        ], $this->idempotencyOptions($idempotencyKey));
     }
 
     // Transfer
-    public function createTransferFromConnectedAccount(string $currency, int $amount, string $accountId, array $metadata = []): Transfer
-    {
+    public function createTransferFromConnectedAccount(
+        string $currency,
+        int $amount,
+        string $accountId,
+        array $metadata = [],
+        ?string $idempotencyKey = null
+    ): Transfer {
         $platformAccount = Account::retrieve();
+
+        $options = ['stripe_account' => $accountId];
+        if (null !== $idempotencyKey) {
+            $options['idempotency_key'] = $idempotencyKey;
+        }
 
         return Transfer::create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
             'destination' => $platformAccount->id,
-        ], ['stripe_account' => $accountId]);
+        ], $options);
     }
 
     // Reversal
-    public function reverseTransfer(int $amount, string $transferId, array $metadata = []): TransferReversal
-    {
+    public function reverseTransfer(
+        int $amount,
+        string $transferId,
+        array $metadata = [],
+        ?string $idempotencyKey = null
+    ): TransferReversal {
         return Transfer::createReversal($transferId, [
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-        ]);
+        ], $this->idempotencyOptions($idempotencyKey));
     }
 
     // Payout
-    public function createPayout(string $currency, int $amount, string $stripeAccountId, array $metadata = []): Payout
-    {
+    public function createPayout(
+        string $currency,
+        int $amount,
+        string $stripeAccountId,
+        array $metadata = [],
+        ?string $idempotencyKey = null
+    ): Payout {
+        $options = ['stripe_account' => $stripeAccountId];
+        if (null !== $idempotencyKey) {
+            $options['idempotency_key'] = $idempotencyKey;
+        }
+
         return Payout::create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-        ], [
-            'stripe_account' => $stripeAccountId,
-        ]);
+        ], $options);
     }
 
     // Refund
-    public function createRefund(string $charge, ?int $amount, array $metadata = []): Refund
-    {
+    public function createRefund(
+        string $charge,
+        ?int $amount,
+        array $metadata = [],
+        ?string $idempotencyKey = null
+    ): Refund {
         return Refund::create([
             'charge' => $charge,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-        ]);
+        ], $this->idempotencyOptions($idempotencyKey));
+    }
+
+    private function idempotencyOptions(?string $idempotencyKey): array
+    {
+        return null === $idempotencyKey ? [] : ['idempotency_key' => $idempotencyKey];
     }
 
     /**
@@ -196,13 +263,13 @@ class StripeClient
      *
      * @throws ApiErrorException
      */
-    public function capturePayment(string $paymentId, int $amount)
+    public function capturePayment(string $paymentId, int $amount, ?string $idempotencyKey = null)
     {
         switch (substr($paymentId, 0, 3)) {
             case 'pi_':
                 $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
 
-                return $pi->capture(['amount_to_capture' => $amount]);
+                return $pi->capture(['amount_to_capture' => $amount], $this->idempotencyOptions($idempotencyKey));
             case 'ch_':
             case 'py_':
                 $charge = $this->chargeRetrieve($paymentId);
@@ -210,10 +277,10 @@ class StripeClient
                 // Check for PI
                 $paymentIntentId = $charge->payment_intent ?? null;
                 if ($paymentIntentId) {
-                    return $this->capturePayment($paymentIntentId, $amount);
+                    return $this->capturePayment($paymentIntentId, $amount, $idempotencyKey);
                 }
 
-                return $charge->capture(['amount' => $amount]);
+                return $charge->capture(['amount' => $amount], $this->idempotencyOptions($idempotencyKey));
             default:
                 throw new \Exception('Unexpected payment type: '.$paymentId);
         }
@@ -224,12 +291,12 @@ class StripeClient
      *
      * @throws ApiErrorException
      */
-    public function cancelPayment(string $paymentId)
+    public function cancelPayment(string $paymentId, ?string $idempotencyKey = null)
     {
         switch (substr($paymentId, 0, 3)) {
             case 'pi_':
                 $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
-                $pi->cancel();
+                $pi->cancel([], $this->idempotencyOptions($idempotencyKey));
 
                 return $pi;
             case 'ch_':
@@ -239,10 +306,10 @@ class StripeClient
                 // Check for PI
                 $paymentIntentId = $charge->payment_intent ?? null;
                 if ($paymentIntentId) {
-                    return $this->cancelPayment($paymentIntentId);
+                    return $this->cancelPayment($paymentIntentId, $idempotencyKey);
                 }
 
-                return $this->createRefund($paymentId, null);
+                return $this->createRefund($paymentId, null, [], $idempotencyKey);
             default:
                 throw new \Exception('Unexpected payment type: '.$paymentId);
         }

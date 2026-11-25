@@ -50,15 +50,34 @@ class ProcessRefundHandler implements LoggerAwareInterface
         $refund = $this->stripeRefundRepository->findOneBy([
             'id' => $message->getStripeRefundId(),
         ]);
-        assert(null !== $refund && null !== $refund->getTransactionId());
-        assert(StripeRefund::REFUND_CREATED !== $refund->getStatus());
+        if (
+            null === $refund
+            || StripeRefund::REFUND_PENDING !== $refund->getStatus()
+            || null === $refund->getTransactionId()
+            || (
+                null !== $message->getAttempt()
+                && $message->getAttempt() !== $refund->getStripeRequestAttempt()
+            )
+        ) {
+            $this->logger->info('Ignoring stale or incomplete refund message.', [
+                'stripe_refund_id' => $message->getStripeRefundId(),
+                'status' => $refund?->getStatus(),
+            ]);
+
+            return;
+        }
 
         try {
             if (!$refund->getStripeRefundId()) {
                 $response = $this->stripeClient->createRefund(
                     $refund->getTransactionId(),
                     $refund->getAmount(),
-                    ['miraklRefundId' => $refund->getMiraklRefundId()]
+                    ['miraklRefundId' => $refund->getMiraklRefundId()],
+                    sprintf(
+                        'mirakl-refund-%s-attempt-%d',
+                        $refund->getId(),
+                        $refund->getStripeRequestAttempt()
+                    )
                 );
 
                 $refund->setStripeRefundId($response->id);
@@ -97,6 +116,9 @@ class ProcessRefundHandler implements LoggerAwareInterface
 
             $refund->setStatus(StripeRefund::REFUND_FAILED);
             $refund->setStatusReason(substr($e->getMessage(), 0, 1024));
+            if (!$this->stripeClient->isAmbiguousStripeFailure($e)) {
+                $refund->startNewStripeRequestAttempt();
+            }
         } catch (TransportException $e) {
             $this->logger->error(
                 sprintf('Timeout processing refund: %s.', $e->getMessage()),

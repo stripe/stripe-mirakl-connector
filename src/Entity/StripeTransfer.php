@@ -83,6 +83,9 @@ class StripeTransfer
     #[Column(type: 'string', nullable: true)]
     private ?string $transferId = null;
 
+    #[Column(type: 'integer', options: ['default' => 0])]
+    private int $stripeRequestAttempt = 0;
+
     #[Column(type: 'string', nullable: true)]
     private ?string $transactionId = null;
 
@@ -90,7 +93,7 @@ class StripeTransfer
     private ?int $amount = null;
 
     #[Column(type: 'string')]
-    private string $status;
+    private string $status = self::TRANSFER_PENDING;
 
     #[Column(type: 'string', length: 1024, nullable: true)]
     private ?string $statusReason = null;
@@ -222,6 +225,18 @@ class StripeTransfer
     public function getTransferId(): ?string
     {
         return $this->transferId;
+    }
+
+    public function getStripeRequestAttempt(): int
+    {
+        return $this->stripeRequestAttempt;
+    }
+
+    public function startNewStripeRequestAttempt(): self
+    {
+        ++$this->stripeRequestAttempt;
+
+        return $this;
     }
 
     public function setTransferId(?string $transferId): self

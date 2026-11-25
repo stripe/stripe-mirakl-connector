@@ -160,7 +160,8 @@ class PaymentSplitCommand extends Command implements LoggerAwareInterface
         foreach ($transfers as $transfer) {
             if ($transfer->isDispatchable()) {
                 $this->bus->dispatch(new ProcessTransferMessage(
-                    $transfer->getId()
+                    $transfer->getId(),
+                    $transfer->getStripeRequestAttempt()
                 ));
             }
         }

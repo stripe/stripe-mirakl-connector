@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Make payout creation retries idempotent by reusing the same Stripe key after ambiguous failures.
+
 ## Version 4.3.9
 - Remove sensitive Stripe links from logs and make onboarding refresh tokens single-use with a 24-hour expiry.
 - Update Stripe PHP SDK to fix compromised CA certificates

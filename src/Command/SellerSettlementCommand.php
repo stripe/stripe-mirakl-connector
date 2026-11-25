@@ -190,7 +190,8 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         foreach ($this->flattenTransfers($transfersByInvoiceId) as $transfer) {
             if ($transfer->isDispatchable()) {
                 $this->bus->dispatch(new ProcessTransferMessage(
-                    $transfer->getId()
+                    $transfer->getId(),
+                    $transfer->getStripeRequestAttempt()
                 ));
             }
         }
@@ -201,7 +202,8 @@ class SellerSettlementCommand extends Command implements LoggerAwareInterface
         foreach ($payouts as $payout) {
             if ($payout->isDispatchable()) {
                 $this->bus->dispatch(new ProcessPayoutMessage(
-                    $payout->getId()
+                    $payout->getId(),
+                    $payout->getStripeRequestAttempt()
                 ));
             }
         }

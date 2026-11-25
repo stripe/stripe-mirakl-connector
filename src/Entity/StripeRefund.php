@@ -76,8 +76,11 @@ class StripeRefund
     #[Column(type: 'string', nullable: true)]
     private ?string $stripeRefundId = null;
 
+    #[Column(type: 'integer', options: ['default' => 0])]
+    private int $stripeRequestAttempt = 0;
+
     #[Column(type: 'string')]
-    private string $status;
+    private string $status = self::REFUND_PENDING;
 
     #[Column(type: 'string', length: 1024, nullable: true)]
     private ?string $statusReason = null;
@@ -252,6 +255,18 @@ class StripeRefund
     public function getStripeRefundId(): ?string
     {
         return $this->stripeRefundId;
+    }
+
+    public function getStripeRequestAttempt(): int
+    {
+        return $this->stripeRequestAttempt;
+    }
+
+    public function startNewStripeRequestAttempt(): self
+    {
+        ++$this->stripeRequestAttempt;
+
+        return $this;
     }
 
     public function setStripeRefundId(string $stripeRefundId): self

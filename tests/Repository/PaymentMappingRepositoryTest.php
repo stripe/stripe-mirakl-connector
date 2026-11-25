@@ -82,6 +82,28 @@ class PaymentMappingRepositoryTest extends KernelTestCase
         $this->assertNull($this->repo->findOneByStripeChargeId('ch_candidate'));
     }
 
+    public function testCapturedMappingWithValidationReasonCannotBeReplaced(): void
+    {
+        $captured = $this->createMapping('order_captured', 'ch_captured', PaymentMapping::CAPTURED);
+        $captured->setStatusReason(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' Stripe and Mirakl currencies differ.'
+        );
+        $this->repo->flush();
+
+        $candidate = (new PaymentMapping())
+            ->setMiraklCommercialOrderId('order_captured')
+            ->setStripeChargeId('ch_replacement')
+            ->setStripeAmount(200)
+            ->setStatus(PaymentMapping::TO_CAPTURE);
+
+        $result = $this->repo->persistIfCommercialOrderIsUnmapped($candidate);
+
+        $this->assertNotNull($result);
+        $this->assertSame($captured->getId(), $result->getId());
+        $this->assertSame('ch_captured', $result->getStripeChargeId());
+        $this->assertNull($this->repo->findOneByStripeChargeId('ch_replacement'));
+    }
+
     public function testPersistIfCommercialOrderIsUnmappedRequiresCommercialOrderId(): void
     {
         $mapping = new PaymentMapping();
