@@ -325,4 +325,10 @@ class StripeClient
     {
         return Charge::retrieve($stripeChargeId);
     }
+
+    // Refund
+    public function refundRetrieve(string $stripeRefundId): Refund
+    {
+        return Refund::retrieve($stripeRefundId);
+    }
 }

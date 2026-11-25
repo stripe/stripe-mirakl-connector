@@ -69,7 +69,7 @@ class ProcessTransferHandler implements LoggerAwareInterface
         ) {
             $this->logger->info('Ignoring stale transfer message.', [
                 'stripe_transfer_id' => $message->getStripeTransferId(),
-                'status' => $transfer?->getStatus(),
+                'status' => $transfer->getStatus(),
             ]);
 
             return;
