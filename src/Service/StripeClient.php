@@ -161,12 +161,17 @@ class StripeClient
     }
 
     // Reversal
-    public function reverseTransfer(int $amount, string $transferId, array $metadata = []): TransferReversal
+    public function reverseTransfer(
+        int $amount,
+        string $transferId,
+        array $metadata = [],
+        ?string $idempotencyKey = null
+    ): TransferReversal
     {
         return Transfer::createReversal($transferId, [
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-        ]);
+        ], $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : []);
     }
 
     // Payout
@@ -182,13 +187,21 @@ class StripeClient
     }
 
     // Refund
-    public function createRefund(string $charge, ?int $amount, array $metadata = []): Refund
+    public function createRefund(string $charge, ?int $amount, array $metadata = [], ?string $idempotencyKey = null): Refund
     {
-        return Refund::create([
+        $params = [
             'charge' => $charge,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-        ]);
+        ];
+        $requestOptions = $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : [];
+
+        return Refund::create($params, $requestOptions);
+    }
+
+    public function refundRetrieve(string $refundId): Refund
+    {
+        return Refund::retrieve($refundId);
     }
 
     /**

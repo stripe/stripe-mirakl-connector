@@ -83,15 +83,22 @@ class PaymentRefundCommand extends Command implements LoggerAwareInterface
     {
         $this->logger->info('Processing backlog.');
         $backlog = $this->paymentRefundService->getRetriableTransfers();
-        if (empty($backlog)) {
+        $transfersToDispatch = [];
+        if (!empty($backlog)) {
+            $transfersToDispatch = $this->paymentRefundService->updateTransfers($backlog);
+        } else {
             $this->logger->info('No backlog.');
-
-            return;
         }
 
-        $this->dispatchTransfers(
-            $this->paymentRefundService->updateTransfers($backlog)
+        $transfersToDispatch = array_merge(
+            $transfersToDispatch,
+            $this->paymentRefundService->reconcileTaxShortfallReversals()
         );
+        $uniqueTransfers = [];
+        foreach ($transfersToDispatch as $transfer) {
+            $uniqueTransfers[$transfer->getId()] = $transfer;
+        }
+        $this->dispatchTransfers(array_values($uniqueTransfers));
     }
 
     private function processPendingRefunds(string $orderType): void

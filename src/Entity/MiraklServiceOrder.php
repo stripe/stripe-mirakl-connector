@@ -119,7 +119,7 @@ class MiraklServiceOrder extends MiraklOrder
 
     public function getRefundedTax(StripeRefund $refund): float
     {
-        foreach ($this->order['refunds'] as $orderRefund) {
+        foreach ($this->order['refunds'] ?? [] as $orderRefund) {
             if ($refund->getMiraklRefundId() === $orderRefund['id']) {
                 if ($refund->getMiraklRefundId() === $orderRefund['id']) {
                     return $this->getRefundLineTaxes($orderRefund); // $orderRefund['commission_total_amount'];
@@ -128,6 +128,17 @@ class MiraklServiceOrder extends MiraklOrder
         }
 
         return 0;
+    }
+
+    public function hasRefund(StripeRefund $refund): bool
+    {
+        foreach ($this->order['refunds'] ?? [] as $orderRefund) {
+            if ($refund->getMiraklRefundId() === $orderRefund['id']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function getRefundLineTaxes(array $refundLine): float

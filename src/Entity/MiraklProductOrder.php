@@ -135,7 +135,7 @@ class MiraklProductOrder extends MiraklOrder
     {
         foreach ($this->getOrderLines() as $line) {
             if ($refund->getMiraklOrderLineId() === $line['order_line_id']) {
-                foreach ($line['refunds'] as $orderRefund) {
+                foreach ($line['refunds'] ?? [] as $orderRefund) {
                     if ($refund->getMiraklRefundId() === $orderRefund['id']) {
                         $tax = $this->getRefundLineTaxes($orderRefund);
 
@@ -146,6 +146,23 @@ class MiraklProductOrder extends MiraklOrder
         }
 
         return 0;
+    }
+
+    public function hasRefund(StripeRefund $refund): bool
+    {
+        foreach ($this->getOrderLines() as $line) {
+            if ($refund->getMiraklOrderLineId() !== $line['order_line_id']) {
+                continue;
+            }
+
+            foreach ($line['refunds'] ?? [] as $orderRefund) {
+                if ($refund->getMiraklRefundId() === $orderRefund['id']) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     protected function getRefundLineTaxes(array $refundLine): float
@@ -198,21 +215,10 @@ class MiraklProductOrder extends MiraklOrder
         $amount = 0;
         foreach ($this->getOrderLines() as $orderLine) {
             if (!in_array($orderLine['order_line_state'], ['REFUSED', 'CANCELED'])) {
-                $amount += $this->getOrderLineOrderTaxes($orderLine);
+                $amount += $this->getOrderLineTaxes($orderLine);
             }
         }
 
         return $amount;
-    }
-
-    protected function getOrderLineOrderTaxes(array $orderLine): float
-    {
-        $taxes = 0;
-        $allTaxes = $orderLine['taxes'] ?? [];
-        foreach ($allTaxes as $tax) {
-            $taxes += (float) $tax['amount'];
-        }
-
-        return $taxes;
     }
 }
