@@ -1142,14 +1142,15 @@ class StripeWebhookEndpointTest extends WebTestCase
         $refundFactory = new StripeRefundFactory(
             $this->paymentMappingRepository,
             $container->get('doctrine')->getRepository(StripeTransfer::class),
-            $stripeClient
+            $stripeClient,
+            $container->get('App\\Service\\MiraklClient')
         );
         $refundFactory->setLogger(new NullLogger());
         $refund = $refundFactory->createFromOrderRefund(new MiraklProductPendingRefund([
-            'id' => 'refund-3556',
-            'order_id' => 'order-line-3556',
+            'id' => MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
+            'order_id' => MiraklMock::PRODUCT_ORDER_PENDING_REFUND.'_1000-1',
             'order_commercial_id' => $orderId,
-            'order_line_id' => 'order-line-3556',
+            'order_line_id' => MiraklMock::PRODUCT_ORDER_PENDING_REFUND.'_1000-1-1',
             'amount' => 2.00,
             'currency_iso_code' => 'EUR',
         ]));
