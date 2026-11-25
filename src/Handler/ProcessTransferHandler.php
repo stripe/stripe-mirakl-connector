@@ -49,13 +49,19 @@ class ProcessTransferHandler implements LoggerAwareInterface
         $transfer = $this->stripeTransferRepository->findOneBy([
             'id' => $message->getStripeTransferId(),
         ]);
-        assert(null !== $transfer);
+        if (null === $transfer) {
+            $this->logger->info('Ignoring transfer message for a missing transfer.', [
+                'stripe_transfer_id' => $message->getStripeTransferId(),
+            ]);
+
+            return;
+        }
+
         if (StripeTransfer::TRANSFER_CREATED === $transfer->getStatus()) {
             return;
         }
         if (
-            null === $transfer
-            || StripeTransfer::TRANSFER_PENDING !== $transfer->getStatus()
+            StripeTransfer::TRANSFER_PENDING !== $transfer->getStatus()
             || (
                 null !== $message->getAttempt()
                 && $message->getAttempt() !== $transfer->getStripeRequestAttempt()

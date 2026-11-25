@@ -115,6 +115,16 @@ class ProcessTransferHandlerTest extends KernelTestCase
         $this->assertSame($transferRequestCount, $stripeMock->getRequestCount('transfers'));
     }
 
+    public function testMessageForMissingTransferIsIgnored(): void
+    {
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $transferRequestCount = $stripeMock->getRequestCount('transfers');
+
+        $this->executeHandler(PHP_INT_MAX);
+
+        $this->assertSame($transferRequestCount, $stripeMock->getRequestCount('transfers'));
+    }
+
     public function testDuplicateMessageForCreatedTransferIsIgnored(): void
     {
         $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_PRODUCT_ORDER);
