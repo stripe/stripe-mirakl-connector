@@ -48,6 +48,7 @@ class ProcessTransferHandlerTest extends KernelTestCase
         $this->handler = new ProcessTransferHandler(
             $container->get('App\Service\StripeClient'),
             $this->stripeTransferRepository,
+            static::getContainer()->get('App\Factory\StripeTransferFactory'),
             static::getContainer()->get(MessageBusInterface::class)
         );
         $this->handler->setLogger(new NullLogger());
@@ -112,6 +113,20 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
         $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
         $this->assertSame($transferRequestCount, $stripeMock->getRequestCount('transfers'));
+    }
+
+    public function testDuplicateMessageForCreatedTransferIsIgnored(): void
+    {
+        $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $transfer->setTransferId(StripeMock::TRANSFER_BASIC);
+        $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->flush();
+
+        $this->executeHandler($transfer->getId());
+
+        $persisted = $this->stripeTransferRepository->find($transfer->getId());
+        $this->assertSame(StripeTransfer::TRANSFER_CREATED, $persisted->getStatus());
+        $this->assertSame(StripeMock::TRANSFER_BASIC, $persisted->getTransferId());
     }
 
     public function testProductOrderTransferWithTransactionId()

@@ -87,7 +87,7 @@ class ProcessRefundHandler implements LoggerAwareInterface
                 $this->miraklClient->validateServicePendingRefunds([[
                     'id' => $refund->getMiraklRefundId(),
                     'order_id' => $refund->getMiraklOrderId(),
-                    'amount' => StripeAmount::fromMinorUnits($refund->getAmount(), $refund->getCurrency()),
+                    'amount' => StripeAmount::fromMinorUnits($refund->getMiraklAmount(), $refund->getCurrency()),
                     'currency_code' => strtoupper($refund->getCurrency()),
                     'state' => 'OK',
                     'transaction_number' => $refund->getStripeRefundId(),
@@ -95,7 +95,7 @@ class ProcessRefundHandler implements LoggerAwareInterface
             } else {
                 $this->miraklClient->validateProductPendingRefunds([[
                     'refund_id' => $refund->getMiraklRefundId(),
-                    'amount' => StripeAmount::fromMinorUnits($refund->getAmount(), $refund->getCurrency()),
+                    'amount' => StripeAmount::fromMinorUnits($refund->getMiraklAmount(), $refund->getCurrency()),
                     'currency_iso_code' => strtoupper($refund->getCurrency()),
                     'payment_status' => 'OK',
                     'transaction_number' => $refund->getStripeRefundId(),

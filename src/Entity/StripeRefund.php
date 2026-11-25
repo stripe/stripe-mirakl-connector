@@ -55,6 +55,15 @@ class StripeRefund
     #[Column(type: 'integer')]
     private int $amount;
 
+    #[Column(type: 'integer', nullable: true)]
+    private ?int $miraklAmount = null;
+
+    #[Column(type: 'string', nullable: true)]
+    private ?string $taxTopUpStripeRefundId = null;
+
+    #[Column(type: 'integer', nullable: true)]
+    private ?int $taxTopUpAmount = null;
+
     #[Column(type: 'string')]
     private string $currency;
 
@@ -168,6 +177,42 @@ class StripeRefund
     public function setAmount(int $amount): self
     {
         $this->amount = $amount;
+
+        return $this;
+    }
+
+    public function getMiraklAmount(): int
+    {
+        return $this->miraklAmount ?? $this->amount;
+    }
+
+    public function setMiraklAmount(int $amount): self
+    {
+        $this->miraklAmount = $amount;
+
+        return $this;
+    }
+
+    public function getTaxTopUpStripeRefundId(): ?string
+    {
+        return $this->taxTopUpStripeRefundId;
+    }
+
+    public function setTaxTopUpStripeRefundId(?string $refundId): self
+    {
+        $this->taxTopUpStripeRefundId = $refundId;
+
+        return $this;
+    }
+
+    public function getTaxTopUpAmount(): ?int
+    {
+        return $this->taxTopUpAmount;
+    }
+
+    public function setTaxTopUpAmount(?int $amount): self
+    {
+        $this->taxTopUpAmount = $amount;
 
         return $this;
     }

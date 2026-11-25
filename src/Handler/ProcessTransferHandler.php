@@ -3,6 +3,7 @@
 namespace App\Handler;
 
 use App\Entity\StripeTransfer;
+use App\Factory\StripeTransferFactory;
 use App\Message\ProcessTransferMessage;
 use App\Repository\StripeTransferRepository;
 use App\Service\StripeClient;
@@ -10,6 +11,7 @@ use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Exception\ApiErrorException;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
 class ProcessTransferHandler implements LoggerAwareInterface
@@ -26,12 +28,20 @@ class ProcessTransferHandler implements LoggerAwareInterface
      */
     private $stripeTransferRepository;
 
+    private StripeTransferFactory $stripeTransferFactory;
+
+    private MessageBusInterface $bus;
+
     public function __construct(
         StripeClient $stripeClient,
-        StripeTransferRepository $stripeTransferRepository
+        StripeTransferRepository $stripeTransferRepository,
+        StripeTransferFactory $stripeTransferFactory,
+        MessageBusInterface $bus
     ) {
         $this->stripeClient = $stripeClient;
         $this->stripeTransferRepository = $stripeTransferRepository;
+        $this->stripeTransferFactory = $stripeTransferFactory;
+        $this->bus = $bus;
     }
 
     public function __invoke(ProcessTransferMessage $message): void
@@ -39,6 +49,10 @@ class ProcessTransferHandler implements LoggerAwareInterface
         $transfer = $this->stripeTransferRepository->findOneBy([
             'id' => $message->getStripeTransferId(),
         ]);
+        assert(null !== $transfer);
+        if (StripeTransfer::TRANSFER_CREATED === $transfer->getStatus()) {
+            return;
+        }
         if (
             null === $transfer
             || StripeTransfer::TRANSFER_PENDING !== $transfer->getStatus()
@@ -67,6 +81,8 @@ class ProcessTransferHandler implements LoggerAwareInterface
         $amount = $transfer->getAmount();
         $currency = $transfer->getCurrency();
         assert(null !== $amount && null !== $currency);
+        $shortfallReversal = null;
+        $transferCreated = false;
 
         try {
             $metadata = ['miraklId' => $transfer->getMiraklId()];
@@ -131,6 +147,7 @@ class ProcessTransferHandler implements LoggerAwareInterface
                 $transfer->setTransferId($response->id);
                 $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
                 $transfer->setStatusReason(null);
+                $transferCreated = true;
             }
         } catch (ApiErrorException $e) {
             $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
@@ -147,5 +164,24 @@ class ProcessTransferHandler implements LoggerAwareInterface
         }
 
         $this->stripeTransferRepository->flush();
+
+        if ($transferCreated) {
+            try {
+                $shortfallReversal = $this->stripeTransferFactory
+                    ->createTaxShortfallReversalForCompletedTransfer($transfer);
+                if ($shortfallReversal) {
+                    $this->stripeTransferRepository->flush();
+                }
+            } catch (\Throwable $e) {
+                $this->logger->error('Could not prepare tax shortfall reversal.', [
+                    'miraklId' => $transfer->getMiraklId(),
+                    'exception' => $e,
+                ]);
+            }
+        }
+
+        if (null !== $shortfallReversal && $shortfallReversal->isDispatchable()) {
+            $this->bus->dispatch(new ProcessTransferMessage($shortfallReversal->getId()));
+        }
     }
 }

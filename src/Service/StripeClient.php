@@ -240,17 +240,16 @@ class StripeClient
     }
 
     // Refund
-    public function createRefund(
-        string $charge,
-        ?int $amount,
-        array $metadata = [],
-        ?string $idempotencyKey = null
-    ): Refund {
-        return Refund::create([
+    public function createRefund(string $charge, ?int $amount, array $metadata = [], ?string $idempotencyKey = null): Refund
+    {
+        $params = [
             'charge' => $charge,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-        ], $this->idempotencyOptions($idempotencyKey));
+        ];
+        $requestOptions = $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : [];
+
+        return Refund::create($params, $requestOptions);
     }
 
     private function idempotencyOptions(?string $idempotencyKey): array
