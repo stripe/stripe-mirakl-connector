@@ -427,10 +427,14 @@ class StripeTransferFactory implements LoggerAwareInterface
             switch ($pi->status) {
                 case 'succeeded':
                     // Still have to check if it has been refunded
-                    $ch = $pi->charges->data[0] ?? null;
-                    if ($ch instanceof Charge) {
-                        $transactionId = $this->getSourceTransactionIdFromCharge($ch);
+                    $ch = $pi->latest_charge ?? null;
+                    if (is_string($ch)) {
+                        $ch = $this->stripeClient->chargeRetrieve($ch);
                     }
+                    if (!$ch instanceof Charge) {
+                        throw new InvalidArgumentException(sprintf(StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_NOT_READY, $trid, 'no latest charge'), 20);
+                    }
+                    $transactionId = $this->getSourceTransactionIdFromCharge($ch);
                     break;
                 case 'canceled':
                     throw new InvalidArgumentException(sprintf(StripeTransfer::TRANSFER_STATUS_REASON_PAYMENT_CANCELED, $trid), 10);

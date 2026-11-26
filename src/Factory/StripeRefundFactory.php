@@ -150,8 +150,13 @@ class StripeRefundFactory implements LoggerAwareInterface
             switch ($pi->status) {
                 case 'succeeded':
                     // Still have to check if it has been refunded
-                    $ch = $pi->charges->data[0] ?? null;
-                    assert($ch instanceof Charge);
+                    $ch = $pi->latest_charge ?? null;
+                    if (is_string($ch)) {
+                        $ch = $this->stripeClient->chargeRetrieve($ch);
+                    }
+                    if (!$ch instanceof Charge) {
+                        throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $trid, 'no latest charge'), 20);
+                    }
                     $this->checkChargeStatus($ch, $currency);
 
                     return;
