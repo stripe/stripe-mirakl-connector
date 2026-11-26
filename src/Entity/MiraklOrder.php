@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Service\StripeAmount;
+
 abstract class MiraklOrder
 {
     protected array $order;
@@ -53,9 +55,44 @@ abstract class MiraklOrder
 
     abstract public function getRefundedOperatorCommission(StripeRefund $refund): float;
 
-    abstract public function hasRefund(StripeRefund $refund): bool;
+    abstract protected function findRefundDetails(StripeRefund $refund): ?array;
 
-    abstract public function getRefundedTax(StripeRefund $refund): float;
+    public function hasRefund(StripeRefund $refund): bool
+    {
+        return null !== $this->findRefundDetails($refund);
+    }
+
+    public function getRefundedTax(StripeRefund $refund): float
+    {
+        $details = $this->findRefundDetails($refund);
+        $taxes = array_merge($details['shipping_taxes'] ?? [], $details['taxes'] ?? []);
+
+        return array_sum(array_column($taxes, 'amount'));
+    }
+
+    public function isTaxExcluded(): bool
+    {
+        return 'TAX_EXCLUDED' === ($this->order['order_tax_mode'] ?? null);
+    }
+
+    public function getAdditionalRefundTax(StripeRefund $refund): int
+    {
+        if (!$this->isTaxExcluded()) {
+            return 0;
+        }
+
+        $tax = StripeAmount::toMinorUnits($this->getRefundedTax($refund), $refund->getCurrency());
+        $details = $this->findRefundDetails($refund);
+        // The pending refund can already match the gross amount from the order details.
+        if (0 !== $tax && isset($details['amount'])) {
+            $net = StripeAmount::toMinorUnits($details['amount'], $refund->getCurrency());
+            if ($refund->getMiraklAmount() === $net + $tax) {
+                return 0;
+            }
+        }
+
+        return $tax;
+    }
 
     abstract public function getCurrency(): string;
 

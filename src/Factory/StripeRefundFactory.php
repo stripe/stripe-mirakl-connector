@@ -97,9 +97,13 @@ class StripeRefundFactory implements LoggerAwareInterface
             }
         }
 
-        // Check charge status
+        if ($refund->getStripeRefundId()) {
+            return $refund->setStatus(StripeRefund::REFUND_PENDING);
+        }
+
+        // Check charge status and the available refund amount.
         try {
-            $this->checkTransactionStatus($transactionId, $refund->getCurrency());
+            $this->checkTransactionStatus($transactionId, $refund);
         } catch (InvalidRequestException $e) {
             return $this->abortRefund(
                 $refund,
@@ -137,9 +141,8 @@ class StripeRefundFactory implements LoggerAwareInterface
             throw new InvalidArgumentException('Cannot find order details to calculate the tax-inclusive refund.', 20);
         }
 
-        // Mirakl's TAX_EXCLUDED amounts are net of tax; TAX_INCLUDED amounts
-        // already contain tax, so adding the tax fields again would double-refund.
-        if (!$order->isTaxIncluded()) {
+        $refund->setMiraklAmount($miraklAmount);
+        if ($order->isTaxExcluded()) {
             $refund->setMiraklRefundId($pendingRefund->getId());
             $refund->setMiraklOrderLineId($pendingRefund->getOrderLineId());
             if (!$order->hasRefund($refund)) {
@@ -148,15 +151,13 @@ class StripeRefundFactory implements LoggerAwareInterface
                     20
                 );
             }
-            $tax = StripeAmount::toMinorUnits($order->getRefundedTax($refund), $pendingRefund->getCurrency());
-            $amount += $tax;
+            $amount += $order->getAdditionalRefundTax($refund);
         }
         if ($amount <= 0) {
             throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_INVALID_AMOUNT, $amount));
         }
 
         $refund->setAmount($amount);
-        $refund->setMiraklAmount($miraklAmount);
     }
 
     private function findTransactionId(StripeRefund $refund): string
@@ -185,12 +186,12 @@ class StripeRefundFactory implements LoggerAwareInterface
         throw new InvalidArgumentException(StripeRefund::REFUND_STATUS_REASON_NO_CHARGE_ID);
     }
 
-    private function checkTransactionStatus(string $trid, string $currency): void
+    private function checkTransactionStatus(string $trid, StripeRefund $refund): void
     {
         // Transaction number is a PaymentIntent
         if (0 === strpos($trid, 'pi_')) {
             $pi = $this->stripeClient->paymentIntentRetrieve($trid);
-            if (strtolower((string) ($pi->currency ?? '')) !== strtolower($currency)) {
+            if (strtolower((string) ($pi->currency ?? '')) !== strtolower($refund->getCurrency())) {
                 throw new InvalidArgumentException('Refund currency differs from Stripe PaymentIntent currency.', 10);
             }
             switch ($pi->status) {
@@ -203,7 +204,7 @@ class StripeRefundFactory implements LoggerAwareInterface
                     if (!$ch instanceof Charge) {
                         throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $trid, 'no latest charge'), 20);
                     }
-                    $this->checkChargeStatus($ch, $currency);
+                    $this->checkChargeStatus($ch, $refund);
 
                     return;
                 case 'canceled':
@@ -216,15 +217,15 @@ class StripeRefundFactory implements LoggerAwareInterface
         // Transaction number is a Charge
         if (0 === strpos($trid, 'ch_') || 0 === strpos($trid, 'py_')) {
             $ch = $this->stripeClient->chargeRetrieve($trid);
-            $this->checkChargeStatus($ch, $currency);
+            $this->checkChargeStatus($ch, $refund);
 
             return;
         }
     }
 
-    private function checkChargeStatus(Charge $ch, string $currency): void
+    private function checkChargeStatus(Charge $ch, StripeRefund $refund): void
     {
-        if (strtolower((string) ($ch->currency ?? '')) !== strtolower($currency)) {
+        if (strtolower((string) ($ch->currency ?? '')) !== strtolower($refund->getCurrency())) {
             throw new InvalidArgumentException('Refund currency differs from Stripe Charge currency.', 10);
         }
 
@@ -238,12 +239,43 @@ class StripeRefundFactory implements LoggerAwareInterface
                     throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_CANCELED, $ch->id), 10);
                 }
 
+                $this->checkRefundCapacity($ch, $refund);
+
                 return;
             case 'failed':
                 throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_FAILED, $ch->id), 10);
             default:
                 throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_PAYMENT_NOT_READY, $ch->id, $ch->status), 20);
         }
+    }
+
+    private function checkRefundCapacity(Charge $charge, StripeRefund $refund): void
+    {
+        if (!isset($charge->amount_captured, $charge->amount_refunded)) {
+            return;
+        }
+
+        $captured = (int) $charge->amount_captured;
+        $refunded = (int) $charge->amount_refunded;
+        $available = max(0, $captured - $refunded);
+        if ($refund->getAmount() <= $available) {
+            return;
+        }
+
+        // Mirakl requested the entire captured payment. Tax added by the
+        // connector cannot increase the amount paid by the buyer.
+        if (0 === $refunded && $refund->getMiraklAmount() === $captured) {
+            $refund->setAmount($captured);
+
+            return;
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'Calculated refund amount %d exceeds the remaining captured amount %d for charge %s.',
+            $refund->getAmount(),
+            $available,
+            $charge->id
+        ), 20);
     }
 
     private function putRefundOnHold(StripeRefund $refund, string $reason): StripeRefund
