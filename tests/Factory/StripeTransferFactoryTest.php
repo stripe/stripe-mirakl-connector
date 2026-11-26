@@ -95,6 +95,13 @@ class StripeTransferFactoryTest extends KernelTestCase
         $this->stripeTransferFactory->setLogger(new NullLogger());
     }
 
+    private function mockTaxSplitConfiguration(): void
+    {
+        $container = self::$kernel->getContainer();
+        $this->miraklClient = new MiraklClient($container->get(MiraklMock::class), '_TAX');
+        $this->mockConfiguration(true);
+    }
+
     private function mockOrderTransfer(MiraklPendingRefund $order)
     {
         if (is_a($order, MiraklServicePendingRefund::class)) {
@@ -235,9 +242,74 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function provideCreateFromProductOrder()
     {
         return [
-            [true, 7205],
+            [true, 6513],
             [false, 8073],
         ];
+    }
+
+    public function testTaxSplitTransfersIncludeShippingTaxes(): void
+    {
+        $this->mockConfiguration(true);
+        $this->addTaxAccountMapping();
+        $order = current($this->miraklClient->listProductOrdersById([MiraklMock::ORDER_BASIC]));
+
+        $sellerTransfer = $this->stripeTransferFactory->createFromOrder($order);
+        $taxTransfer = $this->stripeTransferFactory->createFromOrderForTax($order);
+
+        $this->assertSame(6513, $sellerTransfer->getAmount());
+        $this->assertSame(1560, $taxTransfer->getAmount());
+        $this->assertSame(8073, $sellerTransfer->getAmount() + $taxTransfer->getAmount());
+    }
+
+    public function testTaxSplitRefundFlowUsesZeroDecimalCurrencyUnits(): void
+    {
+        $this->mockTaxSplitConfiguration();
+        $this->addTaxAccountMapping();
+        $order = current($this->miraklClient->listProductOrdersById([MiraklMock::ORDER_TAX_SPLIT_JPY]));
+        $this->assertSame('JPY', $order->getCurrency());
+
+        $sellerOrderTransfer = $this->stripeTransferFactory->createFromOrder($order);
+        $sellerOrderTransfer->setTransferId('tr_jpy_seller');
+        $sellerOrderTransfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($sellerOrderTransfer);
+
+        $taxOrderTransfer = $this->stripeTransferFactory->createFromOrderForTax($order);
+        $taxOrderTransfer->setTransferId('tr_jpy_tax');
+        $taxOrderTransfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($taxOrderTransfer);
+
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) MiraklMock::ORDER_TAX_SPLIT_JPY_REFUND_ID,
+            'order_id' => MiraklMock::ORDER_TAX_SPLIT_JPY,
+            'order_commercial_id' => MiraklMock::ORDER_TAX_SPLIT_JPY,
+            'order_line_id' => MiraklMock::ORDER_TAX_SPLIT_JPY . '-1',
+            'amount' => 60,
+            'currency_iso_code' => 'JPY',
+        ]);
+        $refund = $this->mockStripeRefund($pendingRefund);
+        $this->mockRefundCreated($refund);
+        $this->assertSame(1.0, $order->getRefundedOperatorCommission($refund));
+        $this->assertSame(3.0, $order->getRefundedTax($refund));
+        $taxLookupOrder = current($this->miraklClient->listProductOrdersById([$pendingRefund->getOrderId() . '_TAX']));
+        $this->assertSame('JPY', $taxLookupOrder->getCurrency());
+        $this->assertSame(3.0, $taxLookupOrder->getRefundedTax($refund));
+
+        $sellerReversal = $this->stripeTransferFactory->createFromOrderRefund($pendingRefund);
+        $taxReversal = $this->stripeTransferFactory->createFromOrderRefundForTax($pendingRefund);
+
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $sellerReversal->getStatus());
+        $this->assertSame(56, $sellerReversal->getAmount());
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $taxReversal->getStatus());
+        $this->assertSame(3, $taxReversal->getAmount());
+        $this->assertSame('jpy', $taxReversal->getCurrency());
+    }
+
+    private function addTaxAccountMapping(): void
+    {
+        $mapping = new AccountMapping();
+        $mapping->setMiraklShopId(9999);
+        $mapping->setStripeAccountId('acc_xxxxxxx');
+        $this->accountMappingRepository->persistAndFlush($mapping);
     }
 
     public function testUpdateFromProductOrder()
@@ -389,11 +461,11 @@ class StripeTransferFactoryTest extends KernelTestCase
     public function provideProductOrderDifferentAmounts()
     {
         return [
-            [true, 'NO_COMMISSION', 7604],
+            [true, 'NO_COMMISSION', 6912],
             [true, 'NO_TAX', 6513],
-            [true, 'TAX_INCLUDED', 5645],
-            [true, 'PARTIAL_TAX', 6959],
-            [true, 'NO_SALES_TAX', 7205],
+            [true, 'TAX_INCLUDED', 4953],
+            [true, 'PARTIAL_TAX', 6513],
+            [true, 'NO_SALES_TAX', 6513],
             [true, 'NO_SHIPPING_TAX', 6513],
             [false, 'NO_COMMISSION', 8472],
             [false, 'NO_TAX', 6513],
@@ -797,6 +869,156 @@ class StripeTransferFactoryTest extends KernelTestCase
 
         $transfer = $this->stripeTransferFactory->updateOrderRefundTransfer($transfer);
         $this->assertEquals(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertSame(1111, $transfer->getAmount());
+    }
+
+    public function testTaxRefundAgainstLegacyTaxTransferIsCapped(): void
+    {
+        $this->mockTaxSplitConfiguration();
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) MiraklMock::ORDER_TAX_SPLIT_REFUND_ID,
+            'order_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND,
+            'order_commercial_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND,
+            'order_line_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND . '-1',
+            'amount' => 12.34,
+            'currency_iso_code' => 'EUR',
+        ]);
+
+        // This models an order split made before shipping taxes were included
+        // in the tax-account transfer (product taxes only: 3.34 EUR).
+        $legacyTaxTransfer = new StripeTransfer();
+        $legacyTaxTransfer->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $legacyTaxTransfer->setMiraklId($pendingRefund->getOrderId() . '_TAX');
+        $legacyTaxTransfer->setAmount(334);
+        $legacyTaxTransfer->setCurrency('eur');
+        $legacyTaxTransfer->setTransferId('tr_legacy_tax');
+        $legacyTaxTransfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($legacyTaxTransfer);
+
+        $legacySellerTransfer = new StripeTransfer();
+        $legacySellerTransfer->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $legacySellerTransfer->setMiraklId($pendingRefund->getOrderId());
+        $legacySellerTransfer->setAmount(1000);
+        $legacySellerTransfer->setCurrency('eur');
+        $legacySellerTransfer->setTransferId('tr_legacy_seller');
+        $legacySellerTransfer->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($legacySellerTransfer);
+
+        $refund = $this->mockStripeRefund($pendingRefund);
+        $this->mockRefundCreated($refund);
+        $order = current($this->miraklClient->listProductOrdersById([$pendingRefund->getOrderId()]));
+        $this->assertSame(5.8, $order->getRefundedTax($refund));
+
+        $taxReversal = $this->stripeTransferFactory->createFromOrderRefundForTax($pendingRefund);
+
+        // Reverse only the legacy tax transfer's 3.34 EUR; the seller-side
+        // shortfall recovery handles the 2.46 EUR shipping-tax difference.
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $taxReversal->getStatus());
+        $this->assertSame(334, $taxReversal->getAmount());
+
+        $sellerReversal = new StripeTransfer();
+        $sellerReversal->setType(StripeTransfer::TRANSFER_REFUND);
+        $sellerReversal->setMiraklId((string) $pendingRefund->getId());
+        $sellerReversal->setTransactionId('tr_legacy_seller');
+        $sellerReversal->setAmount(531);
+        $sellerReversal->setCurrency('eur');
+        $sellerReversal->setTransferId('tr_legacy_seller_reversal');
+        $sellerReversal->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($sellerReversal);
+
+        $shortfallReversal = $this->stripeTransferFactory->createTaxShortfallReversal(
+            (string) $pendingRefund->getId(),
+            $sellerReversal
+        );
+        $this->assertNotNull($shortfallReversal);
+        $this->assertSame(246, $shortfallReversal->getAmount());
+        $this->assertSame('tr_legacy_seller', $shortfallReversal->getTransactionId());
+    }
+
+    public function testTaxShortfallReservationLocksOrderTransfersBeforeCheckingCapacity(): void
+    {
+        $this->mockTaxSplitConfiguration();
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => (string) MiraklMock::ORDER_TAX_SPLIT_REFUND_ID,
+            'order_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND,
+            'order_commercial_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND,
+            'order_line_id' => MiraklMock::ORDER_TAX_SPLIT_REFUND.'-1',
+            'amount' => 12.34,
+            'currency_iso_code' => 'EUR',
+        ]);
+        $refund = $this->mockStripeRefund($pendingRefund);
+        $this->mockRefundCreated($refund);
+
+        $sellerOrder = new StripeTransfer();
+        $sellerOrder->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $sellerOrder->setMiraklId($pendingRefund->getOrderId());
+        $sellerOrder->setAmount(1000);
+        $sellerOrder->setCurrency('eur');
+        $sellerOrder->setTransferId('tr_locked_seller');
+        $sellerOrder->setStatus(StripeTransfer::TRANSFER_CREATED);
+
+        $taxOrder = new StripeTransfer();
+        $taxOrder->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $taxOrder->setMiraklId($pendingRefund->getOrderId().'_TAX');
+        $taxOrder->setAmount(334);
+        $taxOrder->setCurrency('eur');
+        $taxOrder->setTransferId('tr_locked_tax');
+        $taxOrder->setStatus(StripeTransfer::TRANSFER_CREATED);
+
+        $sellerReversal = new StripeTransfer();
+        $sellerReversal->setType(StripeTransfer::TRANSFER_REFUND);
+        $sellerReversal->setMiraklId((string) $pendingRefund->getId());
+        $sellerReversal->setTransactionId('tr_locked_seller');
+        $sellerReversal->setAmount(531);
+        $sellerReversal->setCurrency('eur');
+        $sellerReversal->setStatus(StripeTransfer::TRANSFER_CREATED);
+
+        $locked = false;
+        $repository = $this->createMock(StripeTransferRepository::class);
+        $repository->method('wrapInTransaction')->willReturnCallback(
+            static fn (callable $operation) => $operation()
+        );
+        $repository->expects($this->once())
+            ->method('lockOrderTransfersByMiraklIds')
+            ->with([$pendingRefund->getOrderId(), $pendingRefund->getOrderId().'_TAX'])
+            ->willReturnCallback(static function () use (&$locked): void {
+                $locked = true;
+            });
+        $repository->method('findTransfersByRefundIds')
+            ->willReturn([(string) $pendingRefund->getId() => $sellerReversal]);
+        $repository->method('findTransfersByOrderIds')->willReturnCallback(
+            static fn (array $ids): array => [$ids[0] => str_ends_with($ids[0], '_TAX') ? $taxOrder : $sellerOrder]
+        );
+        $repository->method('findOneBy')->willReturn(null);
+        $repository->method('getReservedRefundAmountForTransaction')->willReturnCallback(
+            function () use (&$locked): int {
+                $this->assertTrue($locked, 'Capacity must be read only after the source transfers are locked.');
+
+                return 0;
+            }
+        );
+        $repository->method('persist')->willReturnCallback(static fn (StripeTransfer $transfer): StripeTransfer => $transfer);
+
+        $factory = new StripeTransferFactory(
+            $this->accountMappingRepository,
+            $this->paymentMappingRepository,
+            $this->stripeRefundRepository,
+            $repository,
+            $this->miraklClient,
+            self::$kernel->getContainer()->get('App\Service\StripeClient'),
+            'acc_xxxxxxx',
+            '_TAX',
+            true
+        );
+        $factory->setLogger(new NullLogger());
+
+        $shortfall = $factory->createTaxShortfallReversal(
+            (string) $pendingRefund->getId(),
+            $sellerReversal
+        );
+
+        $this->assertNotNull($shortfall);
+        $this->assertSame(246, $shortfall->getAmount());
     }
 
     public function testCreateFromServiceOrderRefund()

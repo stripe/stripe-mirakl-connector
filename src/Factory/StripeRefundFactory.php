@@ -10,6 +10,7 @@ use App\Repository\PaymentMappingRepository;
 use App\Repository\StripeTransferRepository;
 use App\Service\StripeClient;
 use App\Service\StripeAmount;
+use App\Service\MiraklClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Stripe\Charge;
@@ -34,14 +35,18 @@ class StripeRefundFactory implements LoggerAwareInterface
      */
     private $stripeClient;
 
+    private MiraklClient $miraklClient;
+
     public function __construct(
         PaymentMappingRepository $paymentMappingRepository,
         StripeTransferRepository $stripeTransferRepository,
-        StripeClient $stripeClient
+        StripeClient $stripeClient,
+        MiraklClient $miraklClient
     ) {
         $this->paymentMappingRepository = $paymentMappingRepository;
         $this->stripeTransferRepository = $stripeTransferRepository;
         $this->stripeClient = $stripeClient;
+        $this->miraklClient = $miraklClient;
     }
 
     public function createFromOrderRefund(MiraklPendingRefund $pendingRefund): StripeRefund
@@ -59,23 +64,25 @@ class StripeRefundFactory implements LoggerAwareInterface
         $refund->setMiraklOrderLineId($pendingRefund->getOrderLineId());
         $refund->setCurrency(strtolower($pendingRefund->getCurrency()));
         $refund->setMiraklRefundId($pendingRefund->getId());
-        try {
-            $amount = StripeAmount::toMinorUnits($pendingRefund->getAmount(), $pendingRefund->getCurrency());
-            if ($amount <= 0) {
-                throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_INVALID_AMOUNT, $amount));
-            }
-            $refund->setAmount($amount);
-        } catch (InvalidArgumentException $e) {
-            $refund->setAmount(0);
-
-            return $this->abortRefund($refund, $e->getMessage());
-        }
-
-        return $this->updateRefund($refund);
+        return $this->updateRefund($refund, $pendingRefund);
     }
 
-    public function updateRefund(StripeRefund $refund): StripeRefund
+    public function updateRefund(StripeRefund $refund, ?MiraklPendingRefund $pendingRefund = null): StripeRefund
     {
+        if ($pendingRefund && !$refund->getStripeRefundId()) {
+            try {
+                $this->updateRefundAmounts($refund, $pendingRefund);
+            } catch (InvalidArgumentException $e) {
+                $refund->setAmount(0);
+
+                if (20 === $e->getCode()) {
+                    return $this->putRefundOnHold($refund, $e->getMessage());
+                }
+
+                return $this->abortRefund($refund, $e->getMessage());
+            }
+        }
+
         // Find charge ID
         $transactionId = $refund->getTransactionId();
         if (!$transactionId) {
@@ -111,6 +118,45 @@ class StripeRefundFactory implements LoggerAwareInterface
 
         // All good
         return $refund->setStatus(StripeRefund::REFUND_PENDING);
+    }
+
+    private function updateRefundAmounts(StripeRefund $refund, MiraklPendingRefund $pendingRefund): void
+    {
+        $miraklAmount = StripeAmount::toMinorUnits($pendingRefund->getAmount(), $pendingRefund->getCurrency());
+        if ($miraklAmount <= 0) {
+            throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_INVALID_AMOUNT, $miraklAmount));
+        }
+
+        $amount = $miraklAmount;
+        if ($pendingRefund instanceof MiraklServicePendingRefund) {
+            $order = current($this->miraklClient->listServiceOrdersById([$pendingRefund->getOrderId()]));
+        } else {
+            $order = current($this->miraklClient->listProductOrdersById([$pendingRefund->getOrderId()]));
+        }
+        if (!$order) {
+            throw new InvalidArgumentException('Cannot find order details to calculate the tax-inclusive refund.', 20);
+        }
+
+        // Mirakl's TAX_EXCLUDED amounts are net of tax; TAX_INCLUDED amounts
+        // already contain tax, so adding the tax fields again would double-refund.
+        if (!$order->isTaxIncluded()) {
+            $refund->setMiraklRefundId($pendingRefund->getId());
+            $refund->setMiraklOrderLineId($pendingRefund->getOrderLineId());
+            if (!$order->hasRefund($refund)) {
+                throw new InvalidArgumentException(
+                    'Cannot find refund details in the Mirakl order to calculate refund taxes.',
+                    20
+                );
+            }
+            $tax = StripeAmount::toMinorUnits($order->getRefundedTax($refund), $pendingRefund->getCurrency());
+            $amount += $tax;
+        }
+        if ($amount <= 0) {
+            throw new InvalidArgumentException(sprintf(StripeRefund::REFUND_STATUS_REASON_INVALID_AMOUNT, $amount));
+        }
+
+        $refund->setAmount($amount);
+        $refund->setMiraklAmount($miraklAmount);
     }
 
     private function findTransactionId(StripeRefund $refund): string

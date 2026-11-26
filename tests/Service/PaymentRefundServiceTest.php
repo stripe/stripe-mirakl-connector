@@ -64,7 +64,8 @@ class PaymentRefundServiceTest extends KernelTestCase
         $stripeRefundFactory = new StripeRefundFactory(
             $this->paymentMappingRepository,
             $this->stripeTransferRepository,
-            $stripeClient
+            $stripeClient,
+            $this->miraklClient
         );
         $stripeRefundFactory->setLogger(new NullLogger());
 
@@ -101,7 +102,7 @@ class PaymentRefundServiceTest extends KernelTestCase
             $this->paymentMappingRepository,
             $this->stripeTransferRepository,
             $stripeClient,
-            $enablePaymentTaxSplit
+            $this->miraklClient
         );
         $stripeRefundFactory->setLogger(new NullLogger());
 
@@ -128,6 +129,115 @@ class PaymentRefundServiceTest extends KernelTestCase
         );
     }
 
+    public function testReconcileTaxShortfallReversalsRecreatesAndRedispatchesPendingShortfall(): void
+    {
+        $container = self::$kernel->getContainer();
+        $this->miraklClient = new MiraklClient($container->get(MiraklMock::class), '_TAX');
+        $this->mockConfiguration(true);
+
+        $refundId = (string) MiraklMock::ORDER_TAX_SPLIT_REFUND_ID;
+        $orderId = MiraklMock::ORDER_TAX_SPLIT_REFUND;
+        $refund = new StripeRefund();
+        $refund->setType(StripeRefund::REFUND_PRODUCT_ORDER);
+        $refund->setMiraklRefundId($refundId);
+        $refund->setMiraklOrderId($orderId);
+        $refund->setMiraklOrderLineId($orderId.'-1');
+        $refund->setCurrency('eur');
+        $refund->setAmount(1234);
+        $refund->setStatus(StripeRefund::REFUND_CREATED);
+        $this->stripeRefundRepository->persistAndFlush($refund);
+
+        $secondRefundId = (string) MiraklMock::ORDER_TAX_SPLIT_REFUND_SECOND_ID;
+        $secondRefund = new StripeRefund();
+        $secondRefund->setType(StripeRefund::REFUND_PRODUCT_ORDER);
+        $secondRefund->setMiraklRefundId($secondRefundId);
+        $secondRefund->setMiraklOrderId($orderId);
+        $secondRefund->setMiraklOrderLineId($orderId.'-1');
+        $secondRefund->setCurrency('eur');
+        $secondRefund->setAmount(500);
+        $secondRefund->setStatus(StripeRefund::REFUND_CREATED);
+        $this->stripeRefundRepository->persistAndFlush($secondRefund);
+
+        $sellerOrder = new StripeTransfer();
+        $sellerOrder->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $sellerOrder->setMiraklId($orderId);
+        $sellerOrder->setAmount(1000);
+        $sellerOrder->setCurrency('eur');
+        $sellerOrder->setTransferId('tr_legacy_seller');
+        $sellerOrder->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($sellerOrder);
+
+        $taxOrder = new StripeTransfer();
+        $taxOrder->setType(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $taxOrder->setMiraklId($orderId.'_TAX');
+        $taxOrder->setAmount(334);
+        $taxOrder->setCurrency('eur');
+        $taxOrder->setTransferId('tr_legacy_tax');
+        $taxOrder->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($taxOrder);
+
+        $sellerReversal = new StripeTransfer();
+        $sellerReversal->setType(StripeTransfer::TRANSFER_REFUND);
+        $sellerReversal->setMiraklId($refundId);
+        $sellerReversal->setTransactionId('tr_legacy_seller');
+        $sellerReversal->setAmount(100);
+        $sellerReversal->setCurrency('eur');
+        $sellerReversal->setTransferId('tr_legacy_seller_reversal');
+        $sellerReversal->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($sellerReversal);
+
+        $secondSellerReversal = new StripeTransfer();
+        $secondSellerReversal->setType(StripeTransfer::TRANSFER_REFUND);
+        $secondSellerReversal->setMiraklId($secondRefundId);
+        $secondSellerReversal->setTransactionId('tr_legacy_seller');
+        $secondSellerReversal->setAmount(100);
+        $secondSellerReversal->setCurrency('eur');
+        $secondSellerReversal->setTransferId('tr_legacy_seller_reversal_2');
+        $secondSellerReversal->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($secondSellerReversal);
+
+        $taxReversal = new StripeTransfer();
+        $taxReversal->setType(StripeTransfer::TRANSFER_REFUND);
+        $taxReversal->setMiraklId($refundId.'_TAX');
+        $taxReversal->setTransactionId('tr_legacy_tax');
+        $taxReversal->setAmount(284);
+        $taxReversal->setCurrency('eur');
+        $taxReversal->setTransferId('tr_legacy_tax_reversal');
+        $taxReversal->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($taxReversal);
+
+        $secondTaxReversal = new StripeTransfer();
+        $secondTaxReversal->setType(StripeTransfer::TRANSFER_REFUND);
+        $secondTaxReversal->setMiraklId($secondRefundId.'_TAX');
+        $secondTaxReversal->setTransactionId('tr_legacy_tax');
+        $secondTaxReversal->setAmount(50);
+        $secondTaxReversal->setCurrency('eur');
+        $secondTaxReversal->setTransferId('tr_legacy_tax_reversal_2');
+        $secondTaxReversal->setStatus(StripeTransfer::TRANSFER_CREATED);
+        $this->stripeTransferRepository->persistAndFlush($secondTaxReversal);
+
+        $firstRun = $this->paymentRefundService->reconcileTaxShortfallReversals();
+        $this->assertCount(2, $firstRun);
+        $this->assertSame(800, array_sum(array_map(
+            static fn (StripeTransfer $transfer): int => $transfer->getAmount(),
+            $firstRun
+        )));
+        foreach ($firstRun as $shortfall) {
+            $this->assertSame(StripeTransfer::TRANSFER_PENDING, $shortfall->getStatus());
+        }
+
+        $secondRun = $this->paymentRefundService->reconcileTaxShortfallReversals();
+        $this->assertCount(2, $secondRun);
+        $this->assertSame(
+            array_map(static fn (StripeTransfer $transfer): ?int => $transfer->getId(), $firstRun),
+            array_map(static fn (StripeTransfer $transfer): ?int => $transfer->getId(), $secondRun)
+        );
+        $this->assertCount(2, $this->stripeTransferRepository->findBy([
+            'type' => StripeTransfer::TRANSFER_REFUND,
+            'miraklId' => [$refundId.'_TAX_SHORTFALL', $secondRefundId.'_TAX_SHORTFALL'],
+        ]));
+    }
+
     private function mockOrderTransfer(MiraklPendingRefund $order, string $transactionId)
     {
         if (is_a($order, MiraklProductPendingRefund::class)) {
@@ -141,6 +251,7 @@ class PaymentRefundServiceTest extends KernelTestCase
         $transfer->setMiraklId($order->getOrderId());
         $transfer->setAmount(gmp_intval((string) ($order->getAmount() * 100)));
         $transfer->setCurrency(strtolower($order->getCurrency()));
+        $transfer->setTransferId(StripeMock::TRANSFER_BASIC);
         $transfer->setTransactionId($transactionId);
         $transfer->setStatus(StripeTransfer::TRANSFER_CREATED);
 

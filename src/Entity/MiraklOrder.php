@@ -53,6 +53,8 @@ abstract class MiraklOrder
 
     abstract public function getRefundedOperatorCommission(StripeRefund $refund): float;
 
+    abstract public function hasRefund(StripeRefund $refund): bool;
+
     abstract public function getRefundedTax(StripeRefund $refund): float;
 
     abstract public function getCurrency(): string;

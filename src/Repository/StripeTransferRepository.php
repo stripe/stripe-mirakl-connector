@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\StripeTransfer;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -37,6 +38,16 @@ class StripeTransferRepository extends ServiceEntityRepository
     public function flush(): void
     {
         $this->getEntityManager()->flush();
+    }
+
+    /**
+     * @template TResult
+     * @param callable(): TResult $operation
+     * @return TResult
+     */
+    public function wrapInTransaction(callable $operation): mixed
+    {
+        return $this->getEntityManager()->wrapInTransaction($operation);
     }
 
     private function mapTransfersByMiraklId(array $transfers): array
@@ -79,6 +90,43 @@ class StripeTransferRepository extends ServiceEntityRepository
         ]));
     }
 
+    public function getReservedRefundAmountForTransaction(string $transactionId, string $excludeMiraklId): int
+    {
+        $amount = 0;
+        foreach ($this->findBy([
+            'type' => StripeTransfer::TRANSFER_REFUND,
+            'transactionId' => $transactionId,
+            'status' => [StripeTransfer::TRANSFER_PENDING, StripeTransfer::TRANSFER_CREATED],
+        ]) as $transfer) {
+            if ($transfer->getMiraklId() !== $excludeMiraklId) {
+                $amount += $transfer->getAmount() ?? 0;
+            }
+        }
+
+        return $amount;
+    }
+
+    /**
+     * Lock the original order transfers while refund reversals are reserved.
+     * The caller must already be inside a transaction.
+     */
+    public function lockOrderTransfersByMiraklIds(array $miraklIds): void
+    {
+        if (!$miraklIds) {
+            return;
+        }
+
+        $this->createQueryBuilder('transfer')
+            ->where('transfer.type IN (:types)')
+            ->andWhere('transfer.miraklId IN (:miraklIds)')
+            ->setParameter('types', StripeTransfer::getOrderTypes())
+            ->setParameter('miraklIds', $miraklIds)
+            ->orderBy('transfer.id', 'ASC')
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->getResult();
+    }
+
     public function findRetriableProductOrderTransfers(): array
     {
         return $this->mapTransfersByMiraklId($this->findBy([
@@ -101,6 +149,20 @@ class StripeTransferRepository extends ServiceEntityRepository
             'type' => StripeTransfer::TRANSFER_REFUND,
             'status' => StripeTransfer::getRetriableStatus(),
         ]));
+    }
+
+    /**
+     * Refund reversals in these states are needed to reconcile tax shortfalls:
+     * completed component reversals and pending shortfall reversals awaiting dispatch.
+     *
+     * @return StripeTransfer[]
+     */
+    public function findRefundTransfersForTaxShortfallReconciliation(): array
+    {
+        return $this->findBy([
+            'type' => StripeTransfer::TRANSFER_REFUND,
+            'status' => [StripeTransfer::TRANSFER_CREATED, StripeTransfer::TRANSFER_PENDING],
+        ]);
     }
 
     public function findRetriableInvoiceTransfers(): array

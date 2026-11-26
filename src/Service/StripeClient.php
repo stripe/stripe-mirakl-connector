@@ -164,12 +164,16 @@ class StripeClient
     }
 
     // Reversal
-    public function reverseTransfer(int $amount, string $transferId, array $metadata = []): TransferReversal
-    {
+    public function reverseTransfer(
+        int $amount,
+        string $transferId,
+        array $metadata = [],
+        ?string $idempotencyKey = null
+    ): TransferReversal {
         return $this->client->transfers->createReversal($transferId, [
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
-        ]);
+        ], $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : []);
     }
 
     // Payout
@@ -185,7 +189,7 @@ class StripeClient
     }
 
     // Refund
-    public function createRefund(string $charge, ?int $amount, array $metadata = []): Refund
+    public function createRefund(string $charge, ?int $amount, array $metadata = [], ?string $idempotencyKey = null): Refund
     {
         $params = [
             'charge' => $charge,
@@ -195,7 +199,14 @@ class StripeClient
             $params['amount'] = $amount;
         }
 
-        return $this->client->refunds->create($params);
+        $requestOptions = $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : [];
+
+        return $this->client->refunds->create($params, $requestOptions);
+    }
+
+    public function refundRetrieve(string $refundId): Refund
+    {
+        return $this->client->refunds->retrieve($refundId);
     }
 
     /**
