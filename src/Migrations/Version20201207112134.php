@@ -82,6 +82,6 @@ final class Version20201207112134 extends AbstractMigration
             StripeClient::APP_REPO,
             StripeClient::APP_PARTNER_ID
         );
-        Stripe::setApiVersion(StripeClient::APP_API_VERSION);
+        Stripe::setApiVersion('2019-08-14');
     }
 }

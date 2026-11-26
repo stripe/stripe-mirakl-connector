@@ -3,6 +3,7 @@
 namespace App\Tests\Factory;
 
 use App\Entity\MiraklPendingRefund;
+use App\Entity\MiraklProductOrder;
 use App\Entity\MiraklProductPendingRefund;
 use App\Entity\MiraklServicePendingRefund;
 use App\Entity\PaymentMapping;
@@ -12,10 +13,12 @@ use App\Factory\StripeRefundFactory;
 use App\Repository\StripeTransferRepository;
 use App\Service\MiraklClient;
 use App\Service\StripeAmount;
+use App\Service\StripeClient;
 use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Psr\Log\NullLogger;
+use Stripe\Charge;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -146,6 +149,85 @@ class StripeRefundFactoryTest extends KernelTestCase
         $this->assertSame(1814, $refund->getAmount());
         $this->assertSame(1234, $refund->getMiraklAmount());
         $this->assertSame(StripeRefund::REFUND_PENDING, $refund->getStatus());
+    }
+
+    /** @dataProvider refundTaxAmounts */
+    public function testRefundTaxRespectsCapturedPayment(
+        ?string $taxMode,
+        float $orderRefundAmount,
+        int $captured,
+        int $alreadyRefunded,
+        int $expectedAmount,
+        string $expectedStatus
+    ): void {
+        $pendingRefund = new MiraklProductPendingRefund([
+            'id' => '3000',
+            'order_id' => 'refund-order',
+            'order_commercial_id' => 'refund-order',
+            'order_line_id' => 'refund-line',
+            'amount' => 74,
+            'currency_iso_code' => 'EUR',
+        ]);
+        $order = [
+            'order_lines' => [[
+                'order_line_id' => 'refund-line',
+                'refunds' => [[
+                    'id' => '3000',
+                    'amount' => $orderRefundAmount,
+                    'taxes' => [['amount' => 18]],
+                    'shipping_taxes' => [['amount' => 2]],
+                ]],
+            ]],
+        ];
+        if ($taxMode !== null) {
+            $order['order_tax_mode'] = $taxMode;
+        }
+
+        $miraklClient = $this->createMock(MiraklClient::class);
+        $miraklClient->method('listProductOrdersById')->with(['refund-order'])
+            ->willReturn([new MiraklProductOrder($order)]);
+        $stripeClient = $this->createMock(StripeClient::class);
+        $stripeClient->method('chargeRetrieve')->with(StripeMock::CHARGE_BASIC)->willReturn(Charge::constructFrom([
+            'id' => StripeMock::CHARGE_BASIC,
+            'currency' => 'eur',
+            'status' => 'succeeded',
+            'captured' => true,
+            'refunded' => false,
+            'amount' => 10000,
+            'amount_captured' => $captured,
+            'amount_refunded' => $alreadyRefunded,
+        ]));
+        $this->mockOrderTransfer($pendingRefund, StripeMock::CHARGE_BASIC);
+        $factory = new StripeRefundFactory(
+            $this->paymentMappingRepository,
+            $this->stripeTransferRepository,
+            $stripeClient,
+            $miraklClient
+        );
+        $factory->setLogger(new NullLogger());
+
+        $refund = $factory->createFromOrderRefund($pendingRefund);
+
+        $this->assertSame($expectedAmount, $refund->getAmount());
+        $this->assertSame(7400, $refund->getMiraklAmount());
+        $this->assertSame($expectedStatus, $refund->getStatus());
+
+        if ($expectedStatus === StripeRefund::REFUND_ON_HOLD) {
+            $this->assertStringContainsString('exceeds the remaining captured amount', $refund->getStatusReason());
+        }
+    }
+
+    public function refundTaxAmounts(): array
+    {
+        return [
+            'already gross refund' => ['TAX_EXCLUDED', 54.0, 10000, 0, 7400, StripeRefund::REFUND_PENDING],
+            'tax-inclusive order' => ['TAX_INCLUDED', 74.0, 10000, 0, 7400, StripeRefund::REFUND_PENDING],
+            'missing tax mode' => [null, 74.0, 10000, 0, 7400, StripeRefund::REFUND_PENDING],
+            'tax fits capture' => ['TAX_EXCLUDED', 74.0, 9400, 0, 9400, StripeRefund::REFUND_PENDING],
+            'Mirakl requests full capture' => ['TAX_EXCLUDED', 74.0, 7400, 0, 7400, StripeRefund::REFUND_PENDING],
+            'prior partial refund' => ['TAX_EXCLUDED', 74.0, 9400, 2000, 9400, StripeRefund::REFUND_ON_HOLD],
+            'capture below original request' => ['TAX_EXCLUDED', 74.0, 7000, 0, 9400, StripeRefund::REFUND_ON_HOLD],
+        ];
     }
 
     public function testRefundIsPutOnHoldWhenMiraklOrderDoesNotYetContainRefundTaxDetails(): void
@@ -351,11 +433,11 @@ class StripeRefundFactoryTest extends KernelTestCase
                 'PAYMENT_INTENT_STATUS_REQUIRES_CONFIRMATION',
                 'PAYMENT_INTENT_STATUS_REQUIRES_ACTION',
                 'PAYMENT_INTENT_STATUS_PROCESSING',
-                'PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE'
+                'PAYMENT_INTENT_STATUS_REQUIRES_CAPTURE', 'PAYMENT_INTENT_WITHOUT_CHARGE'
             ],
             StripeRefund::REFUND_PENDING => [
                 'CHARGE_BASIC', 'CHARGE_PAYMENT', 'CHARGE_STATUS_CAPTURED',
-                'PAYMENT_INTENT_BASIC', 'PAYMENT_INTENT_STATUS_SUCCEEDED'
+                'PAYMENT_INTENT_BASIC', 'PAYMENT_INTENT_STATUS_SUCCEEDED', 'PAYMENT_INTENT_WITH_CHARGE_ID'
             ],
             StripeRefund::REFUND_ABORTED => [
                 'CHARGE_STATUS_FAILED', 'CHARGE_REFUNDED', 'CHARGE_NOT_FOUND',

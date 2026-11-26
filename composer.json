@@ -20,8 +20,9 @@
         "nelmio/cors-bundle": "^2.6",
         "phpdocumentor/reflection-docblock": "^5.2",
         "stof/doctrine-extensions-bundle": "1.15.*",
-        "stripe/stripe-php": "^10.15",
+        "stripe/stripe-php": "23.1.0",
         "symfony/asset": "6.4.*",
+        "symfony/config": "6.4.*",
         "symfony/console": "6.4.*",
         "symfony/dependency-injection": "6.4.*",
         "symfony/doctrine-bridge": "6.4.*",
@@ -41,11 +42,10 @@
         "symfony/security-core": "6.4.*",
         "symfony/security-http": "6.4.*",
         "symfony/serializer": "6.4.*",
-        "symfony/type-info": "7.4.*",
         "symfony/twig-bundle": "6.4.*",
+        "symfony/type-info": "7.4.*",
         "symfony/validator": "6.4.*",
         "symfony/var-exporter": "6.4.*",
-        "symfony/config": "6.4.*",
         "symfony/yaml": "6.4.*"
     },
     "require-dev": {
