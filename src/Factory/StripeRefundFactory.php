@@ -105,9 +105,10 @@ class StripeRefundFactory implements LoggerAwareInterface
         try {
             $this->checkTransactionStatus($transactionId, $refund);
         } catch (InvalidRequestException $e) {
+            // Do not reuse the Stripe message: it is logged and persisted.
             return $this->abortRefund(
                 $refund,
-                $e->getMessage()
+                'Stripe rejected the request to retrieve the payment.'
             );
         } catch (InvalidArgumentException $e) {
             switch ($e->getCode()) {

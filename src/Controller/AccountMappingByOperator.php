@@ -9,6 +9,7 @@ use App\Service\StripeClient;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
+use Stripe\Exception\ApiErrorException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -71,7 +72,12 @@ class AccountMappingByOperator extends AbstractController implements LoggerAware
 
         $miraklShopId = $dto->getMiraklShopId();
         $stripeUserId = $dto->getStripeUserId();
-        $stripeAccount = $this->stripeClient->retrieveAccount($stripeUserId);
+        try {
+            $stripeAccount = $this->stripeClient->retrieveAccount($stripeUserId);
+        } catch (ApiErrorException) {
+            // Do not forward the Stripe error message to the caller.
+            return new Response('Cannot find the Stripe account corresponding to this stripe Id', Response::HTTP_BAD_REQUEST);
+        }
 
         // Stripe/Mirakl supports Express and Custom accounts. Standard accounts are
         // not supported by the connector and must not be accepted through the manual

@@ -4,10 +4,12 @@ namespace App\Controller;
 
 use App\Entity\PaymentMapping;
 use App\Entity\StripePayout;
+use App\Exception\WebhookProcessingException;
 use App\Message\AccountUpdateMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripePayoutRepository;
+use App\Service\ErrorContext;
 use App\Service\StripeClient;
 use OpenApi\Attributes as OA;
 use Psr\Log\LoggerAwareInterface;
@@ -212,9 +214,17 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                     $message = $this->handlePayoutFailedEvent($event);
                     break;
             }
-        } catch (\Exception $e) {
+        } catch (WebhookProcessingException $e) {
+            // Intentional failure: the message is controlled by this application and safe to return.
             $message = $e->getMessage();
-            $status = $e->getCode();
+            $status = $e->getHttpStatus();
+        } catch (\Throwable $e) {
+            // Never return upstream (Stripe, database, ...) error messages to the caller.
+            $this->logger->error('Could not process Stripe webhook event.', [
+                'eventType' => $eventType,
+            ] + ErrorContext::fromThrowable($e));
+            $message = 'Webhook processing failed.';
+            $status = Response::HTTP_INTERNAL_SERVER_ERROR;
         }
 
         return new Response($message, $status);
@@ -340,7 +350,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
                 // Non-2xx so Stripe redelivers: the existing mapping may still be rejected during
                 // Mirakl validation, after which this charge must be able to replace it.
-                throw new \Exception('Ignoring event: payment mapping already exists for this commercial order.', Response::HTTP_CONFLICT);
+                throw new WebhookProcessingException('Ignoring event: payment mapping already exists for this commercial order.', Response::HTTP_CONFLICT);
             }
 
             $message = 'Payment mapping created.';
@@ -397,7 +407,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
 
         $this->stripePayoutRepository->flush();
 
-        $this->logger->info(sprintf('Payout %s marked as failed: %s', $stripePayoutId, $statusReason));
+        $this->logger->info(sprintf('Payout %s marked as failed (code: %s).', $stripePayoutId, $failureCode));
 
         return 'Payout status updated to failed.';
     }
@@ -411,7 +421,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             if ('' === $charge->metadata[$this->metadataCommercialOrderId]) {
                 $message = sprintf('%s is empty in Charge metadata.', $this->metadataCommercialOrderId);
                 $this->logger->error($message);
-                throw new \Exception($message, Response::HTTP_BAD_REQUEST);
+                throw new WebhookProcessingException($message, Response::HTTP_BAD_REQUEST);
             }
             $metadataCommercialOrderId = $charge->metadata[$this->metadataCommercialOrderId];
 
@@ -432,7 +442,7 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 if ('' === $paymentIntent->metadata[$this->metadataCommercialOrderId]) {
                     $message = sprintf('%s is empty in PaymentIntent.', $this->metadataCommercialOrderId);
                     $this->logger->error($message);
-                    throw new \Exception($message, Response::HTTP_BAD_REQUEST);
+                    throw new WebhookProcessingException($message, Response::HTTP_BAD_REQUEST);
                 }
                 $metadataCommercialOrderId = $paymentIntent->metadata[$this->metadataCommercialOrderId];
 

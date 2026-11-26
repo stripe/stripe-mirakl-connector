@@ -121,6 +121,18 @@ class SellerOnboardingRefreshUrlTest extends WebTestCase
         $this->assertTrue($this->executeRequest('Retry')->isRedirect());
     }
 
+    public function testUpstreamFailureReturnsGenericErrorAndRestoresToken()
+    {
+        $this->mockAccountMapping(MiraklMock::SHOP_NEW, StripeMock::ACCOUNT_NOT_FOUND, 'Failing');
+        $response = $this->executeRequest('Failing');
+
+        $this->assertEquals(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
+        $this->assertEquals('Unable to refresh onboarding link.', $response->getContent());
+        $this->assertStringNotContainsString(StripeMock::ACCOUNT_NOT_FOUND, (string) $response->getContent());
+        // The token can be reused once the upstream failure is resolved.
+        $this->assertNotNull($this->accountMappingRepository->findOneByOnboardingToken('Failing'));
+    }
+
     public function testValidTokenSubmittedAccount()
     {
         $accountMapping = $this->mockAccountMapping(MiraklMock::SHOP_NEW, StripeMock::ACCOUNT_NEW, 'SubmittedAccount');

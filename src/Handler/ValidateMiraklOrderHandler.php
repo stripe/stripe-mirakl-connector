@@ -5,6 +5,7 @@ namespace App\Handler;
 use App\Entity\PaymentMapping;
 use App\Exception\InvalidArgumentException;
 use App\Message\ValidateMiraklOrderMessage;
+use App\Service\ErrorContext;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use App\Service\StripeAmount;
@@ -78,8 +79,7 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
             $this->logger->error('Could not retrieve Stripe Charge before Mirakl validation.', [
                 'commercial_id' => $commercialId,
                 'charge_id' => $paymentMapping->getStripeChargeId(),
-                'error' => $exception->getMessage(),
-            ]);
+            ] + ErrorContext::fromThrowable($exception));
 
             return false;
         }

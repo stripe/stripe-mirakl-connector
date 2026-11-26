@@ -206,9 +206,10 @@ class StripeTransferFactory implements LoggerAwareInterface
                     );
                 }
             } catch (InvalidRequestException $e) {
+                // Do not reuse the Stripe message: it is logged and persisted.
                 return $this->abortTransfer(
                     $transfer,
-                    $e->getMessage()
+                    'Stripe rejected the request to retrieve the source transaction.'
                 );
             } catch (InvalidArgumentException $e) {
                 switch ($e->getCode()) {

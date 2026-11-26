@@ -3,6 +3,8 @@
 ## Version 4.4.0
 - Upgrade Stripe PHP from v10 to 23.1.0. The connector continues to send Stripe API requests using version `2019-08-14` by default. Set `STRIPE_USE_LEGACY_API=false` to send connector requests using `2026-11-18.endive`. Test payment, refund, payout, and onboarding flows before upgrading.
 - Include refunded taxes in tax-excluded Stripe refunds and reconcile tax-split reversal shortfalls safely.
+- Stop logging KYC requirement payloads and raw Stripe/Mirakl/operator error messages and response bodies. Logs now only contain the exception class, Stripe error code/request ID and HTTP status. A Monolog processor additionally redacts Stripe links, tokens and secrets.
+- Return stable generic HTTP errors from the Stripe webhook endpoint (`500 Webhook processing failed.`), the onboarding refresh endpoint (`500 Unable to refresh onboarding link.`) and as a fallback for upstream errors (`502 Upstream service error.`) instead of exception messages.
 
 ## Version 4.3.9
 - Remove sensitive Stripe links from logs and make onboarding refresh tokens single-use with a 24-hour expiry.

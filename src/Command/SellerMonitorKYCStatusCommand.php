@@ -142,7 +142,6 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
     protected function execute(InputInterface $input, OutputInterface $output): ?int
     {
         $this->logger->info('starting');
-        echo 'process start';
 
         $stripeAccts = $this->stripeClient->retrieveAllAccounts();
 
@@ -187,13 +186,9 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
             }
         }
 
-        echo $this->mirakl_shop_kyc_disable;
-
         if ($this->mirakl_shop_kyc_disable && count($mirakl_update_shop_kyc_reqs) > 0) {
             $this->miraklClient->updateShopKycStatusWithReason($mirakl_update_shop_kyc_reqs);
         }
-
-        // print_r($kycRequiredAccountDets);
 
         if (count($kycRequiredAccountDets) > 0) {
             $email = (new TemplatedEmail())
@@ -208,7 +203,6 @@ class SellerMonitorKYCStatusCommand extends Command implements LoggerAwareInterf
         }
 
         $this->logger->info('job succeeded');
-        echo 'process end';
 
         return 0;
     }

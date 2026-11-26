@@ -150,6 +150,12 @@ services:
   json_log_formatter:
     class: Monolog\Formatter\JsonFormatter
 
+  # Scrubs secrets / personal data from every log record (see class docblock).
+  App\Monolog\Processor\SensitiveDataProcessor:
+    autowire: false
+    autoconfigure: false
+    tags: ["monolog.processor"]
+
   App\Command\SellerOnboardingCommand:
     calls:
         - setLogger: ['@monolog.logger.onboarding']

@@ -8,7 +8,7 @@
 		<p style="font-size: 14px; line-height: 1.5; text-align: left; mso-line-height-alt: 21px; margin: 25px 0px 0px;">Error detail:</p>
 		<p style="text-align: left; background-color: #f1f0f0; font-family: monospace; margin: 0;">{{ throwable.message }}</p>
 		{% if throwable.response %}
-			<p style="text-align: left; background-color: #f1f0f0; font-family: monospace; margin: 0;">{{ throwable.response.getContent(false) }}</p>
+			<p style="text-align: left; background-color: #f1f0f0; font-family: monospace; margin: 0;">HTTP status: {{ throwable.response.statusCode }}</p>
 		{% endif %}
 	{% endif %}
 	<p style="font-size: 14px; line-height: 1.5; text-align: center; mso-line-height-alt: 21px; margin: 0;"></p>

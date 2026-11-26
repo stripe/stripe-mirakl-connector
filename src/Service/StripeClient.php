@@ -125,7 +125,8 @@ class StripeClient
             $data = json_decode($payload, true);
             $jsonError = json_last_error();
             if (null === $data && JSON_ERROR_NONE !== $jsonError) {
-                throw new UnexpectedValueException("Invalid payload: {$payload} (json_last_error() was {$jsonError})");
+                // Do not embed the raw payload: it may contain personal data and must not reach logs.
+                throw new UnexpectedValueException("Invalid payload (json_last_error() was {$jsonError})");
             }
             $data = (array) $data;
 
