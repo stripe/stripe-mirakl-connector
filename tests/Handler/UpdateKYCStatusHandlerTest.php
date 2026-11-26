@@ -8,6 +8,8 @@ use App\Handler\UpdateKYCStatusHandler;
 use App\Message\AccountUpdateMessage;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Stripe\Account;
@@ -190,6 +192,40 @@ class UpdateKYCStatusHandlerTest extends TestCase
             'payoutEnabled' => true,
             'chargesEnabled' => false,
         ];
+    }
+
+    public function testKycRequirementsAreNotLogged()
+    {
+        $testHandler = new TestHandler();
+        $this->handler->setLogger(new Logger('test', [$testHandler]));
+
+        $stripeAccount = new Account('acct_invalid');
+        $stripeAccount->requirements = [
+            UpdateKYCStatusHandler::CURRENTLY_DUE => [],
+            UpdateKYCStatusHandler::PENDING_VERIFICATION => [],
+            UpdateKYCStatusHandler::DISABLED_REASON => '',
+            'errors' => [['code' => 'verification_failed', 'reason' => 'sensitive-kyc-detail']],
+            'past_due' => ['individual.id_number'],
+        ];
+        $stripeAccount->payouts_enabled = false;
+        $stripeAccount->charges_enabled = false;
+
+        $this->stripeClient->method('retrieveAccount')->willReturn($stripeAccount);
+
+        try {
+            ($this->handler)(new AccountUpdateMessage(2000, 'acct_invalid'));
+            $this->fail('Expected InvalidStripeAccountException');
+        } catch (InvalidStripeAccountException $e) {
+        }
+
+        $this->assertNotEmpty($testHandler->getRecords());
+        $logs = implode("\n", array_map(
+            static fn ($record) => $record->message.' '.json_encode($record->context),
+            $testHandler->getRecords()
+        ));
+        $this->assertStringNotContainsString('sensitive-kyc-detail', $logs);
+        $this->assertStringNotContainsString('individual.id_number', $logs);
+        $this->assertStringNotContainsString('requirements', $logs);
     }
 
     public function testGetHandledMessage()

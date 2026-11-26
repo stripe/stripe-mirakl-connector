@@ -7,6 +7,9 @@ use App\Tests\MiraklMockedHttpClient as MiraklMock;
 use App\Tests\StripeMockedHttpClient as StripeMock;
 use Hautelook\AliceBundle\PhpUnit\RecreateDatabaseTrait;
 use Monolog\Handler\StreamHandler;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
+use Monolog\Logger;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -108,6 +111,26 @@ class SellerOnboardingCommandTest extends KernelTestCase
         $this->executeCommand();
         $this->assertCount(1, $this->getAccountMappingsFromRepository());
         $this->assertNull(current($this->getAccountMappingsFromRepository())->getOnboardingToken());
+    }
+
+    public function testUpstreamErrorMessagesAreNotLogged()
+    {
+        $testHandler = new TestHandler();
+        $this->command->setLogger(new Logger('test', [$testHandler]));
+
+        $this->deleteAllAccountMappingsFromRepository();
+        $this->configService->setSellerOnboardingCheckpoint(MiraklMock::SHOP_DATE_1_MIRAKL_ERROR);
+        $this->executeCommand();
+
+        $this->assertTrue($testHandler->hasRecordThatContains('Could not add AccountLink to Mirakl Shop.', Level::Error));
+
+        $logs = implode("\n", array_map(
+            static fn ($record) => $record->message.' '.json_encode($record->context),
+            $testHandler->getRecords()
+        ));
+        // Mirakl response body must not reach the logs
+        $this->assertStringNotContainsString("can't be updated", $logs);
+        $this->assertStringNotContainsString('connect.stripe.com', $logs);
     }
 
     public function testExistingShopWithoutUrl()

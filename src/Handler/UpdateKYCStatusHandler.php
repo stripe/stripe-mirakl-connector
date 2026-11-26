@@ -43,7 +43,10 @@ class UpdateKYCStatusHandler implements LoggerAwareInterface
     public function __invoke(AccountUpdateMessage $message): void
     {
         $messagePayload = $message->getContent()['payload'];
-        $this->logger->info('Received Stripe `account.updated` webhook. Updating KYC status.', $messagePayload);
+        $this->logger->info('Received Stripe `account.updated` webhook. Updating KYC status.', [
+            'miraklShopId' => $messagePayload['miraklShopId'] ?? null,
+            'stripeAccountId' => $messagePayload['stripeUserId'] ?? null,
+        ]);
 
         $stripeAccount = $this->stripeClient->retrieveAccount($messagePayload['stripeUserId']);
 
@@ -84,8 +87,10 @@ class UpdateKYCStatusHandler implements LoggerAwareInterface
             return self::KYC_STATUS_APPROVED;
         }
 
+        // Never log the requirements payload: it contains KYC details about the seller.
         $this->logger->error(sprintf('Could not calculate KYC status for account %s', $stripeAccount->id), [
-            'requirements' => $requirements,
+            'payoutsEnabled' => (bool) $stripeAccount->payouts_enabled,
+            'chargesEnabled' => (bool) $stripeAccount->charges_enabled,
         ]);
 
         throw new InvalidStripeAccountException();

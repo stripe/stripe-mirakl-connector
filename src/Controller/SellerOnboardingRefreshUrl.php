@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\AccountMappingRepository;
+use App\Service\ErrorContext;
 use App\Service\SellerOnboardingService;
 use App\Service\StripeClient;
 use OpenApi\Attributes as OA;
@@ -76,6 +77,7 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
         responses: [
             new OA\Response(response: 302, description: 'Redirect to Stripe'),
             new OA\Response(response: 400, description: 'Bad request'),
+            new OA\Response(response: 500, description: 'Unable to refresh onboarding link'),
         ],
         tags: ['Internal (Stripe Only)']
     )]
@@ -108,8 +110,20 @@ class SellerOnboardingRefreshUrl extends AbstractController implements LoggerAwa
 
             $url = $this->sellerOnboardingService->addOnboardingLinkToShop($accountMapping->getMiraklShopId(), $accountMapping);
         } catch (\Throwable $e) {
-            $this->accountMappingRepository->restoreOnboardingToken($accountMapping, $token, $expiresAt);
-            throw $e;
+            try {
+                $this->accountMappingRepository->restoreOnboardingToken($accountMapping, $token, $expiresAt);
+            } catch (\Throwable $restoreError) {
+                $this->logger?->error('Could not restore onboarding token.', ErrorContext::fromThrowable($restoreError));
+            }
+
+            // Do not rethrow: upstream exceptions may contain URLs or other sensitive data,
+            // and would be rendered/logged by the framework. Logged at critical level to keep
+            // triggering the critical-error email, as the previously uncaught exception did.
+            $this->logger?->critical('Could not refresh onboarding link.', [
+                'stripeAccountId' => $accountMapping->getStripeAccountId(),
+            ] + ErrorContext::fromThrowable($e));
+
+            return new Response('Unable to refresh onboarding link.', Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
         return new RedirectResponse($url);
