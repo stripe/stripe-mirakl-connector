@@ -12,7 +12,7 @@ final class StripeHttpClient implements ClientInterface
     {
     }
 
-    public function request($method, $absUrl, $headers, $params, $hasFile): array
+    public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
     {
         $response = $this->client->request($method, $absUrl, $headers, $params, $hasFile);
 
