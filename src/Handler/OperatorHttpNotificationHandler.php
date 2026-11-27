@@ -50,11 +50,11 @@ class OperatorHttpNotificationHandler implements LoggerAwareInterface
         }
 
         // Will throw Symfony\Component\HttpClient\Exception\ClientException on error
-        $content = $response->getContent();
+        $response->getContent();
 
+        // The response body is not logged: it is controlled by a third party.
         $this->logger->info('Notification sent to operator', [
             'code' => $responseCode,
-            'response' => $content,
         ]);
     }
 

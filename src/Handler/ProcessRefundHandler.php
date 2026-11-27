@@ -5,6 +5,7 @@ namespace App\Handler;
 use App\Entity\StripeRefund;
 use App\Message\ProcessRefundMessage;
 use App\Repository\StripeRefundRepository;
+use App\Service\ErrorContext;
 use App\Service\MiraklClient;
 use App\Service\StripeClient;
 use App\Service\StripeAmount;
@@ -88,23 +89,23 @@ class ProcessRefundHandler implements LoggerAwareInterface
             $refund->setStatusReason(null);
         } catch (ApiErrorException $e) {
             $this->logger->error(
-                sprintf('Could  not create refund in Stripe: %s.', $e->getMessage()),
+                'Could not create refund in Stripe.',
                 [
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
-                ]
+                ] + ErrorContext::fromThrowable($e)
             );
 
             $refund->setStatus(StripeRefund::REFUND_FAILED);
             $refund->setStatusReason(substr($e->getMessage(), 0, 1024));
         } catch (TransportException $e) {
             $this->logger->error(
-                sprintf('Timeout processing refund: %s.', $e->getMessage()),
+                'Timeout processing refund.',
                 [
                     'stripeRefundId' => $refund->getStripeRefundId(),
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
-                ]
+                ] + ErrorContext::fromThrowable($e)
             );
 
             $refund->setStatus(StripeRefund::REFUND_FAILED);
@@ -112,11 +113,11 @@ class ProcessRefundHandler implements LoggerAwareInterface
         } catch (ClientException $e) {
             $message = $e->getResponse()->getContent(false);
             $this->logger->error(
-                sprintf('Could not validate refund in Mirakl: %s.', $message),
+                'Could not validate refund in Mirakl.',
                 [
                     'miraklRefundId' => $refund->getMiraklRefundId(),
                     'miraklOrderId' => $refund->getMiraklOrderId(),
-                ]
+                ] + ErrorContext::fromThrowable($e)
             );
 
             $refund->setStatus(StripeRefund::REFUND_FAILED);

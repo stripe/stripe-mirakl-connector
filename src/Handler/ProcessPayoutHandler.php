@@ -5,6 +5,7 @@ namespace App\Handler;
 use App\Entity\StripePayout;
 use App\Message\ProcessPayoutMessage;
 use App\Repository\StripePayoutRepository;
+use App\Service\ErrorContext;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -59,12 +60,11 @@ class ProcessPayoutHandler implements LoggerAwareInterface
             $payout->setStatusReason(null);
         } catch (ApiErrorException $e) {
             $this->logger->error(
-                sprintf('Could not create Stripe Payout: %s.', $e->getMessage()),
+                'Could not create Stripe Payout.',
                 [
                     'miraklShopId' => $accountMapping->getMiraklShopId(),
                     'stripePayoutId' => $payout->getMiraklInvoiceId(),
-                    'stripeErrorCode' => $e->getStripeCode(),
-                ]
+                ] + ErrorContext::fromThrowable($e)
             );
 
             $payout->setStatus(StripePayout::PAYOUT_FAILED);

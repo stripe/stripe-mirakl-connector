@@ -1290,4 +1290,35 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
     }
 
+    /**
+     * Upstream (Stripe) errors raised while handling an event must never be echoed back:
+     * the response is a stable generic 500 so that Stripe redelivers the event.
+     */
+    public function testUpstreamErrorReturnsGenericResponse(): void
+    {
+        $chargeId = StripeMock::CHARGE_BASIC;
+        $paymentIntentId = StripeMock::PAYMENT_INTENT_NOT_FOUND;
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 100,
+                    "payment_intent": "$paymentIntentId"
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertEquals('Webhook processing failed.', $response->getContent());
+        $this->assertEquals(Response::HTTP_INTERNAL_SERVER_ERROR, $response->getStatusCode());
+        $this->assertStringNotContainsString($paymentIntentId, (string) $response->getContent());
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($chargeId));
+    }
 }

@@ -6,6 +6,7 @@ use App\Entity\StripeTransfer;
 use App\Factory\StripeTransferFactory;
 use App\Message\ProcessTransferMessage;
 use App\Repository\StripeTransferRepository;
+use App\Service\ErrorContext;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -113,11 +114,9 @@ class ProcessTransferHandler implements LoggerAwareInterface
                 $transferCreated = true;
             }
         } catch (ApiErrorException $e) {
-            $message = sprintf('Could not create Stripe Transfer: %s.', $e->getMessage());
-            $this->logger->error($message, [
+            $this->logger->error('Could not create Stripe Transfer.', [
                 'miraklId' => $transfer->getMiraklId(),
-                'stripeErrorCode' => $e->getStripeCode(),
-            ]);
+            ] + ErrorContext::fromThrowable($e));
 
             $transfer->setStatus(StripeTransfer::TRANSFER_FAILED);
             $transfer->setStatusReason(substr($e->getMessage(), 0, 1024));

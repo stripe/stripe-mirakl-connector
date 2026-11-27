@@ -5,6 +5,7 @@ namespace App\Handler;
 use App\Entity\PaymentMapping;
 use App\Message\CancelPendingPaymentMessage;
 use App\Repository\PaymentMappingRepository;
+use App\Service\ErrorContext;
 use App\Service\StripeClient;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
@@ -46,10 +47,9 @@ class CancelPendingPaymentHandler implements LoggerAwareInterface
             $this->stripeClient->cancelPayment($paymentMapping->getStripeChargeId());
             $paymentMapping->cancel();
         } catch (ApiErrorException $e) {
-            $this->logger->error(sprintf('Could not cancel Stripe Charge: %s.', $e->getMessage()), [
+            $this->logger->error('Could not cancel Stripe Charge.', [
                 'chargeId' => $paymentMapping->getStripeChargeId(),
-                'stripeErrorCode' => $e->getStripeCode(),
-            ]);
+            ] + ErrorContext::fromThrowable($e));
 
             $paymentMapping->setStatus(PaymentMapping::CANCEL_FAILED);
             $paymentMapping->setStatusReason(substr($e->getMessage(), 0, 1024));

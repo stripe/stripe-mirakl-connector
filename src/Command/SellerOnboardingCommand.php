@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Repository\AccountMappingRepository;
 use App\Service\ConfigService;
+use App\Service\ErrorContext;
 use App\Service\MiraklClient;
 use App\Service\SellerOnboardingService;
 use Psr\Log\LoggerAwareInterface;
@@ -102,8 +103,7 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                     $this->logger->error('Could not renew onboarding link.', [
                         'miraklShopId' => $shopId,
                         'stripeAccountId' => $mapping->getStripeAccountId(),
-                        'error' => $e->getMessage(),
-                    ]);
+                    ] + ErrorContext::fromThrowable($e));
                 }
             }
         }
@@ -133,10 +133,9 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
             try {
                 $accountMapping = $this->sellerOnboardingService->getAccountMappingFromShop($shop);
             } catch (ApiErrorException $e) {
-                $this->logger->error(sprintf('Could not create Stripe Account: %s.', $e->getMessage()), [
+                $this->logger->error('Could not create Stripe Account.', [
                     'shopId' => $shopId,
-                    'stripeErrorCode' => $e->getStripeCode(),
-                ]);
+                ] + ErrorContext::fromThrowable($e));
                 continue;
             }
 
@@ -161,17 +160,15 @@ class SellerOnboardingCommand extends Command implements LoggerAwareInterface
                     'stripeAccountId' => $accountMapping->getStripeAccountId(),
                 ]);
             } catch (ClientException $e) {
-                $message = $e->getResponse()->getContent(false);
-                $this->logger->error(sprintf('Could not add AccountLink to Mirakl Shop: %s.', $message), [
+                $this->logger->error('Could not add AccountLink to Mirakl Shop.', [
                     'shopId' => $shopId,
                     'accountId' => $accountMapping->getStripeAccountId(),
-                ]);
+                ] + ErrorContext::fromThrowable($e));
             } catch (ApiErrorException $e) {
-                $this->logger->error(sprintf('Could not create Stripe AccountLink: %s.', $e->getMessage()), [
+                $this->logger->error('Could not create Stripe AccountLink.', [
                     'shopId' => $shopId,
                     'accountId' => $accountMapping->getStripeAccountId(),
-                    'stripeErrorCode' => $e->getStripeCode(),
-                ]);
+                ] + ErrorContext::fromThrowable($e));
             }
         }
 
