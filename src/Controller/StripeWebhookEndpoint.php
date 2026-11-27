@@ -360,11 +360,15 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
                 return 'Ignoring event: charge is already mapped to a different commercial order.';
             }
             $previousStatus = $paymentMapping->getStatus();
+            $previousStatusReason = $paymentMapping->getStatusReason();
             $eventStatus = $status;
             // Stripe can deliver charge events out of order. A stale event must not
-            // reopen an already captured payment for capture or validation rejection.
-            // A fully refunded charge is the one legitimate transition out of CAPTURED.
-            if (
+            // reopen an already captured payment or a fully refunded payment.
+            if (PaymentMapping::CANCELED === $previousStatus
+                && 'Stripe Charge fully refunded.' === $previousStatusReason
+            ) {
+                $status = PaymentMapping::CANCELED;
+            } elseif (
                 PaymentMapping::CAPTURED === $previousStatus
                 && PaymentMapping::CANCELED !== $status
             ) {
@@ -374,7 +378,9 @@ class StripeWebhookEndpoint extends AbstractController implements LoggerAwareInt
             $paymentMapping->setStripeAmount($charge->amount);
             $paymentMapping->setStripeCurrency($charge->currency ?? $paymentMapping->getStripeCurrency());
             $paymentMapping->setStatus($status);
-            if (PaymentMapping::CANCELED === $status) {
+            if (PaymentMapping::CANCELED === $status
+                && 'Stripe Charge fully refunded.' !== $previousStatusReason
+            ) {
                 $paymentMapping->setStatusReason('Stripe Charge fully refunded.');
             } elseif (
                 PaymentMapping::CAPTURED === $status

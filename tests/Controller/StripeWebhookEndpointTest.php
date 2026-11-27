@@ -1188,6 +1188,38 @@ class StripeWebhookEndpointTest extends WebTestCase
         $this->assertSame($reason, $mapping->getStatusReason());
     }
 
+    public function testStaleCapturedEventDoesNotReopenFullyRefundedMapping(): void
+    {
+        $chargeId = 'ch_fully_refunded_stale_event';
+        $orderId = MiraklMock::ORDER_BASIC;
+        $mapping = $this->mockPaymentMapping($orderId, $chargeId, true);
+        $mapping->setStatus(PaymentMapping::CANCELED);
+        $mapping->setStatusReason('Stripe Charge fully refunded.');
+        $this->paymentMappingRepository->flush();
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 200,
+                    "amount_refunded": 0
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame('Payment mapping updated.', $response->getContent());
+        $this->assertSame(PaymentMapping::CANCELED, $mapping->getStatus());
+        $this->assertSame('Stripe Charge fully refunded.', $mapping->getStatusReason());
+    }
+
     /**
      * When the same charge is seen again (idempotent re-delivery), the existing
      * mapping must be updated normally — the duplicate guard must not fire because
