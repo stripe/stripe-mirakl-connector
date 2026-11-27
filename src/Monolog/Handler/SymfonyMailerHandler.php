@@ -28,7 +28,7 @@ class SymfonyMailerHandler extends MailHandler
      */
     public function __construct(MailerInterface $mailer, EmailFactory $messageFactory, $level = Logger::ERROR, bool $bubble = true)
     {
-        parent::__construct($level = Logger::DEBUG, (bool) $bubble);
+        parent::__construct($level, $bubble);
         $this->mailer = $mailer;
         $this->messageFactory = $messageFactory;
     }

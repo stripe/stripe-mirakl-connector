@@ -52,9 +52,9 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
         $this->handler->setLogger(new NullLogger());
     }
 
-    private function executeHandler($stripePayoutId)
+    private function executeHandler($stripePayoutId, ?int $attempt = null)
     {
-        ($this->handler)(new ProcessPayoutMessage($stripePayoutId));
+        ($this->handler)(new ProcessPayoutMessage($stripePayoutId, $attempt));
     }
 
     private function mockPayout($accountId = StripeMock::ACCOUNT_BASIC)
@@ -86,6 +86,29 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
 
         $this->assertEquals(StripePayout::PAYOUT_CREATED, $payout->getStatus());
         $this->assertEquals(StripeMock::PAYOUT_BASIC, $payout->getPayoutId());
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(
+            sprintf('mirakl-payout-%s-attempt-%d', $payout->getId(), $payout->getStripeRequestAttempt()),
+            $stripeMock->getLastIdempotencyKey()
+        );
+        $payoutRequestCount = $stripeMock->getRequestCount('payouts');
+        $this->executeHandler($payout->getId());
+        $this->assertSame($payoutRequestCount, $stripeMock->getRequestCount('payouts'));
+    }
+
+    public function testStalePayoutAttemptIsIgnored(): void
+    {
+        $payout = $this->mockPayout();
+        $payout->startNewStripeRequestAttempt();
+        $this->stripePayoutRepository->flush();
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $payoutRequestCount = $stripeMock->getRequestCount('payouts');
+
+        $this->executeHandler($payout->getId(), 0);
+
+        $this->assertSame(StripePayout::PAYOUT_PENDING, $payout->getStatus());
+        $this->assertSame($payoutRequestCount, $stripeMock->getRequestCount('payouts'));
     }
 
     public function testPayoutWithStripeError()
@@ -114,6 +137,23 @@ class ProcessPayoutsHandlerTest extends KernelTestCase
                 ]
             ]
         ));
+    }
+
+    public function testPayoutConnectionFailureReusesSameAttemptKey(): void
+    {
+        $payout = $this->mockPayout(StripeMock::ACCOUNT_PAYIN_DISABLED);
+
+        $this->executeHandler($payout->getId(), 0);
+        $payout->setStatus(StripePayout::PAYOUT_PENDING);
+        $this->stripePayoutRepository->flush();
+        $this->executeHandler($payout->getId(), 0);
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(0, $payout->getStripeRequestAttempt());
+        $this->assertSame(
+            sprintf('mirakl-payout-%s-attempt-0', $payout->getId()),
+            $stripeMock->getLastIdempotencyKey()
+        );
     }
 
     private function hasNotification($class, $content): bool

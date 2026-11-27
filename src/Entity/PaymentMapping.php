@@ -37,6 +37,9 @@ class PaymentMapping
     #[Column(type: 'string', length: 1024, nullable: true)]
     private ?string $statusReason = null;
 
+    #[Column(type: 'integer', options: ['default' => 0])]
+    private int $stripeRequestAttempt = 0;
+
     #[Column(type: 'integer', nullable: true)]
     private ?int $stripeAmount = null;
 
@@ -125,6 +128,18 @@ class PaymentMapping
     public function setStatusReason(?string $statusReason): self
     {
         $this->statusReason = $statusReason;
+
+        return $this;
+    }
+
+    public function getStripeRequestAttempt(): int
+    {
+        return $this->stripeRequestAttempt;
+    }
+
+    public function startNewStripeRequestAttempt(): self
+    {
+        ++$this->stripeRequestAttempt;
 
         return $this;
     }

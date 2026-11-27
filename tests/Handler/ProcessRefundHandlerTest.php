@@ -60,9 +60,9 @@ class ProcessRefundHandlerTest extends KernelTestCase
         $this->handler->setLogger(new NullLogger());
     }
 
-    private function executeHandler($stripeRefundId)
+    private function executeHandler($stripeRefundId, ?int $attempt = null)
     {
-        ($this->handler)(new ProcessRefundMessage($stripeRefundId));
+        ($this->handler)(new ProcessRefundMessage($stripeRefundId, $attempt));
     }
 
     private function mockRefund($type, $refundId, $transactionId)
@@ -103,6 +103,33 @@ class ProcessRefundHandlerTest extends KernelTestCase
         $this->assertEquals(StripeRefund::REFUND_CREATED, $refund->getStatus());
         $this->assertEquals(StripeMock::REFUND_BASIC, $refund->getStripeRefundId());
         $this->assertNotNull($refund->getMiraklValidationTime());
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(
+            sprintf('mirakl-refund-%s-attempt-%d', $refund->getId(), $refund->getStripeRequestAttempt()),
+            $stripeMock->getLastIdempotencyKey()
+        );
+        $refundRequestCount = $stripeMock->getRequestCount('refunds');
+        $this->executeHandler($refund->getId());
+        $this->assertSame($refundRequestCount, $stripeMock->getRequestCount('refunds'));
+    }
+
+    public function testStaleRefundAttemptIsIgnored(): void
+    {
+        $refund = $this->mockRefund(
+            StripeRefund::REFUND_PRODUCT_ORDER,
+            MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
+            StripeMock::CHARGE_BASIC
+        );
+        $refund->startNewStripeRequestAttempt();
+        $this->stripeRefundRepository->flush();
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $refundRequestCount = $stripeMock->getRequestCount('refunds');
+
+        $this->executeHandler($refund->getId(), 0);
+
+        $this->assertSame(StripeRefund::REFUND_PENDING, $refund->getStatus());
+        $this->assertSame($refundRequestCount, $stripeMock->getRequestCount('refunds'));
     }
 
     public function testZeroDecimalRefundUsesWholeUnitsForStripeAndMirakl(): void
@@ -159,6 +186,27 @@ class ProcessRefundHandlerTest extends KernelTestCase
                 ]
             ]
         ));
+    }
+
+    public function testRefundConnectionFailureReusesSameAttemptKey(): void
+    {
+        $refund = $this->mockRefund(
+            StripeRefund::REFUND_PRODUCT_ORDER,
+            MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
+            StripeMock::CHARGE_REFUNDED
+        );
+
+        $this->executeHandler($refund->getId(), 0);
+        $refund->setStatus(StripeRefund::REFUND_PENDING);
+        $this->stripeRefundRepository->flush();
+        $this->executeHandler($refund->getId(), 0);
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(0, $refund->getStripeRequestAttempt());
+        $this->assertSame(
+            sprintf('mirakl-refund-%s-attempt-0', $refund->getId()),
+            $stripeMock->getLastIdempotencyKey()
+        );
     }
 
     public function testProductRefundWithMiraklError()

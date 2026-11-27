@@ -54,9 +54,9 @@ class ProcessTransferHandlerTest extends KernelTestCase
         $this->handler->setLogger(new NullLogger());
     }
 
-    private function executeHandler($stripeTransferId)
+    private function executeHandler($stripeTransferId, ?int $attempt = null)
     {
-        ($this->handler)(new ProcessTransferMessage($stripeTransferId));
+        ($this->handler)(new ProcessTransferMessage($stripeTransferId, $attempt));
     }
 
     private function mockTransfer($type, $transactionId = null, $accountId = StripeMock::ACCOUNT_BASIC)
@@ -90,6 +90,39 @@ class ProcessTransferHandlerTest extends KernelTestCase
 
         $this->assertEquals(StripeTransfer::TRANSFER_CREATED, $transfer->getStatus());
         $this->assertEquals(StripeMock::TRANSFER_BASIC, $transfer->getTransferId());
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(
+            sprintf('mirakl-transfer-%s-attempt-%d', $transfer->getId(), $transfer->getStripeRequestAttempt()),
+            $stripeMock->getLastIdempotencyKey()
+        );
+        $transferRequestCount = $stripeMock->getRequestCount('transfers');
+        $this->executeHandler($transfer->getId());
+        $this->assertSame($transferRequestCount, $stripeMock->getRequestCount('transfers'));
+    }
+
+    public function testStaleTransferAttemptIsIgnored(): void
+    {
+        $transfer = $this->mockTransfer(StripeTransfer::TRANSFER_PRODUCT_ORDER);
+        $transfer->startNewStripeRequestAttempt();
+        $this->stripeTransferRepository->flush();
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $transferRequestCount = $stripeMock->getRequestCount('transfers');
+
+        $this->executeHandler($transfer->getId(), 0);
+
+        $this->assertSame(StripeTransfer::TRANSFER_PENDING, $transfer->getStatus());
+        $this->assertSame($transferRequestCount, $stripeMock->getRequestCount('transfers'));
+    }
+
+    public function testMessageForMissingTransferIsIgnored(): void
+    {
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $transferRequestCount = $stripeMock->getRequestCount('transfers');
+
+        $this->executeHandler(PHP_INT_MAX);
+
+        $this->assertSame($transferRequestCount, $stripeMock->getRequestCount('transfers'));
     }
 
     public function testDuplicateMessageForCreatedTransferIsIgnored(): void
@@ -155,6 +188,26 @@ class ProcessTransferHandlerTest extends KernelTestCase
                 ]
             ]
         ));
+    }
+
+    public function testTransferConnectionFailureReusesSameAttemptKey(): void
+    {
+        $transfer = $this->mockTransfer(
+            StripeTransfer::TRANSFER_PRODUCT_ORDER,
+            StripeMock::CHARGE_WITH_TRANSFER
+        );
+
+        $this->executeHandler($transfer->getId(), 0);
+        $transfer->setStatus(StripeTransfer::TRANSFER_PENDING);
+        $this->stripeTransferRepository->flush();
+        $this->executeHandler($transfer->getId(), 0);
+
+        $stripeMock = static::getContainer()->get(StripeMock::class);
+        $this->assertSame(0, $transfer->getStripeRequestAttempt());
+        $this->assertSame(
+            sprintf('mirakl-transfer-%s-attempt-0', $transfer->getId()),
+            $stripeMock->getLastIdempotencyKey()
+        );
     }
 
     public function testServiceOrderTransfer()

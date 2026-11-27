@@ -9,13 +9,21 @@ class ProcessPayoutMessage
      */
     private $stripePayoutId;
 
-    public function __construct(int $stripePayoutId)
+    private ?int $attempt = null;
+
+    public function __construct(int $stripePayoutId, ?int $attempt = null)
     {
         $this->stripePayoutId = $stripePayoutId;
+        $this->attempt = $attempt;
     }
 
     public function getStripePayoutId(): int
     {
         return $this->stripePayoutId;
+    }
+
+    public function getAttempt(): ?int
+    {
+        return $this->attempt;
     }
 }

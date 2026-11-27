@@ -14,7 +14,7 @@ final class StripeHttpClient implements ClientInterface
 
     public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
     {
-        $response = $this->client->request($method, $absUrl, $headers, $params, $hasFile, $apiMode, $maxNetworkRetries);
+        $response = $this->client->request($method, $absUrl, $headers, $params, $hasFile);
 
         // The Stripe SDK emits this advisory as a PHP warning before processing the response.
         unset($response[2]['stripe-notice']);

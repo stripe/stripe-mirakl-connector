@@ -104,7 +104,11 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                 'mirakl_currency' => $miraklCurrency,
             ]);
 
-            $this->markPaymentRejected($paymentMapping, 'Stripe and Mirakl currencies differ.');
+            $this->markPaymentRejected(
+                $paymentMapping,
+                'Stripe and Mirakl currencies differ.',
+                (bool) ($charge->captured ?? false)
+            );
 
             return false;
         }
@@ -113,7 +117,11 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         foreach ($orders as $order) {
             $orderCurrency = strtolower((string) $order->getCurrency());
             if ($orderCurrency !== $miraklCurrency) {
-                $this->markPaymentRejected($paymentMapping, 'Mirakl pending debits have mixed currencies.');
+                $this->markPaymentRejected(
+                    $paymentMapping,
+                    'Mirakl pending debits have mixed currencies.',
+                    (bool) ($charge->captured ?? false)
+                );
                 return false;
             }
             try {
@@ -127,7 +135,11 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                     'commercial_id' => $commercialId,
                     'error' => $e->getMessage(),
                 ]);
-                $this->markPaymentRejected($paymentMapping, $e->getMessage());
+                $this->markPaymentRejected(
+                    $paymentMapping,
+                    $e->getMessage(),
+                    (bool) ($charge->captured ?? false)
+                );
 
                 return false;
             }
@@ -157,7 +169,11 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
                 'disputed' => $disputed,
             ]);
 
-            $this->markPaymentRejected($paymentMapping, 'Stripe payment is not sufficient or usable.');
+            $this->markPaymentRejected(
+                $paymentMapping,
+                'Stripe payment is not sufficient or usable.',
+                (bool) ($charge->captured ?? false)
+            );
 
             return false;
         }
@@ -169,8 +185,20 @@ class ValidateMiraklOrderHandler implements LoggerAwareInterface
         return true;
     }
 
-    private function markPaymentRejected(PaymentMapping $paymentMapping, string $reason): void
+    private function markPaymentRejected(PaymentMapping $paymentMapping, string $reason, bool $chargeCaptured): void
     {
+        // A captured charge has already moved money. Keep it mapped and visible to
+        // subsequent Stripe events so refunds and disputes can still be processed.
+        // The rejection reason is useful for diagnosis, but must not make the
+        // mapping eligible for replacement or cause the webhook to ignore it.
+        if ($chargeCaptured || PaymentMapping::CAPTURED === $paymentMapping->getStatus()) {
+            $paymentMapping->setStatus(PaymentMapping::CAPTURED);
+            $paymentMapping->setStatusReason(PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' '.$reason);
+            $this->persistChanges($paymentMapping);
+
+            return;
+        }
+
         $paymentMapping->setStatus(PaymentMapping::CANCELED);
         $paymentMapping->setStatusReason(PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' '.$reason);
         $this->persistChanges($paymentMapping);

@@ -28,6 +28,13 @@ class SymfonyMailerHandlerTest extends TestCase
         $this->symfonyMailerHandler = new SymfonyMailerHandler($this->mailer, $this->emailFactory);
     }
 
+    public function testConfiguredLogLevelIsPassedToParentHandler(): void
+    {
+        $handler = new SymfonyMailerHandler($this->mailer, $this->emailFactory, Level::Warning);
+
+        $this->assertSame(Level::Warning, $handler->getLevel());
+    }
+
     public function testCreateMessage()
     {
         $logRecord = new LogRecord(

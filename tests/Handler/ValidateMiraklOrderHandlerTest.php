@@ -184,8 +184,8 @@ class ValidateMiraklOrderHandlerTest extends TestCase
 
         $this->executeHandler($orders, ['invalid' => $invalidMapping, 'valid' => $validMapping]);
 
-        $this->assertSame(PaymentMapping::CANCELED, $invalidMapping->getStatus());
-        $this->assertSame(PaymentMapping::CANCELED, $managedInvalid->getStatus());
+        $this->assertSame(PaymentMapping::CAPTURED, $invalidMapping->getStatus());
+        $this->assertSame(PaymentMapping::CAPTURED, $managedInvalid->getStatus());
         $this->assertSame(60, $managedInvalid->getStripeAmount());
         $this->assertSame('jpy', $managedInvalid->getStripeCurrency());
         $this->assertSame(PaymentMapping::TO_CAPTURE, $validMapping->getStatus());
@@ -235,7 +235,7 @@ class ValidateMiraklOrderHandlerTest extends TestCase
 
         $this->executeHandler($orders, ['Order_JPY' => $paymentMapping]);
 
-        $this->assertSame(PaymentMapping::CANCELED, $paymentMapping->getStatus());
+        $this->assertSame(PaymentMapping::CAPTURED, $paymentMapping->getStatus());
         $this->assertStringContainsString('pending debit amount must be positive', $paymentMapping->getStatusReason());
     }
 
@@ -367,6 +367,90 @@ class ValidateMiraklOrderHandlerTest extends TestCase
         $this->assertStringStartsWith(
             PaymentMapping::INVALID_PAYMENT_REASON_PREFIX,
             (string) $managed->getStatusReason()
+        );
+    }
+
+    public function testValidationRejectionDoesNotDemoteCapturedMapping()
+    {
+        $this->charge = Charge::constructFrom([
+            'id' => 'ch_captured_wrong_currency',
+            'amount' => 10000,
+            'amount_refunded' => 0,
+            'currency' => 'usd',
+            'status' => 'succeeded',
+            'captured' => true,
+            'disputed' => false,
+        ]);
+        $orders = [
+            'Order_CAPTURED' => [
+                'Order_CAPTURED-A' => new MiraklProductPendingDebit([
+                    'amount' => '100.00',
+                    'currency_iso_code' => 'EUR',
+                    'order_id' => 'Order_CAPTURED-A',
+                    'customer_id' => 'Customer_id_001',
+                ]),
+            ],
+        ];
+        $detached = (new PaymentMapping())
+            ->setStripeChargeId('ch_captured_wrong_currency')
+            ->setStatus(PaymentMapping::CAPTURED)
+            ->setMiraklCommercialOrderId('Order_CAPTURED');
+        $managed = (new PaymentMapping())
+            ->setStripeChargeId('ch_captured_wrong_currency')
+            ->setStatus(PaymentMapping::CAPTURED)
+            ->setMiraklCommercialOrderId('Order_CAPTURED');
+
+        $this->paymentMappingRepository
+            ->method('findOneByStripeChargeId')
+            ->with('ch_captured_wrong_currency')
+            ->willReturn($managed);
+        $this->paymentMappingRepository->expects($this->once())->method('flush');
+        $this->miraklClient->expects($this->never())->method('validateProductPendingDebits');
+
+        $this->executeHandler($orders, ['Order_CAPTURED' => $detached]);
+
+        $this->assertSame(PaymentMapping::CAPTURED, $detached->getStatus());
+        $this->assertSame(PaymentMapping::CAPTURED, $managed->getStatus());
+        $this->assertStringStartsWith(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX,
+            (string) $managed->getStatusReason()
+        );
+    }
+
+    public function testValidationReconcilesStaleMappingWhenStripeChargeIsCaptured(): void
+    {
+        $this->charge = Charge::constructFrom([
+            'id' => 'ch_captured_stale_mapping',
+            'amount' => 10000,
+            'amount_refunded' => 0,
+            'currency' => 'usd',
+            'status' => 'succeeded',
+            'captured' => true,
+            'disputed' => false,
+        ]);
+        $orders = [
+            'Order_STALE' => [
+                'Order_STALE-A' => new MiraklProductPendingDebit([
+                    'amount' => '100.00',
+                    'currency_iso_code' => 'EUR',
+                    'order_id' => 'Order_STALE-A',
+                    'customer_id' => 'Customer_id_001',
+                ]),
+            ],
+        ];
+        $mapping = (new PaymentMapping())
+            ->setStripeChargeId('ch_captured_stale_mapping')
+            ->setStatus(PaymentMapping::TO_CAPTURE)
+            ->setMiraklCommercialOrderId('Order_STALE');
+        $this->paymentMappingRepository->method('findOneByStripeChargeId')->willReturn(null);
+        $this->miraklClient->expects($this->never())->method('validateProductPendingDebits');
+
+        $this->executeHandler($orders, ['Order_STALE' => $mapping]);
+
+        $this->assertSame(PaymentMapping::CAPTURED, $mapping->getStatus());
+        $this->assertStringStartsWith(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX,
+            (string) $mapping->getStatusReason()
         );
     }
 

@@ -39,8 +39,30 @@ class ProcessPayoutHandler implements LoggerAwareInterface
         $payout = $this->stripePayoutRepository->findOneBy([
             'id' => $message->getStripePayoutId(),
         ]);
-        assert(null !== $payout && null !== $payout->getAccountMapping());
-        assert(StripePayout::PAYOUT_CREATED !== $payout->getStatus());
+        if (
+            null === $payout
+            || StripePayout::PAYOUT_PENDING !== $payout->getStatus()
+            || null === $payout->getAccountMapping()
+            || (
+                null !== $message->getAttempt()
+                && $message->getAttempt() !== $payout->getStripeRequestAttempt()
+            )
+        ) {
+            $this->logger->info('Ignoring stale or incomplete payout message.', [
+                'stripe_payout_id' => $message->getStripePayoutId(),
+                'status' => $payout?->getStatus(),
+            ]);
+
+            return;
+        }
+
+        if (null !== $payout->getPayoutId()) {
+            $payout->setStatus(StripePayout::PAYOUT_CREATED);
+            $payout->setStatusReason(null);
+            $this->stripePayoutRepository->flush();
+
+            return;
+        }
 
         $accountMapping = $payout->getAccountMapping();
         try {
@@ -51,7 +73,12 @@ class ProcessPayoutHandler implements LoggerAwareInterface
                 [
                     'miraklShopId' => $accountMapping->getMiraklShopId(),
                     'invoiceId' => $payout->getMiraklInvoiceId(),
-                ]
+                ],
+                sprintf(
+                    'mirakl-payout-%s-attempt-%d',
+                    $payout->getId(),
+                    $payout->getStripeRequestAttempt()
+                )
             );
 
             $payout->setPayoutId($response->id);
@@ -69,6 +96,9 @@ class ProcessPayoutHandler implements LoggerAwareInterface
 
             $payout->setStatus(StripePayout::PAYOUT_FAILED);
             $payout->setStatusReason(substr($e->getMessage(), 0, 1024));
+            if (!$this->stripeClient->isAmbiguousStripeFailure($e)) {
+                $payout->startNewStripeRequestAttempt();
+            }
         }
 
         $this->stripePayoutRepository->flush();

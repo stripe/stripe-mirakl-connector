@@ -39,20 +39,54 @@ class CapturePendingPaymentHandler implements LoggerAwareInterface
         $paymentMapping = $this->paymentMappingRepository->findOneBy([
             'id' => $message->getPaymentMappingId(),
         ]);
-        assert(null !== $paymentMapping);
-        assert(in_array($paymentMapping->getStatus(), [PaymentMapping::TO_CAPTURE, PaymentMapping::CAPTURE_FAILED, PaymentMapping::CANCEL_FAILED], true));
+        if (
+            null === $paymentMapping
+            || !in_array($paymentMapping->getStatus(), [PaymentMapping::TO_CAPTURE, PaymentMapping::CAPTURE_FAILED, PaymentMapping::CANCEL_FAILED], true)
+            || (
+                null !== $message->getAttempt()
+                && $message->getAttempt() !== $paymentMapping->getStripeRequestAttempt()
+            )
+        ) {
+            $this->logger->info('Ignoring stale payment capture message.', [
+                'payment_mapping_id' => $message->getPaymentMappingId(),
+                'status' => $paymentMapping?->getStatus(),
+            ]);
+
+            return;
+        }
 
         try {
             $stripeChargeId = $paymentMapping->getStripeChargeId();
             if (str_starts_with($stripeChargeId, 'pi_')) {
-                $this->stripeClient->capturePayment($stripeChargeId, $message->getAmount());
-                $paymentMapping->capture();
+                $paymentIntent = $this->stripeClient->paymentIntentRetrieve($stripeChargeId);
+                if ('succeeded' === $paymentIntent->status) {
+                    $paymentMapping->capture();
+                } else {
+                    $this->stripeClient->capturePayment(
+                        $stripeChargeId,
+                        $message->getAmount(),
+                        sprintf(
+                            'mirakl-payment-capture-%s-attempt-%d',
+                            $paymentMapping->getId(),
+                            $paymentMapping->getStripeRequestAttempt()
+                        )
+                    );
+                    $paymentMapping->capture();
+                }
             } else {
                 $charge = $this->stripeClient->chargeRetrieve($stripeChargeId);
                 if ($charge->captured) {
                     $paymentMapping->capture();
                 } else {
-                    $this->stripeClient->capturePayment($stripeChargeId, $message->getAmount());
+                    $this->stripeClient->capturePayment(
+                        $stripeChargeId,
+                        $message->getAmount(),
+                        sprintf(
+                            'mirakl-payment-capture-%s-attempt-%d',
+                            $paymentMapping->getId(),
+                            $paymentMapping->getStripeRequestAttempt()
+                        )
+                    );
                     $paymentMapping->capture();
                 }
             }
@@ -65,6 +99,9 @@ class CapturePendingPaymentHandler implements LoggerAwareInterface
 
             $paymentMapping->setStatus(PaymentMapping::CAPTURE_FAILED);
             $paymentMapping->setStatusReason(substr($e->getMessage(), 0, 1024));
+            if (!$this->stripeClient->isAmbiguousStripeFailure($e)) {
+                $paymentMapping->startNewStripeRequestAttempt();
+            }
         }
 
         $this->paymentMappingRepository->flush();

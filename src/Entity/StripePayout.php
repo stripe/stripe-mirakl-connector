@@ -56,8 +56,11 @@ class StripePayout
     #[Column(type: 'string', nullable: true)]
     private ?string $payoutId = null;
 
+    #[Column(type: 'integer', options: ['default' => 0])]
+    private int $stripeRequestAttempt = 0;
+
     #[Column(type: 'string')]
-    private string $status;
+    private string $status = self::PAYOUT_PENDING;
 
     #[Column(type: 'string', length: 1024, nullable: true)]
     private ?string $statusReason = null;
@@ -165,6 +168,18 @@ class StripePayout
     public function getPayoutId(): ?string
     {
         return $this->payoutId;
+    }
+
+    public function getStripeRequestAttempt(): int
+    {
+        return $this->stripeRequestAttempt;
+    }
+
+    public function startNewStripeRequestAttempt(): self
+    {
+        ++$this->stripeRequestAttempt;
+
+        return $this;
     }
 
     public function setPayoutId(?string $payoutId): self

@@ -3,8 +3,16 @@
 namespace App\Tests\Controller;
 
 use App\Entity\AccountMapping;
+use App\Entity\MiraklProductPendingDebit;
+use App\Entity\MiraklProductPendingRefund;
 use App\Entity\PaymentMapping;
 use App\Entity\StripePayout;
+use App\Entity\StripeTransfer;
+use App\Factory\StripeRefundFactory;
+use App\Handler\CapturePendingPaymentHandler;
+use App\Handler\ValidateMiraklOrderHandler;
+use App\Message\CapturePendingPaymentMessage;
+use App\Message\ValidateMiraklOrderMessage;
 use App\Repository\AccountMappingRepository;
 use App\Repository\PaymentMappingRepository;
 use App\Repository\StripePayoutRepository;
@@ -15,6 +23,7 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Transport\InMemoryTransport;
+use Psr\Log\NullLogger;
 
 class StripeWebhookEndpointTest extends WebTestCase
 {
@@ -998,6 +1007,185 @@ class StripeWebhookEndpointTest extends WebTestCase
         $replacement = $this->paymentMappingRepository->findOneByStripeChargeId($newChargeId);
         $this->assertNotNull($replacement);
         $this->assertStringContainsString("Replaced rejected payment $existingChargeId", (string) $replacement->getStatusReason());
+    }
+
+    public function testCapturedMappingWithValidationReasonStillProcessesRefundEvent(): void
+    {
+        $chargeId = 'ch_captured_rejected';
+        $orderId = MiraklMock::ORDER_BASIC;
+        $mapping = $this->mockPaymentMapping(
+            $orderId,
+            $chargeId,
+            true,
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' Stripe and Mirakl currencies differ.'
+        );
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 200,
+                    "amount_refunded": 200
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame('Payment mapping updated.', $response->getContent());
+        $this->assertSame(PaymentMapping::CANCELED, $mapping->getStatus());
+        $this->assertSame('Stripe Charge fully refunded.', $mapping->getStatusReason());
+    }
+
+    public function testRejectedUncapturedMappingIsRestoredWhenChargeIsLaterCaptured(): void
+    {
+        $chargeId = 'ch_rejected_then_captured';
+        $orderId = MiraklMock::ORDER_BASIC;
+        $mapping = $this->mockPaymentMapping($orderId, $chargeId);
+        $mapping->setStatus(PaymentMapping::CANCELED);
+        $mapping->setStatusReason(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' Stripe payment is not sufficient or usable.'
+        );
+        $this->paymentMappingRepository->flush();
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.captured",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": true,
+                    "amount": 200,
+                    "amount_refunded": 0
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame('Payment mapping updated.', $response->getContent());
+        $this->assertSame(PaymentMapping::CAPTURED, $mapping->getStatus());
+    }
+
+    public function testRejectedCapturedPaymentCannotBeReplacedAndRefundLookupKeepsOriginalCharge(): void
+    {
+        $this->client->disableReboot();
+        $orderId = MiraklMock::ORDER_BASIC;
+        $originalChargeId = StripeMock::CHARGE_STATUS_AUTHORIZED;
+        $replacementChargeId = StripeMock::CHARGE_BASIC;
+
+        $response = $this->executeOperatorRequest($this->chargeUpdatedPayload($originalChargeId, $orderId));
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame('Payment mapping created.', $response->getContent());
+
+        $mapping = $this->paymentMappingRepository->findOneByStripeChargeId($originalChargeId);
+        $this->assertNotNull($mapping);
+        $this->assertSame(PaymentMapping::TO_CAPTURE, $mapping->getStatus());
+
+        $container = static::getContainer();
+        $stripeClient = $container->get('App\\Service\\StripeClient');
+        $captureHandler = new CapturePendingPaymentHandler($stripeClient, $this->paymentMappingRepository);
+        $captureHandler->setLogger(new NullLogger());
+        $captureHandler(new CapturePendingPaymentMessage($mapping->getId(), 200, 0));
+
+        $mapping = $this->paymentMappingRepository->findOneByStripeChargeId($originalChargeId);
+        $this->assertSame(PaymentMapping::CAPTURED, $mapping->getStatus());
+
+        $validationHandler = new ValidateMiraklOrderHandler(
+            $container->get('App\\Service\\MiraklClient'),
+            $stripeClient,
+            $this->paymentMappingRepository
+        );
+        $validationHandler->setLogger(new NullLogger());
+        $pendingDebit = new MiraklProductPendingDebit([
+            'amount' => '2.00',
+            'currency_iso_code' => 'USD',
+            'order_id' => 'order-line-3556',
+            'order_commercial_id' => $orderId,
+            'customer_id' => 'customer-3556',
+        ]);
+        $validationHandler(new ValidateMiraklOrderMessage(
+            [$orderId => ['order-line-3556' => $pendingDebit]],
+            [$orderId => $mapping]
+        ));
+
+        $mapping = $this->paymentMappingRepository->findOneByStripeChargeId($originalChargeId);
+        $this->assertSame(PaymentMapping::CAPTURED, $mapping->getStatus());
+        $this->assertStringStartsWith(
+            PaymentMapping::INVALID_PAYMENT_REASON_PREFIX,
+            (string) $mapping->getStatusReason()
+        );
+
+        $response = $this->executeOperatorRequest($this->chargeUpdatedPayload($replacementChargeId, $orderId));
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame(
+            'Ignoring event: payment mapping already exists for this commercial order.',
+            $response->getContent()
+        );
+        $this->assertSame(
+            $originalChargeId,
+            $this->paymentMappingRepository
+                ->findOneByMiraklCommercialOrderId($orderId)
+                ->getStripeChargeId()
+        );
+        $this->assertNull($this->paymentMappingRepository->findOneByStripeChargeId($replacementChargeId));
+
+        $refundFactory = new StripeRefundFactory(
+            $this->paymentMappingRepository,
+            $container->get('doctrine')->getRepository(StripeTransfer::class),
+            $stripeClient,
+            $container->get('App\\Service\\MiraklClient')
+        );
+        $refundFactory->setLogger(new NullLogger());
+        $refund = $refundFactory->createFromOrderRefund(new MiraklProductPendingRefund([
+            'id' => MiraklMock::PRODUCT_ORDER_REFUND_BASIC,
+            'order_id' => MiraklMock::PRODUCT_ORDER_PENDING_REFUND.'_1000-1',
+            'order_commercial_id' => $orderId,
+            'order_line_id' => MiraklMock::PRODUCT_ORDER_PENDING_REFUND.'_1000-1-1',
+            'amount' => 2.00,
+            'currency_iso_code' => 'EUR',
+        ]));
+
+        $this->assertSame($originalChargeId, $refund->getTransactionId());
+    }
+
+    public function testStaleUncapturedEventDoesNotDowngradeCapturedMapping(): void
+    {
+        $chargeId = 'ch_captured_stale_event';
+        $orderId = MiraklMock::ORDER_BASIC;
+        $reason = PaymentMapping::INVALID_PAYMENT_REASON_PREFIX.' Stripe and Mirakl currencies differ.';
+        $mapping = $this->mockPaymentMapping($orderId, $chargeId, true, $reason);
+
+        $response = $this->executeOperatorRequest(<<<PAYLOAD
+        {
+            "type": "charge.updated",
+            "data": {
+                "object": {
+                    "id": "$chargeId",
+                    "object": "charge",
+                    "metadata": {"$this->paymentKey": "$orderId"},
+                    "status": "succeeded",
+                    "captured": false,
+                    "amount": 200,
+                    "amount_refunded": 0
+                }
+            }
+        }
+        PAYLOAD);
+
+        $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $this->assertSame('Payment mapping updated.', $response->getContent());
+        $this->assertSame(PaymentMapping::CAPTURED, $mapping->getStatus());
+        $this->assertSame($reason, $mapping->getStatusReason());
     }
 
     /**

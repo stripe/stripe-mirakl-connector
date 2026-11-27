@@ -42,6 +42,9 @@ class StripePayoutFactory implements LoggerAwareInterface
         // Payout already created
         if ($payout->getPayoutId()) {
             if ($payout->isRetriable()) {
+                if (StripePayout::PAYOUT_FAILED === $payout->getStatus()) {
+                    $payout->startNewStripeRequestAttempt();
+                }
                 $payout->setPayoutId(null);
             } else {
                 return $this->markPayoutAsCreated($payout);
