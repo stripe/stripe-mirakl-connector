@@ -201,4 +201,39 @@ class SellerSettlementServiceTest extends KernelTestCase
         $payouts = $this->getPayoutsFromRepository();
         $this->assertCount(3, $payouts);
     }
+
+    public function testUpdatePayoutsFromInvoicesFlushesPayoutRepository(): void
+    {
+        $invoices = $this->miraklClient->listInvoicesByDate(
+            MiraklMockedHttpClient::INVOICE_DATE_3_INVOICES_1_VALID
+        );
+        $this->sellerSettlementService->getPayoutsFromInvoices($invoices, $this->miraklClient);
+        $payouts = $this->sellerSettlementService->getRetriablePayouts();
+
+        $payoutFactory = $this->createMock(StripePayoutFactory::class);
+        $payoutFactory->expects($this->once())
+            ->method('updateFromInvoice')
+            ->willReturnCallback(static function (
+                StripePayout $payout,
+                array $invoice,
+                MiraklClient $mclient
+            ): StripePayout {
+                return $payout;
+            });
+
+        $payoutRepository = $this->createMock(StripePayoutRepository::class);
+        $payoutRepository->expects($this->once())->method('flush');
+
+        $transferRepository = $this->createMock(StripeTransferRepository::class);
+        $transferRepository->expects($this->never())->method('flush');
+
+        $service = new SellerSettlementService(
+            $payoutFactory,
+            $this->createMock(StripeTransferFactory::class),
+            $payoutRepository,
+            $transferRepository
+        );
+
+        $service->updatePayoutsFromInvoices($payouts, $invoices, $this->miraklClient);
+    }
 }

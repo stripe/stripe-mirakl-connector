@@ -180,7 +180,7 @@ class SellerSettlementService
         }
 
         // Save
-        $this->stripeTransferRepository->flush();
+        $this->stripePayoutRepository->flush();
 
         return $updated;
     }
