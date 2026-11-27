@@ -1,0 +1,45 @@
+name: dependency-audit
+
+on:
+  push:
+  workflow_dispatch:
+  pull_request:
+  schedule:
+    # Weekly, so newly published advisories are surfaced even without new commits.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  composer-audit:
+    name: Dependency audit (composer audit)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+
+    - name: Setup PHP and composer with shivammathur/setup-php
+      uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+      with:
+        php-version: 8.4
+        tools: composer:v2
+
+    # Non-blocking: vulnerabilities are reported as a warning annotation and in
+    # the job summary, but never fail the check.
+    - name: Audit Composer dependencies (warn only)
+      run: |
+        status=0
+        composer audit --locked --abandoned=report --no-interaction > composer-audit.txt 2>&1 || status=$?
+        cat composer-audit.txt
+        if [ "$status" -ne 0 ]; then
+          echo "::warning title=Composer audit::composer audit reported security advisories or abandoned packages (exit code $status). See the job summary for details."
+          {
+            echo "### ⚠️ composer audit found issues"
+            echo
+            echo '```'
+            cat composer-audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+        exit 0

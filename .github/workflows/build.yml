@@ -41,27 +41,6 @@ jobs:
     - name: Install Composer dependencies
       run: composer install -n --prefer-dist --no-scripts
 
-    ## —— Dependency audit 🔒 ———————————————————————————————————————————————
-    # Non-blocking: vulnerabilities are reported as a warning annotation and in
-    # the job summary, but never fail the build.
-
-    - name: Audit Composer dependencies (warn only)
-      run: |
-        status=0
-        composer audit --locked --abandoned=report --no-interaction > composer-audit.txt 2>&1 || status=$?
-        cat composer-audit.txt
-        if [ "$status" -ne 0 ]; then
-          echo "::warning title=Composer audit::composer audit reported security advisories or abandoned packages (exit code $status). See the job summary for details."
-          {
-            echo "### ⚠️ composer audit found issues"
-            echo
-            echo '```'
-            cat composer-audit.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-        fi
-        exit 0
-
     ## —— Coding standards ✨ ————————————————————————————————————————————————
 
     - name: Coding standards checks
