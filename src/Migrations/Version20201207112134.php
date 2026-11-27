@@ -13,7 +13,6 @@ use Stripe\Stripe;
 
 final class Version20201207112134 extends AbstractMigration
 {
-
     public function getDescription(): string
     {
         return '';

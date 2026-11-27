@@ -8,7 +8,7 @@ use Stripe\ApiRequestor;
 use Stripe\Charge;
 use Stripe\Exception\InvalidRequestException;
 use Stripe\HttpClient\ClientInterface;
-use Stripe\Util\ApiVersion;
+use Stripe\HttpClient\CurlClient;
 use Stripe\Util\CaseInsensitiveArray;
 
 class StripeClientTest extends TestCase
@@ -17,7 +17,7 @@ class StripeClientTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->previousHttpClient = ApiRequestor::httpClient();
+        $this->previousHttpClient = CurlClient::instance();
     }
 
     protected function tearDown(): void
@@ -29,9 +29,8 @@ class StripeClientTest extends TestCase
     {
         $http = $this->createMock(ClientInterface::class);
         $http->expects(self::once())->method('request')->willReturnCallback(
-            function ($method, $url, $headers, $params, $hasFile, $apiMode, $maxNetworkRetries) use ($check, $response, $useLegacyStripeApi, $status, $responseHeaders) {
+            function ($method, $url, $headers, $params, $hasFile) use ($check, $response, $useLegacyStripeApi, $status, $responseHeaders) {
                 self::assertContains('Stripe-Version: '.(($useLegacyStripeApi ?? true) ? StripeClient::LEGACY_API_VERSION : StripeClient::APP_API_VERSION), $headers);
-                self::assertSame('v1', $apiMode);
                 $check($method, parse_url($url, PHP_URL_PATH), $headers, $params);
 
                 return [json_encode($response), $status, new CaseInsensitiveArray($responseHeaders)];
@@ -47,7 +46,6 @@ class StripeClientTest extends TestCase
 
     public function testRetrievalExpandsLatestChargeAndUsesPinnedApi(): void
     {
-        self::assertSame(ApiVersion::CURRENT, StripeClient::APP_API_VERSION);
         $client = $this->clientWithResponse(function ($method, $path, $headers, $params) {
             self::assertSame('get', $method);
             self::assertSame('/v1/payment_intents/pi_test', $path);

@@ -17,10 +17,12 @@ use Stripe\Exception\PermissionException;
 use Stripe\Exception\UnknownApiErrorException;
 use Stripe\Exception\UnexpectedValueException;
 use Stripe\HttpClient\ClientInterface;
+use Stripe\HttpClient\CurlClient;
 use Stripe\LoginLink;
 use Stripe\PaymentIntent;
 use Stripe\Payout;
 use Stripe\Refund;
+use Stripe\Stripe;
 use Stripe\StripeClient as StripeSdkClient;
 use Stripe\Transfer;
 use Stripe\TransferReversal;
@@ -59,16 +61,11 @@ class StripeClient
         $this->useLegacyStripeApi = $useLegacyStripeApi;
         $this->version = VersionService::getVersion();
         $this->verifyWebhookSignature = $verifyWebhookSignature;
-        $this->setHttpClient(ApiRequestor::httpClient());
+        $this->setHttpClient(CurlClient::instance());
+        Stripe::setAppInfo(self::APP_NAME, $this->version, self::APP_REPO, self::APP_PARTNER_ID);
         $this->client = new StripeSdkClient([
             'api_key' => $stripeClientSecret,
             'stripe_version' => $useLegacyStripeApi ? self::LEGACY_API_VERSION : self::APP_API_VERSION,
-            'app_info' => [
-                'name' => self::APP_NAME,
-                'version' => $this->version,
-                'url' => self::APP_REPO,
-                'partner_id' => self::APP_PARTNER_ID,
-            ],
         ]);
     }
 
@@ -177,7 +174,7 @@ class StripeClient
         array $metadata = [],
         ?string $idempotencyKey = null
     ): Transfer {
-        return Transfer::create([
+        return $this->client->transfers->create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
@@ -194,14 +191,14 @@ class StripeClient
         array $metadata = [],
         ?string $idempotencyKey = null
     ): Transfer {
-        $platformAccount = Account::retrieve();
+        $platformAccount = $this->client->accounts->retrieve();
 
         $options = ['stripe_account' => $accountId];
         if (null !== $idempotencyKey) {
             $options['idempotency_key'] = $idempotencyKey;
         }
 
-        return Transfer::create([
+        return $this->client->transfers->create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
@@ -216,7 +213,7 @@ class StripeClient
         array $metadata = [],
         ?string $idempotencyKey = null
     ): TransferReversal {
-        return Transfer::createReversal($transferId, [
+        return $this->client->transfers->createReversal($transferId, [
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
         ], $this->idempotencyOptions($idempotencyKey));
@@ -235,7 +232,7 @@ class StripeClient
             $options['idempotency_key'] = $idempotencyKey;
         }
 
-        return Payout::create([
+        return $this->client->payouts->create([
             'currency' => $currency,
             'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
@@ -272,9 +269,11 @@ class StripeClient
     {
         switch (substr($paymentId, 0, 3)) {
             case 'pi_':
-                $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
-
-                return $pi->capture(['amount_to_capture' => $amount], $this->idempotencyOptions($idempotencyKey));
+                return $this->client->paymentIntents->capture(
+                    $paymentId,
+                    ['amount_to_capture' => $amount],
+                    $this->idempotencyOptions($idempotencyKey)
+                );
             case 'ch_':
             case 'py_':
                 $charge = $this->chargeRetrieve($paymentId);
@@ -285,7 +284,11 @@ class StripeClient
                     return $this->capturePayment($paymentIntentId, $amount, $idempotencyKey);
                 }
 
-                return $charge->capture(['amount' => $amount], $this->idempotencyOptions($idempotencyKey));
+                return $this->client->charges->capture(
+                    $paymentId,
+                    ['amount' => $amount],
+                    $this->idempotencyOptions($idempotencyKey)
+                );
             default:
                 throw new \Exception('Unexpected payment type: '.$paymentId);
         }
@@ -300,10 +303,11 @@ class StripeClient
     {
         switch (substr($paymentId, 0, 3)) {
             case 'pi_':
-                $pi = PaymentIntent::constructFrom(['id' => $paymentId]);
-                $pi->cancel([], $this->idempotencyOptions($idempotencyKey));
-
-                return $pi;
+                return $this->client->paymentIntents->cancel(
+                    $paymentId,
+                    [],
+                    $this->idempotencyOptions($idempotencyKey)
+                );
             case 'ch_':
             case 'py_':
                 $charge = $this->chargeRetrieve($paymentId);
@@ -342,6 +346,6 @@ class StripeClient
     // Refund
     public function refundRetrieve(string $stripeRefundId): Refund
     {
-        return Refund::retrieve($stripeRefundId);
+        return $this->client->refunds->retrieve($stripeRefundId);
     }
 }
