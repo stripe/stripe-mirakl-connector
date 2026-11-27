@@ -21,7 +21,7 @@ use Stripe\LoginLink;
 use Stripe\PaymentIntent;
 use Stripe\Payout;
 use Stripe\Refund;
-use Stripe\Stripe;
+use Stripe\StripeClient as StripeSdkClient;
 use Stripe\Transfer;
 use Stripe\TransferReversal;
 use Stripe\Webhook;
@@ -36,6 +36,10 @@ class StripeClient
      */
     private $version;
 
+    private StripeSdkClient $client;
+
+    private bool $useLegacyStripeApi;
+
     /**
      * @var bool
      */
@@ -44,17 +48,28 @@ class StripeClient
     public const APP_NAME = 'MiraklConnector';
     public const APP_REPO = 'https://github.com/stripe/stripe-mirakl-connector';
     public const APP_PARTNER_ID = 'pp_partner_FuvjRG4UuotFXS';
-    public const APP_API_VERSION = '2019-08-14';
+    public const APP_API_VERSION = '2026-11-18.endive';
+    public const LEGACY_API_VERSION = '2019-08-14';
 
     public function __construct(
         string $stripeClientSecret,
-        bool $verifyWebhookSignature
+        bool $verifyWebhookSignature,
+        bool $useLegacyStripeApi = true
     ) {
+        $this->useLegacyStripeApi = $useLegacyStripeApi;
         $this->version = VersionService::getVersion();
         $this->verifyWebhookSignature = $verifyWebhookSignature;
-        Stripe::setApiKey($stripeClientSecret);
-        Stripe::setAppInfo(self::APP_NAME, $this->version, self::APP_REPO, self::APP_PARTNER_ID);
-        Stripe::setApiVersion(self::APP_API_VERSION);
+        $this->setHttpClient(ApiRequestor::httpClient());
+        $this->client = new StripeSdkClient([
+            'api_key' => $stripeClientSecret,
+            'stripe_version' => $useLegacyStripeApi ? self::LEGACY_API_VERSION : self::APP_API_VERSION,
+            'app_info' => [
+                'name' => self::APP_NAME,
+                'version' => $this->version,
+                'url' => self::APP_REPO,
+                'partner_id' => self::APP_PARTNER_ID,
+            ],
+        ]);
     }
 
     private function getDefaultMetadata(): array
@@ -68,34 +83,22 @@ class StripeClient
     // Account
     public function retrieveAccount(string $accountId): Account
     {
-        return Account::retrieve($accountId);
+        return $this->client->accounts->retrieve($accountId);
     }
 
     // returns Account []
     public function retrieveAllAccounts(): array
     {
-        $hasmore = false;
-        $connect_accounts = [];
-        $lastConnectId = '';
-        $limit = 50;
-        do {
-            $params = '' == $lastConnectId ? ['limit' => $limit] : ['limit' => $limit, 'starting_after' => $lastConnectId];
-            $response = Account::all($params);
-            $responseData = (array) $response['data'];
-            $connect_accounts = array_merge($connect_accounts, $responseData);
-            $hasmore = $response['has_more'];
-            if (is_array($connect_accounts)) {
-                $lastConnectId = end($connect_accounts)['id'];
-            }
-        } while ($hasmore);
-
-        return $connect_accounts;
+        return iterator_to_array($this->client->accounts->all(['limit' => 50])->autoPagingIterator(), false);
     }
 
     public function createStripeAccount(int $shopId, array $details, array $metadata = []): Account
     {
-        return Account::create(array_merge([
+        return $this->client->accounts->create(array_merge([
             'type' => 'express',
+            'capabilities' => [
+                'transfers' => ['requested' => true],
+            ],
             'settings' => ['payouts' => [
                 'debit_negative_balances' => false,
                 'schedule' => ['interval' => 'manual'],
@@ -107,7 +110,7 @@ class StripeClient
     // Account/Login Link
     public function createAccountLink(string $accountId, string $refreshUrl, string $returnUrl, string $type = 'account_onboarding'): AccountLink
     {
-        return AccountLink::create([
+        return $this->client->accountLinks->create([
             'account' => $accountId,
             'refresh_url' => $refreshUrl,
             'return_url' => $returnUrl,
@@ -117,7 +120,7 @@ class StripeClient
 
     public function createLoginLink(string $accountId): LoginLink
     {
-        return Account::createLoginLink($accountId);
+        return $this->client->accounts->createLoginLink($accountId);
     }
 
     // Webhook Event
@@ -139,7 +142,7 @@ class StripeClient
 
     public function setHttpClient(ClientInterface $client): void
     {
-        ApiRequestor::setHttpClient($client);
+        ApiRequestor::setHttpClient($client instanceof StripeHttpClient ? $client : new StripeHttpClient($client));
     }
 
     public function isAmbiguousStripeFailure(ApiErrorException $exception): bool
@@ -244,12 +247,15 @@ class StripeClient
     {
         $params = [
             'charge' => $charge,
-            'amount' => $amount,
             'metadata' => array_merge($metadata, $this->getDefaultMetadata()),
         ];
+        if (null !== $amount) {
+            $params['amount'] = $amount;
+        }
+
         $requestOptions = $idempotencyKey ? ['idempotency_key' => $idempotencyKey] : [];
 
-        return Refund::create($params, $requestOptions);
+        return $this->client->refunds->create($params, $requestOptions);
     }
 
     private function idempotencyOptions(?string $idempotencyKey): array
@@ -317,13 +323,20 @@ class StripeClient
     // Payment intent
     public function paymentIntentRetrieve(string $stripePaymentIntentId): PaymentIntent
     {
-        return PaymentIntent::retrieve($stripePaymentIntentId);
+        $params = $this->useLegacyStripeApi ? [] : ['expand' => ['latest_charge']];
+        $paymentIntent = $this->client->paymentIntents->retrieve($stripePaymentIntentId, $params);
+        if ($this->useLegacyStripeApi) {
+            // Normalize the legacy response for payment validation, transfers, and refunds.
+            $paymentIntent->latest_charge = $paymentIntent->charges->data[0] ?? null;
+        }
+
+        return $paymentIntent;
     }
 
     // Charge
     public function chargeRetrieve(string $stripeChargeId): Charge
     {
-        return Charge::retrieve($stripeChargeId);
+        return $this->client->charges->retrieve($stripeChargeId);
     }
 
     // Refund

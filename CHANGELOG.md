@@ -1,9 +1,10 @@
 # Changelog
 
-## Version 4.3.11
+## Version 4.4.1
 - Make payout creation retries idempotent by reusing the same Stripe key after ambiguous failures.
 
-## Version 4.3.10
+## Version 4.4.0
+- Upgrade Stripe PHP from v10 to 23.1.0. The connector continues to send Stripe API requests using version `2019-08-14` by default. Set `STRIPE_USE_LEGACY_API=false` to send connector requests using `2026-11-18.endive`. Test payment, refund, payout, and onboarding flows before upgrading.
 - Include refunded taxes in tax-excluded Stripe refunds and reconcile tax-split reversal shortfalls safely.
 
 ## Version 4.3.9

@@ -12,6 +12,7 @@ parameters:
   env(OPERATOR_NOTIFICATION_URL): ""
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN): true
   env(MAIL_ON_NOTIFICATION_ENDPOINT_DOWN_COOLDOWN): 10
+  env(STRIPE_USE_LEGACY_API): true
   env(STRIPE_PREFILL_ONBOARDING): false
   env(MIRAKL_CUSTOM_FIELD_CODE): "stripe-url"
   env(MIRAKL_IGNORED_SHOP_FIELD_CODE): "stripe-ignored"
@@ -180,3 +181,4 @@ services:
   App\Service\StripeClient:
     bind:
       $verifyWebhookSignature: true
+      $useLegacyStripeApi: "%env(bool:STRIPE_USE_LEGACY_API)%"

@@ -131,24 +131,7 @@ class MiraklProductOrder extends MiraklOrder
         return 0;
     }
 
-    public function getRefundedTax(StripeRefund $refund): float
-    {
-        foreach ($this->getOrderLines() as $line) {
-            if ($refund->getMiraklOrderLineId() === $line['order_line_id']) {
-                foreach ($line['refunds'] ?? [] as $orderRefund) {
-                    if ($refund->getMiraklRefundId() === $orderRefund['id']) {
-                        $tax = $this->getRefundLineTaxes($orderRefund);
-
-                        return $tax;
-                    }
-                }
-            }
-        }
-
-        return 0;
-    }
-
-    public function hasRefund(StripeRefund $refund): bool
+    protected function findRefundDetails(StripeRefund $refund): ?array
     {
         foreach ($this->getOrderLines() as $line) {
             if ($refund->getMiraklOrderLineId() !== $line['order_line_id']) {
@@ -157,23 +140,12 @@ class MiraklProductOrder extends MiraklOrder
 
             foreach ($line['refunds'] ?? [] as $orderRefund) {
                 if ($refund->getMiraklRefundId() === $orderRefund['id']) {
-                    return true;
+                    return $orderRefund;
                 }
             }
         }
 
-        return false;
-    }
-
-    protected function getRefundLineTaxes(array $refundLine): float
-    {
-        $taxes = 0;
-        $allTaxes = array_merge($refundLine['shipping_taxes'] ?? [], $refundLine['taxes'] ?? []);
-        foreach ($allTaxes as $tax) {
-            $taxes += (float) $tax['amount'];
-        }
-
-        return $taxes;
+        return null;
     }
 
     public function getCurrency(): string

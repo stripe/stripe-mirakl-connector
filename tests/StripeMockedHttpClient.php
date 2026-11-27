@@ -33,6 +33,8 @@ class StripeMockedHttpClient implements ClientInterface
     public const CHARGE_WITH_TRANSFER = 'ch_with_transfer';
 
     public const PAYMENT_INTENT_BASIC = 'pi_basic';
+    public const PAYMENT_INTENT_WITH_CHARGE_ID = 'pi_charge_id';
+    public const PAYMENT_INTENT_WITHOUT_CHARGE = 'pi_without_charge';
     public const PAYMENT_INTENT_STATUS_REQUIRES_PAYMENT_METHOD = 'pi_status_requires_payment_method';
     public const PAYMENT_INTENT_STATUS_REQUIRES_CONFIRMATION = 'pi_status_requires_confirmation';
     public const PAYMENT_INTENT_STATUS_REQUIRES_ACTION = 'pi_status_requires_action';
@@ -107,7 +109,7 @@ class StripeMockedHttpClient implements ClientInterface
      * @return array an array whose first element is raw request body, second
      *               element is HTTP status code and third arResponseInterfaceray of HTTP headers
      */
-    public function request($method, $url, $headers, $params, $hasFile = false)
+    public function request($method, $url, $headers, $params, $hasFile = false, $apiMode = 'v1', $maxNetworkRetries = null)
     {
         $path = str_replace('/v1/', '', parse_url($url, PHP_URL_PATH));
         $composants = explode('/', $path);
@@ -156,6 +158,17 @@ class StripeMockedHttpClient implements ClientInterface
                 break;
             default:
                 throw new \Exception('Unpexpected URL: ' . $url);
+        }
+
+        if ('payment_intents' === $resource &&
+            '2019-08-14' === ($this->parseHeaders($headers)['stripe-version'] ?? null)) {
+            $charge = $response['latest_charge'] ?? null;
+            if (is_string($charge)) {
+                $charge = $this->mockCharges($charge, null);
+            }
+            $response['charges'] = $this->getBasicList('charges');
+            $response['charges']['data'] = null === $charge ? [] : [$charge];
+            unset($response['latest_charge']);
         }
 
         return [json_encode($response), 200, []];
@@ -293,15 +306,21 @@ class StripeMockedHttpClient implements ClientInterface
         $pi = $this->getBasicObject($id, 'payment_intent');
         $pi['currency'] = 'eur';
         switch ($id) {
+            case self::PAYMENT_INTENT_WITHOUT_CHARGE:
+                $pi['status'] = 'succeeded';
+                $pi['latest_charge'] = null;
+                break;
+            case self::PAYMENT_INTENT_WITH_CHARGE_ID:
+                $pi['status'] = 'succeeded';
+                $pi['latest_charge'] = self::CHARGE_BASIC;
+                break;
             case self::PAYMENT_INTENT_BASIC:
                 $pi['status'] = 'succeeded';
-                $pi['charges'] = $this->getBasicList('charges');
-                $pi['charges']['data'][] = $this->mockCharges(self::CHARGE_BASIC, null);
+                $pi['latest_charge'] = $this->mockCharges(self::CHARGE_BASIC, null);
                 break;
             case self::PAYMENT_INTENT_STATUS_SUCCEEDED:
                 $pi['status'] = 'succeeded';
-                $pi['charges'] = $this->getBasicList('charges');
-                $pi['charges']['data'][] = $this->mockCharges(self::CHARGE_STATUS_CAPTURED, null);
+                $pi['latest_charge'] = $this->mockCharges(self::CHARGE_STATUS_CAPTURED, null);
                 break;
             case self::PAYMENT_INTENT_STATUS_REQUIRES_PAYMENT_METHOD:
                 $pi['status'] = 'requires_payment_method';
@@ -326,8 +345,7 @@ class StripeMockedHttpClient implements ClientInterface
                 break;
             case self::PAYMENT_INTENT_REFUNDED:
                 $pi['status'] = 'succeeded';
-                $pi['charges'] = $this->getBasicList('charges');
-                $pi['charges']['data'][] = $this->mockCharges(self::CHARGE_REFUNDED, null);
+                $pi['latest_charge'] = $this->mockCharges(self::CHARGE_REFUNDED, null);
                 break;
             case self::PAYMENT_INTENT_WITH_METADATA:
                 $pi['status'] = 'requires_capture';

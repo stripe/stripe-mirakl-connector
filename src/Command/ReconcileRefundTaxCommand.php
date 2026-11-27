@@ -5,7 +5,6 @@ namespace App\Command;
 use App\Entity\StripeRefund;
 use App\Repository\StripeRefundRepository;
 use App\Service\MiraklClient;
-use App\Service\StripeAmount;
 use App\Service\StripeClient;
 use Stripe\Charge;
 use Stripe\Refund;
@@ -51,14 +50,11 @@ class ReconcileRefundTaxCommand extends Command
             $order = StripeRefund::REFUND_SERVICE_ORDER === $refund->getType()
                 ? current($this->miraklClient->listServiceOrdersById([$refund->getMiraklOrderId()]))
                 : current($this->miraklClient->listProductOrdersById([$refund->getMiraklOrderId()]));
-            if (!$order || $order->isTaxIncluded()) {
+            if (!$order) {
                 continue;
             }
 
-            $taxAmount = StripeAmount::toMinorUnits(
-                $order->getRefundedTax($refund),
-                $refund->getCurrency()
-            );
+            $taxAmount = $order->getAdditionalRefundTax($refund);
             if ($taxAmount <= 0) {
                 continue;
             }
@@ -86,7 +82,7 @@ class ReconcileRefundTaxCommand extends Command
 
                 continue;
             }
-            $available = (int) $charge->amount - (int) $charge->amount_refunded;
+            $available = (int) $charge->amount_captured - (int) $charge->amount_refunded;
             if ($available < $difference) {
                 $output->writeln(sprintf(
                     'SKIP refund %s: tax top-up %d exceeds charge capacity %d.',
